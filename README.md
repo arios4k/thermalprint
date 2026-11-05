@@ -163,9 +163,11 @@ PDFium is optional. To use a custom installation, set `THERMALPRINT_PDFIUM_DIR` 
 
 [Development and tests](docs/DEVELOPMENT.md) · [Fedora packaging / Copr setup](packaging/rpm/README.md) · [APT release maintenance](docs/RELEASING.md) · [Regenerate screenshots](docs/screenshots/README.md)
 
-## Support the project
+## Support ThermalPrint
 
-ThermalPrint is free and open source, and my intention is to keep it free for everyone. If this tool has been useful to you, please consider [making a donation of any amount](https://paypal.me/AlexisRios) to help keep the project running and support its continued development. Donations are completely optional, and every contribution is sincerely appreciated. Thank you for using ThermalPrint and helping make it available to everyone!
+If ThermalPrint has been useful to you, please consider [making a donation of any amount](https://paypal.me/AlexisRios) to help keep the project running and support its continued development. Every contribution is appreciated.
+
+The intention is to keep ThermalPrint free and available to everyone. Thank you for using it and for any support you can offer!
 
 [![Support development with PayPal](https://img.shields.io/badge/Support_development-PayPal-0070BA?logo=paypal&logoColor=white)](https://paypal.me/AlexisRios)
 
