@@ -165,6 +165,10 @@ PDFium is optional. To use a custom installation, set `THERMALPRINT_PDFIUM_DIR` 
 
 ## Support the project
 
+ThermalPrint is free and open source. If it saves you time, an optional donation is a welcome way to support its continued development. Thank you!
+
+[![Support development with PayPal](https://img.shields.io/badge/Support_development-PayPal-0070BA?logo=paypal&logoColor=white)](https://paypal.me/AlexisRios)
+
 If ThermalPrint is useful to you, a [GitHub star](https://github.com/arios4k/thermalprint), a reproducible [bug report](https://github.com/arios4k/thermalprint/issues), or sharing it with another Linux user helps the project grow. Keep personal addresses and tracking information out of public reports.
 
 Created by **Alexis Rios-Negron**. Also explore [Voltkit](https://github.com/arios4k/voltkit) and [Battery Health Center](https://github.com/arios4k/battery-health-center).
