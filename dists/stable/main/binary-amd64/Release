@@ -1,0 +1,6 @@
+Archive: stable
+Component: main
+Origin: ThermalPrint
+Label: ThermalPrint
+Architecture: amd64
+Description: ThermalPrint APT repository
