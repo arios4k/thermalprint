@@ -89,7 +89,10 @@ pub fn detect(image: &RgbImage) -> Detection {
     let whole = padded(x0, y0, x1, y1);
     let mut candidates = vec![];
     for (axis, start, end, horizontal) in [(&rows, y0, y1, true), (&cols, x0, x1, false)] {
-        let minimum = ((end - start) as f32 * 0.055).ceil() as u32;
+        // A gap between a bordered label and its instructions can be much
+        // smaller than the whitespace around the whole document. Text line
+        // spacing is normally far below this threshold at print resolution.
+        let minimum = ((end - start) as f32 * 0.025).ceil().max(12.) as u32;
         let mut sections = vec![];
         let mut section = start;
         let mut i = start;
@@ -137,17 +140,96 @@ pub fn detect(image: &RgbImage) -> Detection {
             }
         }
     }
+    // A separate short instruction block should not be fitted with the label.
+    // Only select automatically when one plausible label region dominates;
+    // two similarly sized labels or ambiguous groups remain full-page.
+    let likely_label = choose_label(image, &candidates);
     let needs_review = !candidates.is_empty();
     Detection {
-        proposed: if needs_review { Crop::FULL } else { whole },
+        proposed: if let Some(index) = likely_label {
+            candidates[index]
+        } else if needs_review {
+            Crop::FULL
+        } else {
+            whole
+        },
         candidates,
-        message: if needs_review {
+        message: if likely_label.is_some() {
+            "Likely shipping label selected; separate instructions are excluded from the processed preview and print. Check every edge and barcode quiet zone before confirming.".into()
+        } else if needs_review {
             "Separate content groups found. Full page preserved. Select a candidate and confirm that all shipping information and barcode quiet zones remain.".into()
         } else {
             "Whitespace trimmed with a safety buffer. Check all edges and barcode quiet zones before printing.".into()
         },
         needs_review,
     }
+}
+
+fn choose_label(image: &RgbImage, candidates: &[Crop]) -> Option<usize> {
+    if candidates.len() < 2 {
+        return None;
+    }
+    let mut ranked: Vec<(usize, f32, bool, bool)> = candidates
+        .iter()
+        .enumerate()
+        .map(|(i, c)| {
+            let (_, _, w, h) = c.pixels(image.width(), image.height());
+            let ratio = w as f32 / h as f32;
+            let plausible = (0.45..=2.3).contains(&ratio);
+            let area = w as f32 * h as f32;
+            (i, area, plausible, has_linear_barcode_pattern(image, *c))
+        })
+        .collect();
+    ranked.sort_by(|a, b| b.1.total_cmp(&a.1));
+    let best = ranked.iter().find(|item| item.2)?;
+    let largest_other = ranked
+        .iter()
+        .filter(|item| item.0 != best.0)
+        .map(|item| item.1)
+        .fold(0., f32::max);
+    let other_barcode = ranked.iter().any(|item| item.0 != best.0 && item.3);
+    let dominant = best.1 >= largest_other * 1.8;
+    let barcode_evidence = best.3 && !other_barcode && best.1 >= largest_other * 0.7;
+    // Do not choose one of several overlapping proposals as if they were
+    // distinct label/instruction sections.
+    let disjoint = ranked.iter().filter(|item| item.0 != best.0).all(|item| {
+        let a = candidates[best.0];
+        let b = candidates[item.0];
+        let x = (a.x + a.w).min(b.x + b.w) - a.x.max(b.x);
+        let y = (a.y + a.h).min(b.y + b.h) - a.y.max(b.y);
+        (x.max(0.) * y.max(0.)) < (a.w * a.h).min(b.w * b.h) * 0.15
+    });
+    if disjoint && (dominant || barcode_evidence) {
+        Some(best.0)
+    } else {
+        None
+    }
+}
+
+fn has_linear_barcode_pattern(image: &RgbImage, crop: Crop) -> bool {
+    let (x, y, w, h) = crop.pixels(image.width(), image.height());
+    let stride = (h / 160).max(1);
+    let mut consecutive = 0;
+    for yy in (y..y + h).step_by(stride as usize) {
+        let mut previous = false;
+        let mut transitions = 0;
+        for xx in x..x + w {
+            let black = ink(image.get_pixel(xx, yy));
+            if xx > x && black != previous {
+                transitions += 1;
+            }
+            previous = black;
+        }
+        if transitions >= 24 {
+            consecutive += 1;
+        } else {
+            consecutive = 0;
+        }
+        if consecutive >= 10 {
+            return true;
+        }
+    }
+    false
 }
 #[cfg(test)]
 mod tests {
@@ -177,6 +259,20 @@ mod tests {
         assert!(d.needs_review);
         assert_eq!(d.proposed, Crop::FULL);
         assert_eq!(d.candidates.len(), 2);
+    }
+    #[test]
+    fn separate_instructions_are_removed_before_layout() {
+        let mut im = RgbImage::from_pixel(800, 1000, image::Rgb([255; 3]));
+        // Representative label body, with a smaller, wide instruction block
+        // well outside its bottom boundary.
+        block(&mut im, 120, 55, 520, 620);
+        block(&mut im, 100, 820, 600, 70);
+        let d = detect(&im);
+        assert!(d.needs_review);
+        assert_eq!(d.candidates.len(), 2);
+        let (x, y, w, h) = d.proposed.pixels(800, 1000);
+        assert!(x < 120 && y < 55 && x + w > 640 && y + h > 675);
+        assert!(y + h < 820, "instruction block entered processed crop");
     }
     #[test]
     fn blank_is_not_discarded() {

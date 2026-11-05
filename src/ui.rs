@@ -592,7 +592,7 @@ impl ThermalPrint {
             ui.horizontal_wrapped(|ui|{ui.selectable_value(&mut self.settings.mode,Mode::Automatic,"Automatic");ui.selectable_value(&mut self.settings.mode,Mode::Manual,"Manual");ui.selectable_value(&mut self.settings.mode,Mode::FullPage,"Full page");});
             if self.settings.mode!=old_mode {self.dirty=true;self.drag=None;self.zoom=1.;match self.settings.mode {Mode::Automatic=>{self.original=false;if let Some(d)=&self.detection {self.crop=d.proposed;self.reviewed = !d.needs_review;}},Mode::Manual=>{self.original=true;self.reviewed=false;},Mode::FullPage=>{self.original=false;self.reviewed=true;}}}
             if self.settings.mode==Mode::Automatic && let Some(d)=self.detection.clone(){ui.label(RichText::new(d.message).small());if !d.candidates.is_empty(){ui.horizontal_wrapped(|ui|{for (i,c) in d.candidates.iter().enumerate(){if ui.selectable_label(self.crop==*c,format!("Region {}",i+1)).clicked(){self.crop = *c;self.dirty=true;self.original=true;self.reviewed=false;}}});}}
-            if self.settings.mode==Mode::Automatic && let Some(d)=self.detection.clone() && d.candidates.len()>1
+            if self.settings.mode==Mode::Automatic && let Some(d)=self.detection.clone() && d.candidates.len()>1 && d.proposed==Crop::FULL
                 && ui.button(format!("Queue all {} detected regions",d.candidates.len())).clicked()
                 && let (Some(i),Some(page))=(self.selected,self.page.as_ref()) {
                         let items=d.candidates.into_iter().map(|crop|QueueItem{path:page.path.clone(),page:page.index,crop,reviewed:false,mode:Mode::Automatic}).collect::<Vec<_>>();

@@ -92,7 +92,7 @@ flowchart LR
 
 ### Automatic
 
-Automatic mode identifies non-white content and proposes an outer crop with a safety buffer. It also looks for large horizontal or vertical whitespace gaps that separate content groups. When it finds multiple plausible regions, it keeps the **full page** as the initial proposal and asks you to select and review a region. This avoids silently discarding instructions or shipping information. It is layout analysis, not a carrier-specific label recognizer.
+Automatic mode identifies non-white content and proposes an outer crop with a safety buffer. It also looks for horizontal or vertical whitespace gaps that separate content groups. When a label-shaped region clearly dominates a separate instruction block, the proposed crop includes only the label, so those instructions are absent from the **processed preview**, export, and print. The original view still shows the entire document. If several regions are similarly plausible, Automatic keeps the full page until you select a candidate. A cropped proposal with excluded content requires your review before printing. This is layout analysis, not a carrier-specific label recognizer or proof that every carrier instruction was identified.
 
 ### Manual
 
