@@ -4,7 +4,7 @@
 
 Name:           thermalprint
 Version:        @VERSION@
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        Design, prepare, and print thermal labels
 License:        @LICENSE@
 URL:            https://github.com/arios4k/thermalprint
@@ -72,5 +72,6 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/org.thermalprint.Ther
 %{_datadir}/icons/hicolor/256x256/apps/org.thermalprint.ThermalPrint.png
 
 %changelog
-* Thu Nov 05 2026 Alexis Rios-Negron <arios4k@gmail.com> - @VERSION@-2
-- Use Fedora Wayland library packages so DNF can resolve runtime dependencies.
+* Thu Nov 05 2026 Alexis Rios-Negron <arios4k@gmail.com> - @VERSION@-1
+- Refresh label designer, Home, import controls, and printing setup.
+- Add readable printer media, size matching, contextual help, and Fedora releases.
