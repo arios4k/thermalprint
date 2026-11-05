@@ -124,7 +124,17 @@ jobs:
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release create "$RELEASE_TAG" --verify-tag --generate-notes || gh release view "$RELEASE_TAG" >/dev/null
           fi
-          gh release upload "$RELEASE_TAG" release-packages/*.rpm --clobber
+          python3 - <<'PYUPLOAD'
+          import os
+          from pathlib import Path
+          import subprocess
+          packages = sorted(Path('release-packages').rglob('*.rpm'))
+          binaries = [p for p in packages if not p.name.endswith('.src.rpm')]
+          assert len(binaries) == 2, f'Expected Fedora 44/45 binary RPMs, found {binaries}'
+          assert any(p.name.endswith('.src.rpm') for p in packages), 'Missing source RPM'
+          subprocess.run(['gh', 'release', 'upload', os.environ['RELEASE_TAG'],
+                          *map(str, packages), '--clobber'], check=True)
+          PYUPLOAD
 
   copr:
     # Enable only after the Copr project and repository secret are configured.
