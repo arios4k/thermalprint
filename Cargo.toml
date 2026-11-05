@@ -23,6 +23,28 @@ tempfile = "3"
 flate2 = "1"
 png = "0.18"
 
+barcoders = { version = "2.0", default-features = false, features = ["std"] }
+qrcode = { version = "0.14", default-features = false }
+fontdue = "0.9"
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
 [profile.release]
 lto = "thin"
 strip = true
+
+[package.metadata.deb]
+name = "thermalprint"
+maintainer = "Alexis Rios-Negron <182820807+arios4k@users.noreply.github.com>"
+copyright = "2026, Alexis Rios-Negron"
+section = "graphics"
+priority = "optional"
+depends = "$auto, cups-client, poppler-utils"
+extended-description = "ThermalPrint imports shipping labels, extracts the printable region, and prints through CUPS. It also includes a custom thermal label designer with real barcodes and QR codes."
+assets = [
+    ["target/release/thermalprint", "usr/bin/", "755"],
+    ["data/org.thermalprint.ThermalPrint.desktop", "usr/share/applications/", "644"],
+    ["data/org.thermalprint.ThermalPrint.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
+    ["data/org.thermalprint.ThermalPrint.png", "usr/share/icons/hicolor/256x256/apps/", "644"],
+    ["README.md", "usr/share/doc/thermalprint/", "644"],
+]

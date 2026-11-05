@@ -1,10 +1,10 @@
 # ThermalPrint
 
-**A universal shipping label printer for Linux.** ThermalPrint takes labels you have already downloaded, finds or lets you select the label area, lays it out on thermal paper, and sends the result to a printer through CUPS. It does not require a marketplace account or integration.
+**A thermal label designer and shipping label printer for Linux.** Import downloaded labels, extract the printable area, or design a new label with text, shapes, barcodes, QR codes, and images. Preview and print through CUPS without a marketplace account.
 
 Created by **Alexis Rios-Negron**. Written primarily in Rust and released under the [MIT License](LICENSE).
 
-> **Project status:** This is an early desktop release (`0.1.0`). It supports the core import, crop, preview, export, queue, and CUPS submission workflow. Barcode decoding, physical scan verification, raw ZPL, and packaged distribution binaries are not yet included. Test a printed label with your printer and carrier workflow before relying on it for shipments.
+> **Project status:** This is an early desktop release (`0.1.0`). Imported barcode decoding and physical scan verification are not available. Raw ZPL is available for a compatible CUPS raw queue, using raster commands. Test a physical print with your printer and carrier workflow before relying on it for shipments.
 
 ## Why ThermalPrint?
 
@@ -14,12 +14,17 @@ The app is source agnostic. Use it with downloaded labels from Vinted, eBay, Ets
 
 ## Features
 
+- **Custom label designer:** Start from a blank canvas or built-in shipping, return, product, inventory, QR, asset, shelf, price, name, or fragile template. Edit object position and size in millimeters, drag and resize on canvas, use grid snapping, layers, undo/redo, copy/paste, duplicate, and multiple selection.
+- **Real barcodes and QR codes:** Code 128, Code 39, EAN-13, UPC-A, and QR codes are generated from their encoded values. Add text, addresses, rectangles, lines, circles, and imported logos. Custom labels do not create carrier postage or tracking numbers.
+- **Editable documents:** Save and reopen versioned `.thermalprint` JSON designs. Export a design as dimensioned PDF, PNG, SVG with an embedded raster image, or raster ZPL.
+- **Four work areas:** Home, Label Designer, Import & Convert, and Print Center.
+
 - **PDF and image import:** PDF, PNG, JPEG, TIFF, BMP, and WebP. Multipage PDFs add their pages to the print queue.
 - **Three extraction modes:** Automatic whitespace analysis, interactive Manual cropping, and Full page.
 - **Multiple labels:** Add several files at once, drag several files into the window, or queue multiple detected regions from one PDF page. Review, reorder, remove, and print queued labels in sequence.
 - **Live preview:** Switch between the original page with its crop boundary and the processed output. Zoom and fit controls are independent of final print resolution.
 - **Paper options:** 4 × 6 inches by default, plus 4 × 4 inches, 2 × 1 inches, 100 × 150 mm, and custom dimensions. Portrait and landscape are available by swapping dimensions.
-- **Layout options:** 0°, 90°, 180°, and 270° rotation; fit, actual-size, and custom scaling; margins; 203 or 300 DPI; and an optional black-and-white threshold.
+- **Layout options:** 0°, 90°, 180°, and 270° rotation; fit, actual-size, and custom scaling; margins; 203, 300, or 600 DPI; and an optional black-and-white threshold.
 - **CUPS printing:** Discover configured printers, advertised media choices, and available resolution choices. Choose copies, submit one label or a queue, and inspect the CUPS queue status.
 - **Export:** Dimensioned PDF or PNG with output DPI metadata.
 - **Desktop basics:** Light, dark, or system theme; recent files; saved printer preferences; Ctrl+O and Ctrl+P; and an About dialog.
@@ -56,7 +61,7 @@ If PDFium is installed outside the system library path, point ThermalPrint at it
 THERMALPRINT_PDFIUM_DIR=/path/to/pdfium/lib cargo run --release
 ```
 
-The repository includes a [desktop entry](data/org.thermalprint.ThermalPrint.desktop) and PNG/SVG icons. To register the app manually, install the compiled binary and desktop entry into the appropriate user or system application directories, keeping the desktop entry's `Exec=thermalprint %f` command on your `PATH`. There is not yet an automated package installer.
+The repository includes a [desktop entry](data/org.thermalprint.ThermalPrint.desktop), colorful PNG/SVG icons, and Debian package metadata. Run `cargo deb --locked` (after installing `cargo-deb`) to build `target/debian/thermalprint_<version>-1_amd64.deb`. The package installs the binary, desktop entry, and icons, and depends on CUPS client commands and Poppler utilities.
 
 ### First label: a Vinted PDF
 
@@ -75,6 +80,16 @@ Choose several files in **Add labels**, or drop several files together. Each PDF
 Select each entry in the queue to inspect and adjust it. Crops, extraction mode, and review state are remembered per queue entry. Use **Move up**, **Move down**, and **Remove** to arrange the print order. **Print all** requires every entry to be reviewed and submits the jobs to CUPS **one after another in queue order**. The batch stops at the first load, layout, or CUPS error and reports how many jobs were submitted. Submission order is not a guarantee of physical print completion; use **Job status** and the printer itself to check progress.
 
 Paper size, DPI, rotation, margins, scaling, enhancement, printer, media, resolution, and copies are shared settings for the batch. The app re-renders each queued page at print resolution when submitting it. A label that would clip is blocked rather than silently cut off.
+
+## Design a label from scratch
+
+Open **Label Designer** and choose a blank canvas or one of the built-in templates. Set width and height in millimeters, then add text, a proper Code 128/Code 39/EAN-13/UPC-A barcode, a QR code, a shape, or an image. Click an object to edit its content and exact geometry in the properties inspector. Drag it on the canvas or drag its resize handle; Shift-click selects several objects. The toolbar provides undo/redo, zoom, grid/snap controls, save/open, export, and printing. Designs are saved as `.thermalprint` files with a versioned JSON schema and embedded image data.
+
+The editor renders output at the selected printer DPI in a background worker. Save/print/export jobs run separately from the canvas. Design PDF and PNG export use the full-resolution output, while SVG export wraps that raster output in an SVG container. ZPL export uses `^GFA` raster data at the selected DPI; direct ZPL printing requires a CUPS raw queue configured for a ZPL-compatible printer. Selecting a regular PDF queue for raw ZPL will not work. The app does not create or certify postage, carrier service marks, or tracking numbers.
+
+### Built-in templates
+
+Blank 4 × 6, shipping, return address, product barcode, inventory, QR code, asset tracking, shelf, price tag, name, and fragile layouts are included. Template text and code values are examples: replace them with your own data before printing. Saved `.thermalprint` designs can be reopened and reused.
 
 ## Extraction and layout
 
@@ -123,14 +138,16 @@ ThermalPrint uses the Linux CUPS client programs rather than brand-specific prin
 3. Choose an advertised resolution if available, or leave the driver's default.
 4. Print a test label and check the printer's physical margins, orientation, contrast, and feed behavior.
 
-The printer panel gives a **best-effort hint** when a queue name or advertised media suggests a label printer. CUPS does not expose a definitive “thermal printer” flag, and a hint does not establish driver compatibility. Printer names and media choices come from your local CUPS configuration. Zebra, Rollo, Brother, and other printers can work when their CUPS driver or driverless queue accepts the chosen media and PDF jobs. Raw ZPL is not implemented.
+The printer panel gives a **best-effort hint** when a queue name or advertised media suggests a label printer. CUPS does not expose a definitive “thermal printer” flag, and a hint does not establish driver compatibility. Printer names and media choices come from your local CUPS configuration. Zebra, Rollo, Brother, ORGSTA, and other printers can work when their CUPS driver or driverless queue accepts the chosen media and PDF jobs. The ORGSTA hint is based on the queue name, not a driver guarantee. Raw ZPL is available only through a compatible CUPS raw queue.
 
 **Job status** reports CUPS printer and pending-job information. A successful `lp` result means the scheduler accepted the job; it does not confirm that the printer physically produced a readable label.
 
 ## Export files
 
 - **PDF:** One image-only page. The PDF `MediaBox` matches the paper dimensions in PDF points; the embedded image retains the selected output pixel dimensions.
-- **PNG:** The output canvas is stored at the chosen pixel dimensions with pixels-per-meter metadata derived from 203 or 300 DPI.
+- **PNG:** The output canvas is stored at the chosen pixel dimensions with pixels-per-meter metadata derived from 203, 300, or 600 DPI.
+- **SVG for designs:** An SVG document with the output raster embedded. It retains the physical page size but is not editable vector artwork.
+- **ZPL for designs:** Raster `^GFA` generated from the rendered canvas. The printer must support ZPL and receive it through a raw queue.
 
 The export is produced from the full processing pipeline, not from a screenshot of the preview widget. The original input file remains untouched. Output is written through a temporary file and renamed into place after the write completes.
 
@@ -147,7 +164,31 @@ Other current limits:
 - The preview cannot predict physical printer calibration, heat, driver margins, or carrier scanner behavior.
 - Printer capabilities depend on what the CUPS queue advertises; the app does not install or repair drivers.
 - The queue is held in memory for the current session. Recent paths and preferences persist, but the queue itself is not restored after closing the app.
-- There is no raw ZPL backend, barcode decoder, marketplace integration, or automatic download feature yet.
+- There is no imported-barcode decoder, marketplace integration, or automatic download feature yet. Designer ZPL is raster based and requires a compatible raw queue.
+
+## Debian/Ubuntu APT release
+
+The first packaged release targets **amd64 Debian/Ubuntu**. The APT repository lives on the `gh-pages` branch of [arios4k/thermalprint](https://github.com/arios4k/thermalprint) and is served at `https://arios4k.github.io/thermalprint/`. Flatpak and Snap are planned for later.
+
+Once the first signed release is published, install with:
+
+```sh
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://arios4k.github.io/thermalprint/key.asc | sudo tee /etc/apt/keyrings/thermalprint.asc >/dev/null
+echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/thermalprint.asc] https://arios4k.github.io/thermalprint/ stable main' | sudo tee /etc/apt/sources.list.d/thermalprint.list >/dev/null
+sudo apt update
+sudo apt install thermalprint
+```
+
+The package name and executable are both `thermalprint`. `cups-client` supplies `lp`, `lpstat`, and `lpoptions`; `poppler-utils` supplies the PDF rendering fallback. The installer does not configure a printer or install a model-specific driver. A direct `.deb` is also attached to each GitHub release.
+
+### Release automation
+
+The [release workflow](.github/workflows/release-apt.yml) checks formatting, Clippy, and tests, builds the Debian package on Ubuntu 22.04, signs an APT index with `reprepro`, keeps the index and public signing key on `gh-pages`, deploys them with GitHub Pages Actions, and attaches the package to a GitHub release. The tag must exactly match the `Cargo.toml` version, for example `v0.1.0`. Only create a release tag after reviewing the build and package contents.
+
+One-time repository setup is required: configure GitHub Pages to use **GitHub Actions**, permit Actions to write repository contents, and add `APT_GPG_PRIVATE_KEY_B64` (base64-encoded dedicated, unprotected CI signing key) and `APT_GPG_FINGERPRINT` as Actions secrets. Keep the private key outside the repository. The workflow creates the `gh-pages` branch on first release. It does not publish when ordinary commits land on `main`.
+
+To prepare a dedicated signing key on a trusted machine, generate a separate GPG key for this repository, record its full fingerprint, and export its secret key to a local file. Base64-encode that file without line wrapping and save the result as `APT_GPG_PRIVATE_KEY_B64`; save the fingerprint as `APT_GPG_FINGERPRINT`. Delete the temporary secret-key export after setting the secret. Never commit it. In GitHub **Settings → Actions → General**, set workflow permissions to **Read and write**. In **Settings → Pages**, select **GitHub Actions** as the source. Verify `key.asc`, `dists/stable/InRelease`, and the package URL are reachable before announcing the APT install command.
 
 ## Troubleshooting
 
@@ -178,6 +219,10 @@ The crate keeps stages separate so import formats and printer backends can be ex
 | `printing` | Discover CUPS queues and capabilities, submit jobs, and query status. |
 | `settings` | Validate and persist user preferences. |
 | `ui` | Manage the two-column egui workflow, previews, queue, dialogs, and background work. |
+| `design` | Versioned editable label model, validation, and built-in templates. |
+| `design_render` | Render designer objects, real barcodes, QR codes, text, and shapes at print DPI. |
+| `designer_ui` | Interactive canvas, object inspector, editing history, and designer actions. |
+| `zpl` | Raster ZPL output for compatible raw printer queues. |
 
 Build and check changes with:
 

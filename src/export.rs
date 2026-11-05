@@ -47,6 +47,23 @@ fn stream(dict: &str, data: &[u8]) -> Vec<u8> {
     b.extend(b"\nendstream");
     b
 }
+pub fn svg_bytes(output: &Output) -> Result<Vec<u8>> {
+    if output.clipped {
+        bail!("Resolve clipping before exporting");
+    }
+    use base64::Engine as _;
+    let mut png_data = vec![];
+    {
+        let mut enc = png::Encoder::new(&mut png_data, output.image.width(), output.image.height());
+        enc.set_color(png::ColorType::Rgb);
+        enc.set_depth(png::BitDepth::Eight);
+        enc.write_header()?
+            .write_image_data(output.image.as_raw())?;
+    }
+    let encoded = base64::engine::general_purpose::STANDARD.encode(png_data);
+    Ok(format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="{:.3}mm" height="{:.3}mm" viewBox="0 0 {} {}"><image width="{}" height="{}" href="data:image/png;base64,{}"/></svg>"#,
+        output.width_mm,output.height_mm,output.image.width(),output.image.height(),output.image.width(),output.image.height(),encoded).into_bytes())
+}
 pub fn save(output: &Output, path: &Path) -> Result<()> {
     if output.clipped {
         bail!("Resolve clipping before exporting");
@@ -63,6 +80,7 @@ pub fn save(output: &Output, path: &Path) -> Result<()> {
         .as_deref()
     {
         Some("pdf") => file.write_all(&pdf_bytes(output)?)?,
+        Some("svg") => file.write_all(&svg_bytes(output)?)?,
         Some("png") => {
             let mut encoder = png::Encoder::new(
                 file.as_file_mut(),
@@ -81,7 +99,7 @@ pub fn save(output: &Output, path: &Path) -> Result<()> {
                 .write_header()?
                 .write_image_data(output.image.as_raw())?;
         }
-        _ => bail!("Choose a .pdf or .png filename"),
+        _ => bail!("Choose a .pdf, .png, or .svg filename"),
     }
     file.as_file().sync_all()?;
     file.persist(path)?;

@@ -40,6 +40,7 @@ pub struct Settings {
     pub enhance: bool,
     pub theme: ThemeChoice,
     pub recent: Vec<PathBuf>,
+    pub print_history: Vec<String>,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -59,6 +60,7 @@ impl Default for Settings {
             enhance: false,
             theme: ThemeChoice::System,
             recent: vec![],
+            print_history: vec![],
         }
     }
 }
@@ -77,10 +79,15 @@ impl Settings {
                 s.height_mm = finite(s.height_mm, 152.4).clamp(10., 500.);
                 s.margin_mm = finite(s.margin_mm, 2.).clamp(0., 20.);
                 s.scale_percent = finite(s.scale_percent, 100.).clamp(10., 400.);
-                s.dpi = if s.dpi == 300 { 300 } else { 203 };
+                s.dpi = if [203, 300, 600].contains(&s.dpi) {
+                    s.dpi
+                } else {
+                    203
+                };
                 s.rotation = (s.rotation / 90 % 4) * 90;
                 s.copies = s.copies.clamp(1, 999);
                 s.recent.truncate(8);
+                s.print_history.truncate(50);
                 s
             })
             .unwrap_or_default()

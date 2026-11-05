@@ -156,6 +156,7 @@ pub fn thermal_hint(p: &Printer) -> &'static str {
     let known = [
         "zebra",
         "rollo",
+        "orgsta",
         "dymo",
         "munbyn",
         "phomemo",
@@ -179,4 +180,34 @@ pub fn thermal_hint(p: &Printer) -> &'static str {
     } else {
         "Printer type unknown · check its driver and paper"
     }
+}
+
+/// Submit native ZPL to a deliberately configured raw CUPS queue. The user
+/// must know that this destination understands ZPL; CUPS cannot infer it.
+pub fn submit_raw_zpl(data: &[u8], s: &Settings, p: &Printer) -> Result<String> {
+    if s.printer != p.name {
+        bail!("Printer selection changed");
+    }
+    let mut file = tempfile::Builder::new().suffix(".zpl").tempfile()?;
+    file.write_all(data)?;
+    file.flush()?;
+    let mut last = String::new();
+    for _ in 0..s.copies {
+        let o = Command::new("lp")
+            .args(["-d", &p.name, "-o", "raw", "-t", "ThermalPrint ZPL label"])
+            .arg(file.path())
+            .output()
+            .context("Could not start CUPS lp")?;
+        if !o.status.success() {
+            bail!(
+                "CUPS rejected raw ZPL: {}",
+                String::from_utf8_lossy(&o.stderr)
+            );
+        }
+        last = String::from_utf8_lossy(&o.stdout).trim().into();
+    }
+    Ok(format!(
+        "{} ZPL copies submitted. Last job: {last}",
+        s.copies
+    ))
 }

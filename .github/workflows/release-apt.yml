@@ -1,0 +1,117 @@
+name: Release APT package
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: thermalprint-apt-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: source
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: source
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y reprepro poppler-utils cups-client
+          cargo install cargo-deb --version 3.8.0 --locked
+      - name: Verify and build package
+        working-directory: source
+        run: |
+          set -eu
+          cargo fmt --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked
+          cargo deb --locked --deb-revision 1
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "thermalprint") | .version')
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then
+            test "${GITHUB_REF_NAME}" = "v${version}"
+          fi
+          dpkg-deb --info "target/debian/thermalprint_${version}-1_amd64.deb"
+          echo "PACKAGE_VERSION=${version}" >> "$GITHUB_ENV"
+      - name: Import dedicated APT signing key
+        env:
+          APT_GPG_PRIVATE_KEY_B64: ${{ secrets.APT_GPG_PRIVATE_KEY_B64 }}
+          APT_GPG_FINGERPRINT: ${{ secrets.APT_GPG_FINGERPRINT }}
+        run: |
+          set -eu
+          test -n "$APT_GPG_PRIVATE_KEY_B64"
+          test -n "$APT_GPG_FINGERPRINT"
+          printf '%s' "$APT_GPG_PRIVATE_KEY_B64" | base64 -d | gpg --batch --import
+          gpg --batch --list-secret-keys "$APT_GPG_FINGERPRINT"
+      - name: Prepare APT branch
+        run: |
+          set -eu
+          git clone --no-checkout "https://github.com/${GITHUB_REPOSITORY}.git" apt-site
+          if git -C apt-site ls-remote --exit-code origin refs/heads/gh-pages >/dev/null; then
+            git -C apt-site fetch origin gh-pages
+            git -C apt-site switch -c gh-pages --track origin/gh-pages
+          else
+            git -C apt-site switch --orphan gh-pages
+          fi
+      - name: Sign and publish APT index
+        env:
+          APT_GPG_FINGERPRINT: ${{ secrets.APT_GPG_FINGERPRINT }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          mkdir -p apt-site
+          find apt-site -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          mkdir -p apt-private/conf
+          cat > apt-private/conf/distributions <<EOF
+          Origin: ThermalPrint
+          Label: ThermalPrint
+          Codename: stable
+          Suite: stable
+          Architectures: amd64
+          Components: main
+          Description: ThermalPrint APT repository
+          SignWith: ${APT_GPG_FINGERPRINT}
+          EOF
+          printf 'outdir %s/apt-site\n' "$GITHUB_WORKSPACE" > apt-private/conf/options
+          reprepro -b apt-private includedeb stable "source/target/debian/thermalprint_${PACKAGE_VERSION}-1_amd64.deb"
+          gpg --batch --armor --export "$APT_GPG_FINGERPRINT" > apt-site/key.asc
+          touch apt-site/.nojekyll
+          printf '%s\n' '<!doctype html><title>ThermalPrint APT repository</title><h1>ThermalPrint APT repository</h1><p>See <a href="https://github.com/arios4k/thermalprint">installation instructions</a>.</p>' > apt-site/index.html
+          git -C apt-site config user.name github-actions[bot]
+          git -C apt-site config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git -C apt-site add -A
+          if ! git -C apt-site diff --cached --quiet; then
+            git -C apt-site commit -m "Publish thermalprint ${PACKAGE_VERSION}-1"
+          fi
+          git -C apt-site -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" push origin gh-pages
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: apt-site
+      - uses: actions/deploy-pages@v4
+        id: deployment
+      - name: Attach package to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: source
+        if: github.ref_type == 'tag'
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+          fi
+          gh release upload "$GITHUB_REF_NAME" "target/debian/thermalprint_${PACKAGE_VERSION}-1_amd64.deb" --clobber

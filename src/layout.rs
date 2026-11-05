@@ -23,7 +23,7 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
         .all(|v| v.is_finite())
         || !(10.0..=500.0).contains(&s.width_mm)
         || !(10.0..=500.0).contains(&s.height_mm)
-        || ![203, 300].contains(&s.dpi)
+        || ![203, 300, 600].contains(&s.dpi)
         || s.margin_mm < 0.
         || s.scale_percent <= 0.
     {
