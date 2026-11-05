@@ -91,5 +91,5 @@ sudo dnf install thermalprint
 
 Updates then arrive through normal DNF updates. Alternatively, download the RPM
 matching your Fedora release from GitHub and install it with `sudo dnf install
-./thermalprint-<version>-1.fc<release>.x86_64.rpm`. Configure the printer separately
+./thermalprint-<version>-<revision>.fc<release>.x86_64.rpm`. Configure the printer separately
 in the desktop's printer settings.

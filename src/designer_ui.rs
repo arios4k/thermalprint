@@ -76,6 +76,11 @@ impl Designer {
             job: None,
         }
     }
+    pub(crate) fn select_object(&mut self, id: u64) {
+        if self.doc.objects.iter().any(|object| object.id == id) {
+            self.selected = vec![id];
+        }
+    }
     fn checkpoint(&mut self) {
         self.undo.push(self.doc.clone());
         if self.undo.len() > 80 {

@@ -88,7 +88,11 @@ jobs:
         env:
           FEDORA_RELEASE: ${{ matrix.fedora }}
         run: |
-          test "$(rpm -qp --qf '%{RELEASE}' rpmbuild/RPMS/x86_64/thermalprint-*.rpm)" = "1.fc${FEDORA_RELEASE}"
+          package_release=$(rpm -qp --qf '%{RELEASE}' rpmbuild/RPMS/x86_64/thermalprint-*.rpm)
+          case "$package_release" in
+            *.fc${FEDORA_RELEASE}) ;;
+            *) echo "Unexpected Fedora package release: $package_release"; exit 1 ;;
+          esac
           dnf install -y rpmbuild/RPMS/*/*.rpm
           test -x /usr/bin/thermalprint
           desktop-file-validate /usr/share/applications/org.thermalprint.ThermalPrint.desktop

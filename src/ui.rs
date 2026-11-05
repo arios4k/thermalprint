@@ -1,3 +1,4 @@
+mod screenshots;
 use crate::{
     design,
     designer_ui::Designer,
@@ -86,10 +87,25 @@ pub struct ThermalPrint {
     license_open: bool,
     terms_open: bool,
     terms_search: String,
+    capture: Option<screenshots::Capture>,
 }
 impl ThermalPrint {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let settings = Settings::load();
+        let screenshot_directory = std::env::var_os("THERMALPRINT_SCREENSHOTS").map(PathBuf::from);
+        let screenshot_style =
+            std::env::var("THERMALPRINT_SCREENSHOTS_STYLE").unwrap_or_else(|_| "light".into());
+        let settings = if screenshot_directory.is_some() {
+            Settings {
+                theme: if screenshot_style == "dark" {
+                    ThemeChoice::Dark
+                } else {
+                    ThemeChoice::Light
+                },
+                ..Settings::default()
+            }
+        } else {
+            Settings::load()
+        };
         cc.egui_ctx.set_theme(match settings.theme {
             ThemeChoice::System => egui::ThemePreference::System,
             ThemeChoice::Light => egui::ThemePreference::Light,
@@ -145,8 +161,14 @@ impl ThermalPrint {
             license_open: false,
             terms_open: false,
             terms_search: String::new(),
+            capture: None,
         };
-        app.refresh_printers();
+        if let Some(directory) = screenshot_directory {
+            screenshots::seed(&mut app, &cc.egui_ctx);
+            app.capture = Some(screenshots::Capture::new(directory, screenshot_style));
+        } else {
+            app.refresh_printers();
+        }
         app
     }
     fn task(&mut self, status: &str, f: impl FnOnce() -> anyhow::Result<Message> + Send + 'static) {
@@ -417,6 +439,9 @@ impl ThermalPrint {
         }
     }
     fn persist(&mut self) {
+        if self.capture.is_some() {
+            return;
+        }
         if let Err(e) = self.settings.save() {
             self.status = format!("Could not save preferences: {e}");
             self.error = true;
@@ -1438,6 +1463,10 @@ impl eframe::App for ThermalPrint {
     fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         self.poll(&ctx);
+        if let Some(mut capture) = self.capture.take() {
+            capture.tick(self, &ctx);
+            self.capture = Some(capture);
+        }
         self.select_default_media();
         if !self.busy
             && let Some(path) = self.startup_file.take()

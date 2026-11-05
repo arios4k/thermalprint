@@ -16,6 +16,7 @@ fn main() -> eframe::Result {
         height: 64,
     };
     let options = eframe::NativeOptions {
+        persist_window: std::env::var_os("THERMALPRINT_SCREENSHOTS").is_none(),
         viewport: eframe::egui::ViewportBuilder::default()
             .with_app_id("org.thermalprint.ThermalPrint")
             .with_inner_size([1240.0, 840.0])
