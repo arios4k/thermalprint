@@ -11,6 +11,7 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 [![Latest release](https://img.shields.io/github/v/release/arios4k/thermalprint?label=download&color=207568)](https://github.com/arios4k/thermalprint/releases/latest)
 [![Rust CI](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml/badge.svg)](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml)
 [![Fedora RPM](https://github.com/arios4k/thermalprint/actions/workflows/release-rpm.yml/badge.svg)](https://github.com/arios4k/thermalprint/actions/workflows/release-rpm.yml)
+[![Install with APT](https://img.shields.io/badge/install-APT-ffb44d?logo=debian&logoColor=white)](#debian--ubuntu)
 [![Fedora Copr](https://img.shields.io/badge/Fedora-Copr-51a2da?logo=fedora&logoColor=white)](https://copr.fedorainfracloud.org/coprs/arios/thermalprint/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3187e7)](LICENSE)
 
