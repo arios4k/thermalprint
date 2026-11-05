@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=ThermalPrint
+Comment=Prepare shipping labels for thermal printers
+Exec=thermalprint %f
+Terminal=false
+Icon=org.thermalprint.ThermalPrint
+Categories=Graphics;Utility;
+MimeType=application/pdf;image/png;image/jpeg;image/tiff;image/bmp;image/webp;

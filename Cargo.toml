@@ -1,0 +1,28 @@
+[package]
+name = "thermalprint"
+version = "0.1.0"
+edition = "2024"
+authors = ["Alexis Rios-Negron"]
+rust-version = "1.96"
+description = "Prepare and print shipping labels on Linux thermal printers"
+license = "MIT"
+repository = "https://github.com/arios4k/thermalprint"
+
+[dependencies]
+anyhow = "1.0"
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "wayland", "x11", "persistence"] }
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "tiff", "bmp", "webp"] }
+pdfium-render = "0.9.4"
+rfd = "0.17"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+directories = "6"
+tempfile = "3"
+flate2 = "1"
+png = "0.18"
+
+[profile.release]
+lto = "thin"
+strip = true
