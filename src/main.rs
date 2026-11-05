@@ -12,6 +12,7 @@ fn main() -> eframe::Result {
     .expect("bundled icon must decode");
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
+            .with_app_id("org.thermalprint.ThermalPrint")
             .with_inner_size([1180.0, 820.0])
             .with_min_inner_size([760.0, 560.0])
             .with_icon(icon),

@@ -10,7 +10,7 @@ repository = "https://github.com/arios4k/thermalprint"
 
 [dependencies]
 anyhow = "1.0"
-eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "wayland", "x11", "persistence"] }
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "wayland", "x11", "persistence", "links"] }
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "tiff", "bmp", "webp"] }
 pdfium-render = "0.9.4"
 rfd = "0.17"

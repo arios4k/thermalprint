@@ -182,6 +182,14 @@ sudo apt install thermalprint
 
 The package name and executable are both `thermalprint`. `cups-client` supplies `lp`, `lpstat`, and `lpoptions`; `poppler-utils` supplies the PDF rendering fallback. The installer does not configure a printer or install a model-specific driver. A direct `.deb` is also attached to each GitHub release.
 
+To install a downloaded `.deb` directly, use APT so package dependencies are installed:
+
+```sh
+sudo apt install ./thermalprint_0.1.0-1_amd64.deb
+```
+
+Replace the filename with the version you downloaded. The application appears as **ThermalPrint** in the desktop launcher, using the bundled color icon. You can also run `thermalprint` from a terminal.
+
 ### Release automation
 
 The [release workflow](.github/workflows/release-apt.yml) checks formatting, Clippy, and tests, builds the Debian package on Ubuntu 22.04, signs an APT index with `reprepro`, keeps the index and public signing key on `gh-pages`, deploys them with GitHub Pages Actions, and attaches the package to a GitHub release. The tag must exactly match the `Cargo.toml` version, for example `v0.1.0`. Only create a release tag after reviewing the build and package contents.
