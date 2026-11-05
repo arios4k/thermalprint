@@ -1,6 +1,28 @@
+<div align="center">
+
+<img src="data/org.thermalprint.ThermalPrint.png" width="128" alt="ThermalPrint icon: a colorful printer producing a barcode label">
+
 # ThermalPrint
 
-**A thermal label designer and shipping label printer for Linux.** Import downloaded labels, extract the printable area, or design a new label with text, shapes, barcodes, QR codes, and images. Preview and print through CUPS without a marketplace account.
+**Design, convert, and print thermal labels on Linux.**
+
+Create a label from scratch, or import a downloaded shipping label, extract its printable area, and send it to a CUPS printer. Everything runs locally, with no marketplace account.
+
+[![Latest release](https://img.shields.io/github/v/release/arios4k/thermalprint?label=release&color=7747db)](https://github.com/arios4k/thermalprint/releases/latest)
+[![CI](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml/badge.svg)](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3187e7)](LICENSE)
+[![Install with apt](https://img.shields.io/badge/install-apt-ffb44d)](#install-on-debian-or-ubuntu-apt)
+[![Linux](https://img.shields.io/badge/platform-Linux-23bfae?logo=linux&logoColor=white)](#get-started)
+[![Made with Rust](https://img.shields.io/badge/made%20with-Rust-dea584?logo=rust&logoColor=white)](https://www.rust-lang.org)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-dark.png">
+  <img src="docs/screenshots/home-light.png" width="960" alt="ThermalPrint Home screen with Create a label, Import and convert, templates, and printer status">
+</picture>
+
+<sub>Home screen in light and dark themes. A demo printer is shown; no shipping documents are included.</sub>
+
+</div>
 
 Created by **Alexis Rios-Negron**. Written primarily in Rust and released under the [MIT License](LICENSE).
 
@@ -30,7 +52,7 @@ A downloaded shipping label is often inside an A4 or US Letter PDF, surrounded b
 
 The app is source agnostic. Use it with downloaded labels from Vinted, eBay, Etsy, Amazon, Shopify, USPS, UPS, FedEx, or another provider that supplies a supported PDF or image. ThermalPrint does not connect to any of those services.
 
-## Features
+## ✨ Features
 
 - **Custom label designer:** Start from a blank canvas or built-in shipping, return, product, inventory, QR, asset, shelf, price, name, or fragile template. Edit object position and size in millimeters, drag and resize on canvas, use grid snapping, layers, undo/redo, copy/paste, duplicate, and multiple selection.
 - **Real barcodes and QR codes:** Code 128, Code 39, EAN-13, UPC-A, and QR codes are generated from their encoded values. Add text, addresses, rectangles, lines, circles, and imported logos. Custom labels do not create carrier postage or tracking numbers.
@@ -91,7 +113,7 @@ The repository includes a [desktop entry](data/org.thermalprint.ThermalPrint.des
 
 For a correctly sized 4 × 6 source, the automatic proposal may be the whole page. You can always switch to Full page.
 
-## Printing several labels
+## 📦 Printing several labels
 
 Choose several files in **Add labels**, or drop several files together. Each PDF page is added as a queue entry. When Automatic mode finds multiple separated regions on one page, **Queue all detected regions** replaces that page's current queue entry with one entry per proposed region.
 
@@ -99,7 +121,7 @@ Select each entry in the queue to inspect and adjust it. Crops, extraction mode,
 
 Paper size, DPI, rotation, margins, scaling, enhancement, printer, media, resolution, and copies are shared settings for the batch. The app re-renders each queued page at print resolution when submitting it. A label that would clip is blocked rather than silently cut off.
 
-## Design a label from scratch
+## 🎨 Design a label from scratch
 
 Open **Label Designer** and choose a blank canvas or one of the built-in templates. Set width and height in millimeters, then add text, a proper Code 128/Code 39/EAN-13/UPC-A barcode, a QR code, a shape, or an image. Click an object to edit its content and exact geometry in the properties inspector. Drag it on the canvas or drag its resize handle; Shift-click selects several objects. The toolbar provides undo/redo, zoom, grid/snap controls, save/open, export, and printing. Designs are saved as `.thermalprint` files with a versioned JSON schema and embedded image data.
 
@@ -109,7 +131,7 @@ The editor renders output at the selected printer DPI in a background worker. Sa
 
 Blank 4 × 6, shipping, return address, product barcode, inventory, QR code, asset tracking, shelf, price tag, name, and fragile layouts are included. Template text and code values are examples: replace them with your own data before printing. Saved `.thermalprint` designs can be reopened and reused.
 
-## Extraction and layout
+## 🔍 Extraction and layout
 
 ```mermaid
 flowchart LR
@@ -147,7 +169,7 @@ The app warns when content is reduced substantially or source pixels are enlarge
 
 ThermalPrint keeps proportions, centers content, and adds a crop buffer to help protect barcode quiet zones. Enhancement is **off by default**; its black-and-white threshold can harm thin bars. Inspect the original and processed preview, and print a test label. A successful PDF export or CUPS submission does **not** prove that a physical barcode will scan. ThermalPrint currently does not decode or validate barcodes, and enlarging low-quality pixels cannot restore lost detail.
 
-## CUPS and printer setup
+## 🖨️ CUPS and printer setup
 
 ThermalPrint uses the Linux CUPS client programs rather than brand-specific printer commands. It queries printer queues with `lpstat` and supported options with `lpoptions -l`. The selected output is sent through `lp` as a one-page PDF, with CUPS scaling disabled and the selected media and copy count supplied as job options.
 
@@ -160,7 +182,7 @@ The printer panel gives a **best-effort hint** when a queue name or advertised m
 
 **Job status** reports CUPS printer and pending-job information. A successful `lp` result means the scheduler accepted the job; it does not confirm that the printer physically produced a readable label.
 
-## Export files
+## 💾 Export files
 
 - **PDF:** One image-only page. The PDF `MediaBox` matches the paper dimensions in PDF points; the embedded image retains the selected output pixel dimensions.
 - **PNG:** The output canvas is stored at the chosen pixel dimensions with pixels-per-meter metadata derived from 203, 300, or 600 DPI.
@@ -169,7 +191,7 @@ The printer panel gives a **best-effort hint** when a queue name or advertised m
 
 The export is produced from the full processing pipeline, not from a screenshot of the preview widget. The original input file remains untouched. Output is written through a temporary file and renamed into place after the write completes.
 
-## Settings, privacy, and limits
+## 🔒 Settings, privacy, and limits
 
 Preferences are saved as JSON in the user configuration directory selected by the [`directories`](https://docs.rs/directories/) crate. They include recent **file paths**, the last printer and media choice, paper and layout controls, copy count, theme choice, and related options. Window state is handled by eframe's persistence support. Imported document content is processed locally; ThermalPrint does not upload labels or contact marketplaces.
 
@@ -204,7 +226,7 @@ One-time repository setup is required: configure GitHub Pages to use **GitHub Ac
 
 To prepare a dedicated signing key on a trusted machine, generate a separate GPG key for this repository, record its full fingerprint, and export its secret key to a local file. Base64-encode that file without line wrapping and save the result as `APT_GPG_PRIVATE_KEY_B64`; save the fingerprint as `APT_GPG_FINGERPRINT`. Delete the temporary secret-key export after setting the secret. Never commit it. In GitHub **Settings → Actions → General**, set workflow permissions to **Read and write**. In **Settings → Pages**, select **GitHub Actions** as the source. Verify `key.asc`, `dists/stable/InRelease`, and the package URL are reachable before announcing the APT install command.
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 | Symptom | What to check |
 | --- | --- |
@@ -220,7 +242,7 @@ To prepare a dedicated signing key on a trusted machine, generate a separate GPG
 
 Set `RUST_LOG=thermalprint=debug` when running from a terminal to see application diagnostics. Avoid posting logs together with private shipping labels or local file paths.
 
-## Development
+## 🧰 Development
 
 The crate keeps stages separate so import formats and printer backends can be extended without coupling them to the GUI:
 
@@ -250,6 +272,10 @@ cargo build --release --locked
 The repository includes unit tests for conservative crop proposals and integration tests for output dimensions, PDF paper size, and clipping behavior. GitHub Actions runs formatting, Clippy, and tests. Hardware, driver, barcode-scan, and large-corpus label tests still need to be added.
 
 Contributions and reproducible sample labels with private addresses and tracking information removed are welcome. For defects, include the input format, page dimensions, intended label size, printer queue/media, and steps to reproduce. Do not publish real shipping labels or tracking numbers in issues.
+
+## Author
+
+Created by **Alexis Rios-Negron**. Other Linux projects: [Voltkit](https://github.com/arios4k/voltkit) and [Battery Health Center](https://github.com/arios4k/battery-health-center).
 
 ## License
 
