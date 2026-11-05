@@ -116,6 +116,6 @@ jobs:
         if: github.ref_type == 'tag'
         run: |
           if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes || gh release view "$GITHUB_REF_NAME" >/dev/null
           fi
           gh release upload "$GITHUB_REF_NAME" "target/debian/thermalprint_${PACKAGE_VERSION}-1_amd64.deb" --clobber

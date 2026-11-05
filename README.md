@@ -46,6 +46,26 @@ Launch **ThermalPrint** from your applications menu, or run `thermalprint`. Late
 
 You can also [download the latest `.deb`](https://github.com/arios4k/thermalprint/releases/latest) and install it with `sudo apt install ./thermalprint_0.1.1-1_amd64.deb`. Use the filename of the version you downloaded.
 
+## Fedora (RPM and Copr)
+
+Fedora release packaging targets **Fedora 44 and 45, x86_64**. Once the first
+build is published to `arios/thermalprint`, install it with:
+
+```sh
+sudo dnf install dnf-plugins-core
+sudo dnf copr enable arios/thermalprint
+sudo dnf install thermalprint
+```
+
+The release workflow also produces a Fedora-specific `.rpm` and a source RPM.
+Install the RPM matching your Fedora release with `sudo dnf install ./thermalprint-*.rpm`.
+The package includes the launcher and icons and installs CUPS clients and Poppler
+PDF utilities as dependencies. Printer setup remains in your system settings.
+
+See [Fedora packaging and Copr setup](packaging/rpm/README.md) for local builds,
+one-time publishing configuration, and release details. Copr is a community
+repository, separate from Fedora's official package repositories.
+
 ## Why ThermalPrint?
 
 A downloaded shipping label is often inside an A4 or US Letter PDF, surrounded by whitespace or instructions. Printing that entire page on 4 × 6-inch stock can make the address and barcode too small. ThermalPrint separates **cropping whitespace** from **scaling the label**: you choose the content area first, then the app fits it to the paper without changing its proportions.

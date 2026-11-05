@@ -1,0 +1,147 @@
+name: Fedora RPM and Copr
+
+on:
+  push:
+    branches: ['main']
+    tags: ['v*']
+    paths:
+      - 'src/**'
+      - 'data/**'
+      - 'assets/**'
+      - 'tests/**'
+      - 'Cargo.*'
+      - 'packaging/rpm/**'
+      - 'scripts/*rpm.py'
+      - '.github/workflows/release-rpm.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/release-rpm.yml'
+      - 'packaging/rpm/**'
+      - 'scripts/*rpm.py'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thermalprint-rpm-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    container: fedora:44
+    steps:
+      - name: Install source packaging tools
+        run: dnf install -y git cargo rust rpm-build python3
+      - uses: actions/checkout@v4
+      - name: Verify release version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os, tomllib
+          version = tomllib.load(open('Cargo.toml', 'rb'))['package']['version']
+          if os.environ['REF_TYPE'] == 'tag':
+              assert os.environ['REF_NAME'] == f'v{version}', 'Tag must match Cargo.toml'
+          PY
+      - name: Verify source packaging
+        run: python3 -m unittest discover -s scripts -p test_prepare_rpm.py
+      - name: Prepare locked sources and source RPM
+        run: |
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          python3 scripts/prepare-rpm.py --srpm
+          rpm -qip target/rpm/SRPMS/*.src.rpm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fedora-source-rpm
+          path: target/rpm/SRPMS/*.src.rpm
+          if-no-files-found: error
+
+  build:
+    needs: source
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fedora: ['44', '45']
+    container: fedora:${{ matrix.fedora }}
+    steps:
+      - name: Install RPM tools
+        run: dnf install -y rpm-build dnf5-plugins
+      - uses: actions/download-artifact@v4
+        with:
+          name: fedora-source-rpm
+          path: rpm-input
+      - name: Install declared build dependencies
+        run: dnf builddep -y rpm-input/*.src.rpm
+      - name: Build and test offline
+        run: |
+          rpmbuild --rebuild --define "_topdir $GITHUB_WORKSPACE/rpmbuild" rpm-input/*.src.rpm
+          rpm -qip rpmbuild/RPMS/*/*.rpm
+          rpm -qlp rpmbuild/RPMS/*/*.rpm
+      - name: Verify package installation
+        env:
+          FEDORA_RELEASE: ${{ matrix.fedora }}
+        run: |
+          test "$(rpm -qp --qf '%{RELEASE}' rpmbuild/RPMS/x86_64/thermalprint-*.rpm)" = "1.fc${FEDORA_RELEASE}"
+          dnf install -y rpmbuild/RPMS/*/*.rpm
+          test -x /usr/bin/thermalprint
+          desktop-file-validate /usr/share/applications/org.thermalprint.ThermalPrint.desktop
+          rpm -V thermalprint
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fedora-${{ matrix.fedora }}-x86_64-rpm
+          path: rpmbuild/RPMS/*/*.rpm
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [source, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: 'fedora-*-rpm'
+          path: release-packages
+          merge-multiple: true
+      - name: Attach Fedora RPMs and source RPM to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --verify-tag --generate-notes || gh release view "$RELEASE_TAG" >/dev/null
+          fi
+          gh release upload "$RELEASE_TAG" release-packages/*.rpm --clobber
+
+  copr:
+    # Enable only after the Copr project and repository secret are configured.
+    if: github.ref_type == 'tag' && vars.COPR_ENABLED == 'true'
+    needs: [source, build]
+    runs-on: ubuntu-latest
+    container: fedora:44
+    steps:
+      - name: Install Copr client
+        run: dnf install -y copr-cli
+      - uses: actions/download-artifact@v4
+        with:
+          name: fedora-source-rpm
+          path: rpm-input
+      - name: Submit source RPM to arios/thermalprint
+        env:
+          COPR_CONFIG: ${{ secrets.COPR_CONFIG }}
+        run: |
+          set -eu
+          test -n "$COPR_CONFIG"
+          umask 077
+          config=$(mktemp)
+          trap 'rm -f "$config"' EXIT
+          printf '%s\n' "$COPR_CONFIG" > "$config"
+          copr-cli --config "$config" build arios/thermalprint rpm-input/*.src.rpm
