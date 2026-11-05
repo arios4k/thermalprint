@@ -405,13 +405,13 @@ impl Designer {
                     self.save(true);
                 }
                 if ui
-                    .add_enabled(!self.undo.is_empty(), egui::Button::new("↶ Undo"))
+                    .add_enabled(!self.undo.is_empty(), egui::Button::new("Undo"))
                     .clicked()
                 {
                     self.undo();
                 }
                 if ui
-                    .add_enabled(!self.redo.is_empty(), egui::Button::new("↷ Redo"))
+                    .add_enabled(!self.redo.is_empty(), egui::Button::new("Redo"))
                     .clicked()
                 {
                     self.redo();
@@ -477,7 +477,7 @@ impl Designer {
     fn elements(&mut self, ui: &mut egui::Ui) {
         ui.heading("Elements");
         ui.label(RichText::new("Drag on canvas to position").small().weak());
-        if ui.button("＋ Text").clicked() {
+        if ui.button("Add text").clicked() {
             self.add(
                 Element::Text {
                     text: "Your text".into(),
@@ -489,7 +489,7 @@ impl Designer {
                 12.,
             );
         }
-        if ui.button("＋ Address").clicked() {
+        if ui.button("Add address").clicked() {
             self.add(
                 Element::Text {
                     text: "Name\nStreet address\nCity, region ZIP".into(),
@@ -501,7 +501,7 @@ impl Designer {
                 32.,
             );
         }
-        if ui.button("▥ Code 128").clicked() {
+        if ui.button("Add Code 128").clicked() {
             self.add(
                 Element::Barcode {
                     kind: BarcodeKind::Code128,
@@ -512,7 +512,7 @@ impl Designer {
                 22.,
             );
         }
-        if ui.button("▦ QR code").clicked() {
+        if ui.button("Add QR code").clicked() {
             self.add(
                 Element::Qr {
                     data: "https://example.com".into(),
@@ -528,7 +528,7 @@ impl Designer {
             ("Horizontal divider", ShapeKind::DividerHorizontal),
             ("Vertical divider", ShapeKind::DividerVertical),
         ] {
-            if ui.button(format!("＋ {name}")).clicked() {
+            if ui.button(format!("Add {name}")).clicked() {
                 self.add(
                     Element::Shape {
                         kind,
@@ -544,7 +544,7 @@ impl Designer {
                 );
             }
         }
-        if ui.button("＋ Image / logo…").clicked() {
+        if ui.button("Add image / logo...").clicked() {
             if let Some(path) = rfd::FileDialog::new()
                 .add_filter("Image", &["png", "jpg", "jpeg", "webp", "bmp"])
                 .pick_file()

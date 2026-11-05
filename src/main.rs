@@ -6,10 +6,15 @@ fn main() -> eframe::Result {
                 .unwrap_or_else(|_| "thermalprint=info".into()),
         )
         .init();
-    let icon = eframe::icon_data::from_png_bytes(include_bytes!(
-        "../data/org.thermalprint.ThermalPrint.png"
-    ))
-    .expect("bundled icon must decode");
+    let icon = image::load_from_memory(include_bytes!("../data/org.thermalprint.ThermalPrint.png"))
+        .expect("bundled icon must decode")
+        .to_rgba8();
+    let icon = image::imageops::resize(&icon, 64, 64, image::imageops::FilterType::Lanczos3);
+    let icon = eframe::egui::IconData {
+        rgba: icon.into_raw(),
+        width: 64,
+        height: 64,
+    };
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_app_id("org.thermalprint.ThermalPrint")

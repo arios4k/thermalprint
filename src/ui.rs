@@ -65,6 +65,7 @@ pub struct ThermalPrint {
     output: Option<Arc<Output>>,
     original_texture: Option<egui::TextureHandle>,
     output_texture: Option<egui::TextureHandle>,
+    icon_texture: egui::TextureHandle,
     printers: Vec<Printer>,
     tx: mpsc::Sender<Message>,
     rx: mpsc::Receiver<Message>,
@@ -97,6 +98,18 @@ impl ThermalPrint {
             style.visuals.selection.bg_fill = Color32::from_rgb(28, 111, 100);
         });
         let (tx, rx) = mpsc::channel();
+        let icon_image =
+            image::load_from_memory(include_bytes!("../data/org.thermalprint.ThermalPrint.png"))
+                .expect("bundled icon must decode")
+                .to_rgba8();
+        let icon_texture = cc.egui_ctx.load_texture(
+            "thermalprint-icon",
+            egui::ColorImage::from_rgba_unmultiplied(
+                [icon_image.width() as usize, icon_image.height() as usize],
+                icon_image.as_raw(),
+            ),
+            egui::TextureOptions::LINEAR,
+        );
         let mut app = Self {
             settings,
             area: Area::Home,
@@ -107,6 +120,7 @@ impl ThermalPrint {
             output: None,
             original_texture: None,
             output_texture: None,
+            icon_texture,
             printers: vec![],
             tx,
             rx,
@@ -467,7 +481,7 @@ impl ThermalPrint {
                     "Design text, shapes, real barcodes and QR codes on a precisely sized canvas.",
                 );
                 ui.add_space(16.);
-                if ui.button("Create new label →").clicked() {
+                if ui.button("Create new label").clicked() {
                     self.designer = Designer::new();
                     self.area = Area::Designer;
                 }
@@ -478,7 +492,7 @@ impl ThermalPrint {
                     "Open PDFs or images, remove instructions, review crops, then print in order.",
                 );
                 ui.add_space(16.);
-                if ui.button("Open existing labels →").clicked() {
+                if ui.button("Open existing labels").clicked() {
                     self.area = Area::Import;
                     self.open();
                 }
@@ -649,12 +663,12 @@ impl ThermalPrint {
                 .color(Color32::from_rgb(36, 146, 126)),
         );
         ui.heading(RichText::new("Prepare your label").size(24.));
-        ui.label(RichText::new("OPEN → CHECK → PRINT").small().weak());
+        ui.label(RichText::new("OPEN  /  CHECK  /  PRINT").small().weak());
         ui.add_space(6.);
         if ui
             .add_enabled(
                 !self.busy,
-                egui::Button::new("＋  Add labels…  Ctrl+O")
+                egui::Button::new("Add labels...  Ctrl+O")
                     .min_size(Vec2::new(ui.available_width(), 38.)),
             )
             .clicked()
@@ -676,7 +690,7 @@ impl ThermalPrint {
                 if ui
                     .add_enabled(
                         !self.busy && self.selected.is_some_and(|i| i > 0),
-                        egui::Button::new("← Previous"),
+                        egui::Button::new("Previous"),
                     )
                     .clicked()
                 {
@@ -685,7 +699,7 @@ impl ThermalPrint {
                 if ui
                     .add_enabled(
                         !self.busy && self.selected.is_some_and(|i| i + 1 < self.queue.len()),
-                        egui::Button::new("Next →"),
+                        egui::Button::new("Next"),
                     )
                     .clicked()
                 {
@@ -700,7 +714,7 @@ impl ThermalPrint {
                     i + 1,
                     name,
                     item.page + 1,
-                    if item.reviewed { "✓" } else { "Review" }
+                    if item.reviewed { "Ready" } else { "Review" }
                 );
                 if ui
                     .selectable_label(self.selected == Some(i), label)
@@ -884,13 +898,7 @@ impl ThermalPrint {
         if self.page.is_none() {
             ui.vertical_centered(|ui| {
                 ui.add_space(ui.available_height() * 0.15);
-                ui.add(
-                    egui::Image::from_bytes(
-                        "bytes://thermalprint-empty",
-                        include_bytes!("../data/org.thermalprint.ThermalPrint.png"),
-                    )
-                    .fit_to_exact_size(Vec2::splat(94.)),
-                );
+                ui.add(egui::Image::new(&self.icon_texture).fit_to_exact_size(Vec2::splat(94.)));
                 ui.add_space(18.);
                 ui.label(RichText::new("Labels, ready to go.").size(28.).strong());
                 ui.add_space(12.);
@@ -902,7 +910,7 @@ impl ThermalPrint {
                 if ui
                     .add_enabled(
                         !self.busy,
-                        egui::Button::new("＋  Add labels…").min_size(Vec2::new(180., 42.)),
+                        egui::Button::new("Add labels...").min_size(Vec2::new(180., 42.)),
                     )
                     .clicked()
                 {
@@ -1096,13 +1104,7 @@ impl eframe::App for ThermalPrint {
         }
         egui::Panel::top("header").show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.add(
-                    egui::Image::from_bytes(
-                        "bytes://thermalprint-icon",
-                        include_bytes!("../data/org.thermalprint.ThermalPrint.png"),
-                    )
-                    .fit_to_exact_size(Vec2::splat(34.)),
-                );
+                ui.add(egui::Image::new(&self.icon_texture).fit_to_exact_size(Vec2::splat(34.)));
                 ui.heading(RichText::new("ThermalPrint").size(23.));
                 ui.label(RichText::new("Universal shipping labels").weak());
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -1204,60 +1206,54 @@ impl eframe::App for ThermalPrint {
                             .inner_margin(18),
                     )
                     .show(ui, |ui| self.preview(ui));
-                if self.about_open {
-                    egui::Window::new("About ThermalPrint")
-                        .id(egui::Id::unique("thermalprint-about"))
-                        .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
-                        .collapsible(false)
-                        .resizable(false)
-                        .open(&mut self.about_open)
-                        .show(ui.ctx(), |ui| {
-                            ui.set_min_width(340.);
-                            ui.vertical_centered(|ui| {
-                                ui.add_space(12.);
-                                ui.add(
-                                    egui::Image::from_bytes(
-                                        "bytes://thermalprint-about-icon",
-                                        include_bytes!("../data/org.thermalprint.ThermalPrint.png"),
-                                    )
-                                    .fit_to_exact_size(Vec2::splat(88.)),
-                                );
-                                ui.add_space(12.);
-                                ui.label(RichText::new("ThermalPrint").size(27.).strong());
-                                ui.label(
-                                    RichText::new(format!("Version {}", env!("CARGO_PKG_VERSION")))
-                                        .weak(),
-                                );
-                                ui.add_space(14.);
-                                ui.label("Prepare shipping labels for thermal printers.");
-                                ui.label("Built for Linux, with Rust and care.");
-                                ui.add_space(16.);
-                                ui.label(
-                                    RichText::new("AUTHOR")
-                                        .small()
-                                        .strong()
-                                        .color(Color32::from_rgb(36, 146, 126)),
-                                );
-                                ui.label(RichText::new("Alexis Rios-Negron").size(17.).strong());
-                                ui.add_space(12.);
-                                ui.label(
-                                    RichText::new("MORE BY ALEXIS")
-                                        .small()
-                                        .strong()
-                                        .color(Color32::from_rgb(36, 146, 126)),
-                                );
-                                ui.hyperlink_to("Voltkit ↗", "https://github.com/arios4k/voltkit");
-                                ui.hyperlink_to(
-                                    "Battery Health Center ↗",
-                                    "https://github.com/arios4k/battery-health-center",
-                                );
-                                ui.add_space(14.);
-                                ui.label(RichText::new("Open source · MIT License").small().weak());
-                                ui.add_space(12.);
-                            });
-                        });
-                }
             }
+        }
+        if self.about_open {
+            let icon = self.icon_texture.clone();
+            egui::Window::new("About ThermalPrint")
+                .id(egui::Id::unique("thermalprint-about"))
+                .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
+                .collapsible(false)
+                .resizable(false)
+                .open(&mut self.about_open)
+                .show(ui.ctx(), |ui| {
+                    ui.set_min_width(340.);
+                    ui.vertical_centered(|ui| {
+                        ui.add_space(12.);
+                        ui.add(egui::Image::new(&icon).fit_to_exact_size(Vec2::splat(88.)));
+                        ui.add_space(12.);
+                        ui.label(RichText::new("ThermalPrint").size(27.).strong());
+                        ui.label(
+                            RichText::new(format!("Version {}", env!("CARGO_PKG_VERSION"))).weak(),
+                        );
+                        ui.add_space(14.);
+                        ui.label("Design and prepare thermal labels for Linux.");
+                        ui.label("Built for Linux, with Rust and care.");
+                        ui.add_space(16.);
+                        ui.label(
+                            RichText::new("AUTHOR")
+                                .small()
+                                .strong()
+                                .color(Color32::from_rgb(36, 146, 126)),
+                        );
+                        ui.label(RichText::new("Alexis Rios-Negron").size(17.).strong());
+                        ui.add_space(12.);
+                        ui.label(
+                            RichText::new("MORE BY ALEXIS")
+                                .small()
+                                .strong()
+                                .color(Color32::from_rgb(36, 146, 126)),
+                        );
+                        ui.hyperlink_to("Voltkit", "https://github.com/arios4k/voltkit");
+                        ui.hyperlink_to(
+                            "Battery Health Center",
+                            "https://github.com/arios4k/battery-health-center",
+                        );
+                        ui.add_space(14.);
+                        ui.label(RichText::new("Open source · MIT License").small().weak());
+                        ui.add_space(12.);
+                    });
+                });
         }
         self.save_selection();
         if self.dirty && !self.busy && self.drag.is_none() {
