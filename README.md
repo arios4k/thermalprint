@@ -6,6 +6,24 @@ Created by **Alexis Rios-Negron**. Written primarily in Rust and released under 
 
 > **Project status:** This is an early desktop release (`0.1.1`). Imported barcode decoding and physical scan verification are not available. Raw ZPL is available for a compatible CUPS raw queue, using raster commands. Test a physical print with your printer and carrier workflow before relying on it for shipments.
 
+## Install on Debian or Ubuntu (APT)
+
+The signed APT repository provides **amd64** packages. Run these commands once to add it and install ThermalPrint:
+
+```sh
+sudo apt update
+sudo apt install curl
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://arios4k.github.io/thermalprint/key.asc | sudo tee /etc/apt/keyrings/thermalprint.asc >/dev/null
+echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/thermalprint.asc] https://arios4k.github.io/thermalprint/ stable main' | sudo tee /etc/apt/sources.list.d/thermalprint.list >/dev/null
+sudo apt update
+sudo apt install thermalprint
+```
+
+Launch **ThermalPrint** from your applications menu, or run `thermalprint`. Later updates arrive through your normal APT updates. The package installs the app and icon, plus the CUPS client and Poppler PDF utilities; add your printer separately in Linux printer settings.
+
+You can also [download the latest `.deb`](https://github.com/arios4k/thermalprint/releases/latest) and install it with `sudo apt install ./thermalprint_0.1.1-1_amd64.deb`. Use the filename of the version you downloaded.
+
 ## Why ThermalPrint?
 
 A downloaded shipping label is often inside an A4 or US Letter PDF, surrounded by whitespace or instructions. Printing that entire page on 4 × 6-inch stock can make the address and barcode too small. ThermalPrint separates **cropping whitespace** from **scaling the label**: you choose the content area first, then the app fits it to the paper without changing its proportions.
@@ -168,19 +186,7 @@ Other current limits:
 
 ## Debian/Ubuntu APT release
 
-The first packaged release targets **amd64 Debian/Ubuntu**. The APT repository lives on the `gh-pages` branch of [arios4k/thermalprint](https://github.com/arios4k/thermalprint) and is served at `https://arios4k.github.io/thermalprint/`. Flatpak and Snap are planned for later.
-
-Once the first signed release is published, install with:
-
-```sh
-sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://arios4k.github.io/thermalprint/key.asc | sudo tee /etc/apt/keyrings/thermalprint.asc >/dev/null
-echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/thermalprint.asc] https://arios4k.github.io/thermalprint/ stable main' | sudo tee /etc/apt/sources.list.d/thermalprint.list >/dev/null
-sudo apt update
-sudo apt install thermalprint
-```
-
-The package name and executable are both `thermalprint`. `cups-client` supplies `lp`, `lpstat`, and `lpoptions`; `poppler-utils` supplies the PDF rendering fallback. The installer does not configure a printer or install a model-specific driver. A direct `.deb` is also attached to each GitHub release.
+The package name and executable are both `thermalprint`. The APT repository lives on the `gh-pages` branch of [arios4k/thermalprint](https://github.com/arios4k/thermalprint) and is served at `https://arios4k.github.io/thermalprint/`. `cups-client` supplies `lp`, `lpstat`, and `lpoptions`; `poppler-utils` supplies the PDF rendering fallback. The installer does not configure a printer or install a model-specific driver. Flatpak and Snap are planned for later.
 
 To install a downloaded `.deb` directly, use APT so package dependencies are installed:
 
