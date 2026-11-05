@@ -52,7 +52,8 @@ jobs:
         run: python3 -m unittest discover -s scripts -p test_prepare_rpm.py
       - name: Prepare locked sources and source RPM
         run: |
-          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          SOURCE_DATE_EPOCH=$(git -c safe.directory="$GITHUB_WORKSPACE" log -1 --format=%ct)
+          export SOURCE_DATE_EPOCH
           python3 scripts/prepare-rpm.py --srpm
           rpm -qip target/rpm/SRPMS/*.src.rpm
       - uses: actions/upload-artifact@v4

@@ -39,7 +39,7 @@ class PrepareRpmTests(unittest.TestCase):
         return subprocess.CompletedProcess(command, 0, '[source.crates-io]\nreplace-with="vendored-sources"\n[source.vendored-sources]\ndirectory="vendor"\n')
 
     def test_archive_contains_assets_offline_config_and_licenses(self):
-        with patch.object(module.subprocess, "run", side_effect=self.vendor):
+        with patch.object(module.subprocess, "run", side_effect=self.vendor), patch.dict(module.os.environ, {"SOURCE_DATE_EPOCH": ""}):
             result = module.prepare(self.project, self.output, offline=True)
         generated = result.read_text()
         self.assertIn("Version: 1.2.3", generated)
@@ -49,7 +49,7 @@ class PrepareRpmTests(unittest.TestCase):
         with tarfile.open(self.output / "SOURCES/thermalprint-1.2.3.tar.xz") as archive:
             for name in ("assets/fixture", "src/fixture", ".cargo/config.toml", "vendor/example-1.0.0/Cargo.toml", "vendor-licenses/example-1.0.0/LICENSE-MIT", "VENDORED-LICENSES.txt"):
                 self.assertIsNotNone(archive.getmember(f"thermalprint-1.2.3/{name}"))
-            self.assertTrue(all(entry.uid == 0 and entry.gid == 0 for entry in archive.getmembers()))
+            self.assertTrue(all(entry.uid == 0 and entry.gid == 0 and entry.mtime == 0 for entry in archive.getmembers()))
 
     def test_unreviewed_dependency_license_is_rejected(self):
         def unlicensed(command, *, cwd, **kwargs):

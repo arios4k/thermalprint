@@ -65,7 +65,7 @@ def prepare(project: Path, output: Path, offline: bool = False) -> Path:
         spec_path = output / "SPECS/thermalprint.spec"
         spec_path.write_text(spec)
         archive = output / "SOURCES" / f"thermalprint-{version}.tar.xz"
-        epoch = int(os.environ.get("SOURCE_DATE_EPOCH", "0"))
+        epoch = int(os.environ.get("SOURCE_DATE_EPOCH") or "0")
         def normalize(info):
             info.uid = info.gid = 0
             info.uname = info.gname = "root"
