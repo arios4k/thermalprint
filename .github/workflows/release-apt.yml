@@ -100,9 +100,13 @@ jobs:
           fi
           git -C apt-site -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" push origin gh-pages
       - uses: actions/configure-pages@v5
+      - name: Stage public APT files
+        run: |
+          mkdir apt-public
+          cp -r apt-site/dists apt-site/pool apt-site/key.asc apt-site/index.html apt-site/.nojekyll apt-public/
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: apt-site
+          path: apt-public
       - uses: actions/deploy-pages@v4
         id: deployment
       - name: Attach package to GitHub release
