@@ -19,6 +19,7 @@ fn main() -> eframe::Result {
         persist_window: std::env::var_os("THERMALPRINT_SCREENSHOTS").is_none(),
         viewport: eframe::egui::ViewportBuilder::default()
             .with_app_id("org.thermalprint.ThermalPrint")
+            .with_decorations(false)
             .with_inner_size([1240.0, 840.0])
             .with_min_inner_size([760.0, 560.0])
             .with_icon(icon),

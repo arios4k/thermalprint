@@ -245,3 +245,19 @@ pub fn glossary(ui: &mut egui::Ui, search: &mut String) {
             });
     });
 }
+
+/// Render a real hyperlink with a font-independent external-link icon.
+pub fn external_link(ui: &mut egui::Ui, label: &str, url: &str) {
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 8.;
+        let (rect, _) = ui.allocate_exact_size(egui::Vec2::splat(24.), egui::Sense::hover());
+        crate::designer_ui::paint_tool_icon(
+            ui.painter(),
+            rect.center(),
+            ui.visuals().hyperlink_color,
+            "External link",
+        );
+        ui.hyperlink_to(label, url)
+            .on_hover_text(format!("Open in your browser: {url}"));
+    });
+}

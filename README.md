@@ -32,7 +32,7 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 - **Prepare existing labels.** Import PDFs or images, crop instructions and whitespace, review the result, and arrange several labels into a print queue.
 - **Get the size right.** Start at **4 × 6 inches**, choose another preset or enter custom dimensions. Descriptive printer media names and one-click size matching help resolve mismatches.
 - **Print or export.** Submit to a configured CUPS printer, save a dimensioned PDF or PNG, or export a design as SVG or raster ZPL.
-- **Stay comfortable.** Light, dark, and system themes; consistent icon tools; keyboard shortcuts; and a searchable guide explaining printing terminology.
+- **Stay comfortable.** A single title bar with the app menu and window controls; light, dark, and system themes; consistent icon tools; keyboard shortcuts; and a searchable guide explaining printing terminology.
 
 Document processing happens on your computer. ThermalPrint works with local files from carriers and marketplaces, including Vinted, eBay, Etsy, Shopify, USPS, UPS, and FedEx, without connecting to their accounts.
 

@@ -1108,6 +1108,11 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
         );
     };
     match label {
+        "External link" => {
+            path(&[(10., 4.), (4., 4.), (4., 20.), (20., 20.), (20., 14.)]);
+            path(&[(13., 3.), (21., 3.), (21., 11.)]);
+            path(&[(11., 13.), (21., 3.)]);
+        }
         "Home" => {
             path(&[(3., 11.), (12., 3.), (21., 11.)]);
             path(&[

@@ -1,4 +1,5 @@
 mod screenshots;
+mod window_chrome;
 use crate::{
     design,
     designer_ui::Designer,
@@ -1460,6 +1461,12 @@ impl ThermalPrint {
     }
 }
 impl eframe::App for ThermalPrint {
+    fn raw_input_hook(&mut self, _: &egui::Context, input: &mut egui::RawInput) {
+        if self.capture.is_some() {
+            // Documentation capture is unattended; ignore incidental pointer/scroll input.
+            input.events.clear();
+        }
+    }
     fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         self.poll(&ctx);
@@ -1496,10 +1503,9 @@ impl eframe::App for ThermalPrint {
         }
         egui::Panel::top("header").show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.add(egui::Image::new(&self.icon_texture).fit_to_exact_size(Vec2::splat(34.)));
-                ui.heading(RichText::new("ThermalPrint").size(23.));
-                ui.label(RichText::new("Universal shipping labels").weak());
+                window_chrome::title(ui, &self.icon_texture);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    window_chrome::controls(ui);
                     let old = self.settings.theme;
                     let menu = ui
                         .add(egui::Button::new("").min_size(Vec2::splat(38.)))
@@ -1717,13 +1723,15 @@ impl eframe::App for ThermalPrint {
                                     RichText::new("Design and prepare thermal labels for Linux.")
                                         .weak(),
                                 );
-                                if ui
-                                    .button(format!(
-                                        "Version {}  ·  Copy",
-                                        env!("CARGO_PKG_VERSION")
-                                    ))
-                                    .on_hover_text("Copy version information")
-                                    .clicked()
+                                if crate::designer_ui::icon_action(
+                                    ui,
+                                    "Duplicate",
+                                    &format!("Version {}", env!("CARGO_PKG_VERSION")),
+                                    "Copy version information",
+                                    true,
+                                    false,
+                                )
+                                .clicked()
                                 {
                                     ui.ctx().copy_text(
                                         concat!("ThermalPrint ", env!("CARGO_PKG_VERSION")).into(),
@@ -1745,8 +1753,9 @@ impl eframe::App for ThermalPrint {
                             ui.label(RichText::new("Explore ThermalPrint").strong());
                             Self::section_frame(ui).show(ui, |ui| {
                                 ui.set_width(ui.available_width());
-                                ui.hyperlink_to(
-                                    "Project & source code ↗",
+                                crate::help::external_link(
+                                    ui,
+                                    "Project & source code",
                                     env!("CARGO_PKG_REPOSITORY"),
                                 );
                                 ui.label(
@@ -1757,8 +1766,9 @@ impl eframe::App for ThermalPrint {
                                     .weak(),
                                 );
                                 ui.separator();
-                                ui.hyperlink_to(
-                                    "Report an issue ↗",
+                                crate::help::external_link(
+                                    ui,
+                                    "Report an issue",
                                     concat!(env!("CARGO_PKG_REPOSITORY"), "/issues"),
                                 );
                                 ui.label(
@@ -1774,7 +1784,16 @@ impl eframe::App for ThermalPrint {
                                 ui.label(RichText::new("Created by").small().weak());
                                 ui.label(env!("CARGO_PKG_AUTHORS"));
                                 ui.separator();
-                                if ui.button("MIT License →").clicked() {
+                                if crate::designer_ui::icon_action(
+                                    ui,
+                                    "New document",
+                                    "MIT License",
+                                    "Read the full MIT license",
+                                    true,
+                                    false,
+                                )
+                                .clicked()
+                                {
                                     self.license_open = true;
                                 }
                                 ui.label(
@@ -1785,8 +1804,13 @@ impl eframe::App for ThermalPrint {
                             });
                             ui.add_space(12.);
                             ui.collapsing("More by Alexis", |ui| {
-                                ui.hyperlink_to("Voltkit", "https://github.com/arios4k/voltkit");
-                                ui.hyperlink_to(
+                                crate::help::external_link(
+                                    ui,
+                                    "Voltkit",
+                                    "https://github.com/arios4k/voltkit",
+                                );
+                                crate::help::external_link(
+                                    ui,
                                     "Battery Health Center",
                                     "https://github.com/arios4k/battery-health-center",
                                 );
@@ -1825,6 +1849,7 @@ impl eframe::App for ThermalPrint {
                 self.license_open = false;
             }
         }
+        window_chrome::resize_edges(&ctx);
         self.save_selection();
         if self.dirty && !self.busy && self.drag.is_none() {
             self.render();
