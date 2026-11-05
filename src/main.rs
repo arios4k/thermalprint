@@ -18,7 +18,7 @@ fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_app_id("org.thermalprint.ThermalPrint")
-            .with_inner_size([1180.0, 820.0])
+            .with_inner_size([1240.0, 840.0])
             .with_min_inner_size([760.0, 560.0])
             .with_icon(icon),
         ..Default::default()
