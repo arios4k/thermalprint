@@ -165,7 +165,7 @@ PDFium is optional. To use a custom installation, set `THERMALPRINT_PDFIUM_DIR` 
 
 ## Support the project
 
-ThermalPrint is free and open source. If it saves you time, an optional donation is a welcome way to support its continued development. Thank you!
+ThermalPrint is free and open source, and my intention is to keep it free for everyone. If this tool has been useful to you, please consider [making a donation of any amount](https://paypal.me/AlexisRios) to help keep the project running and support its continued development. Donations are completely optional, and every contribution is sincerely appreciated. Thank you for using ThermalPrint and helping make it available to everyone!
 
 [![Support development with PayPal](https://img.shields.io/badge/Support_development-PayPal-0070BA?logo=paypal&logoColor=white)](https://paypal.me/AlexisRios)
 
