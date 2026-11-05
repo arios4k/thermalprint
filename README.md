@@ -1,36 +1,59 @@
 <div align="center">
 
-<img src="data/org.thermalprint.ThermalPrint.png" width="128" alt="ThermalPrint icon: a colorful printer producing a barcode label">
+<img src="data/org.thermalprint.ThermalPrint.png" width="112" alt="ThermalPrint app icon">
 
 # ThermalPrint
 
-**Design, convert, and print thermal labels on Linux.**
+**Your labels. Your printer. Your Linux desktop.**
 
-Create a label from scratch, or import a downloaded shipping label, extract its printable area, and send it to a CUPS printer. Everything runs locally, with no marketplace account.
+Design custom labels, prepare downloaded PDFs, and print on thermal stock—all in one local workspace.
 
-[![Latest release](https://img.shields.io/github/v/release/arios4k/thermalprint?label=release&color=7747db)](https://github.com/arios4k/thermalprint/releases/latest)
-[![CI](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml/badge.svg)](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/arios4k/thermalprint?label=download&color=207568)](https://github.com/arios4k/thermalprint/releases/latest)
+[![Rust CI](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml/badge.svg)](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml)
+[![Fedora RPM](https://github.com/arios4k/thermalprint/actions/workflows/release-rpm.yml/badge.svg)](https://github.com/arios4k/thermalprint/actions/workflows/release-rpm.yml)
+[![Fedora Copr](https://img.shields.io/badge/Fedora-Copr-51a2da?logo=fedora&logoColor=white)](https://copr.fedorainfracloud.org/coprs/arios/thermalprint/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3187e7)](LICENSE)
-[![Install with apt](https://img.shields.io/badge/install-apt-ffb44d)](#install-on-debian-or-ubuntu-apt)
-[![Linux](https://img.shields.io/badge/platform-Linux-23bfae?logo=linux&logoColor=white)](#get-started)
-[![Made with Rust](https://img.shields.io/badge/made%20with-Rust-dea584?logo=rust&logoColor=white)](https://www.rust-lang.org)
+
+[Install on Fedora](#fedora) · [Install on Debian / Ubuntu](#debian--ubuntu) · [See the app](#screenshots) · [Download packages](https://github.com/arios4k/thermalprint/releases/latest)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-dark.png">
-  <img src="docs/screenshots/home-light.png" width="960" alt="ThermalPrint Home screen with Create a label, Import and convert, templates, and printer status">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/designer-dark.png">
+  <img src="docs/screenshots/designer-light.png" width="1000" alt="ThermalPrint Label Designer with an editable shipping label, barcode, QR code, icon tools, and barcode properties">
 </picture>
 
-<sub>Home screen in light and dark themes. A demo printer is shown; no shipping documents are included.</sub>
+<sub>Actual app screenshots from the current source, with fictional sample data. The demo label is not postage. Light and dark images follow your GitHub theme.</sub>
 
 </div>
 
-Created by **Alexis Rios-Negron**. Written primarily in Rust and released under the [MIT License](LICENSE).
+## A workspace for everyday labels
 
-> **Project status:** This is an early desktop release (`0.1.1`). Imported barcode decoding and physical scan verification are not available. Raw ZPL is available for a compatible CUPS raw queue, using raster commands. Test a physical print with your printer and carrier workflow before relying on it for shipments.
+- **Create your own.** Start with a template and add text, addresses, logos, shapes, real barcodes, and QR codes. Position objects precisely, align with grid snapping, and save reusable designs.
+- **Prepare existing labels.** Import PDFs or images, crop instructions and whitespace, review the result, and arrange several labels into a print queue.
+- **Get the size right.** Start at **4 × 6 inches**, choose another preset or enter custom dimensions. Descriptive printer media names and one-click size matching help resolve mismatches.
+- **Print or export.** Submit to a configured CUPS printer, save a dimensioned PDF or PNG, or export a design as SVG or raster ZPL.
+- **Stay comfortable.** Light, dark, and system themes; consistent icon tools; keyboard shortcuts; and a searchable guide explaining printing terminology.
 
-## Install on Debian or Ubuntu (APT)
+Document processing happens on your computer. ThermalPrint works with local files from carriers and marketplaces, including Vinted, eBay, Etsy, Shopify, USPS, UPS, and FedEx, without connecting to their accounts.
 
-The signed APT repository provides **amd64** packages. Run these commands once to add it and install ThermalPrint:
+## Install
+
+Packages include the application, desktop launcher, icons, CUPS client tools, and Poppler PDF utilities. Configure your printer in your desktop's printer settings, then launch **ThermalPrint** from the applications menu.
+
+### Fedora
+
+For **Fedora 44 and 45, x86_64**, enable the community Copr repository once:
+
+```sh
+sudo dnf install dnf5-plugins
+sudo dnf copr enable arios/thermalprint
+sudo dnf install thermalprint
+```
+
+Updates arrive through normal DNF updates. [View the Copr repository](https://copr.fedorainfracloud.org/coprs/arios/thermalprint/). Copr is separate from Fedora's official package repositories.
+
+### Debian / Ubuntu
+
+The signed APT repository provides **amd64** packages:
 
 ```sh
 sudo apt update
@@ -42,261 +65,110 @@ sudo apt update
 sudo apt install thermalprint
 ```
 
-Launch **ThermalPrint** from your applications menu, or run `thermalprint`. Later updates arrive through your normal APT updates. The package installs the app and icon, plus the CUPS client and Poppler PDF utilities; add your printer separately in Linux printer settings.
+Updates arrive through normal APT updates.
 
-You can also [download the latest `.deb`](https://github.com/arios4k/thermalprint/releases/latest) and install it with `sudo apt install ./thermalprint_0.1.1-1_amd64.deb`. Use the filename of the version you downloaded.
+### Standalone packages and source builds
 
-## Fedora (RPM and Copr)
+[GitHub Releases](https://github.com/arios4k/thermalprint/releases) contains the published packages. Tagged releases with the Fedora workflow produce a binary RPM for each supported Fedora version and a source RPM, alongside the Debian package.
 
-Fedora release packaging targets **Fedora 44 and 45, x86_64**. Once the first
-build is published to `arios/thermalprint`, install it with:
+Install a downloaded package using your distribution's package manager so its dependencies are installed too:
 
 ```sh
-sudo dnf install dnf-plugins-core
-sudo dnf copr enable arios/thermalprint
-sudo dnf install thermalprint
+# Debian / Ubuntu
+sudo apt install ./thermalprint_*.deb
+
+# Fedora — choose the RPM matching your Fedora release
+sudo dnf install ./thermalprint-*.x86_64.rpm
 ```
 
-The release workflow also produces a Fedora-specific `.rpm` and a source RPM.
-Install the RPM matching your Fedora release with `sudo dnf install ./thermalprint-*.rpm`.
-The package includes the launcher and icons and installs CUPS clients and Poppler
-PDF utilities as dependencies. Printer setup remains in your system settings.
+Run these from the download folder, keeping only the RPM matching your Fedora release there. Other Linux users can [build from source](#build-from-source).
 
-See [Fedora packaging and Copr setup](packaging/rpm/README.md) for local builds,
-one-time publishing configuration, and release details. Copr is a community
-repository, separate from Fedora's official package repositories.
+## Screenshots
 
-## Why ThermalPrint?
+### An inviting place to start
 
-A downloaded shipping label is often inside an A4 or US Letter PDF, surrounded by whitespace or instructions. Printing that entire page on 4 × 6-inch stock can make the address and barcode too small. ThermalPrint separates **cropping whitespace** from **scaling the label**: you choose the content area first, then the app fits it to the paper without changing its proportions.
+Choose a blank label, reuse a template, or bring in an existing shipping label. Shipping, return address, product barcode, inventory, QR, asset, shelf, price tag, name, and fragile templates are included.
 
-The app is source agnostic. Use it with downloaded labels from Vinted, eBay, Etsy, Amazon, Shopify, USPS, UPS, FedEx, or another provider that supplies a supported PDF or image. ThermalPrint does not connect to any of those services.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-dark.png">
+  <img src="docs/screenshots/home-light.png" width="1000" alt="ThermalPrint Home with modern create and import cards and illustrated label templates">
+</picture>
 
-## ✨ Features
+### Preview before paper
 
-- **Custom label designer:** Start from a blank canvas or built-in shipping, return, product, inventory, QR, asset, shelf, price, name, or fragile template. Edit object position and size in millimeters, drag and resize on canvas, use grid snapping, layers, undo/redo, copy/paste, duplicate, and multiple selection.
-- **Real barcodes and QR codes:** Code 128, Code 39, EAN-13, UPC-A, and QR codes are generated from their encoded values. Add text, addresses, rectangles, lines, circles, and imported logos. Custom labels do not create carrier postage or tracking numbers.
-- **Editable documents:** Save and reopen versioned `.thermalprint` JSON designs. Export a design as dimensioned PDF, PNG, SVG with an embedded raster image, or raster ZPL.
-- **Four work areas:** Home, Label Designer, Import & Convert, and Print Center.
+Compare the original document with the prepared thermal label. Adjust the crop, keep the barcode edges in view, and review each label before printing a batch.
 
-- **PDF and image import:** PDF, PNG, JPEG, TIFF, BMP, and WebP. Multipage PDFs add their pages to the print queue.
-- **Three extraction modes:** Automatic whitespace analysis, interactive Manual cropping, and Full page.
-- **Multiple labels:** Add several files at once, drag several files into the window, or queue multiple detected regions from one PDF page. Review, reorder, remove, and print queued labels in sequence.
-- **Live preview:** Switch between the original page with its crop boundary and the processed output. Zoom and fit controls are independent of final print resolution.
-- **Paper options:** 4 × 6 inches by default, plus 4 × 4 inches, 2 × 1 inches, 100 × 150 mm, and custom dimensions. Portrait and landscape are available by swapping dimensions.
-- **Layout options:** 0°, 90°, 180°, and 270° rotation; fit, actual-size, and custom scaling; margins; 203, 300, or 600 DPI; and an optional black-and-white threshold.
-- **CUPS printing:** Discover configured printers, advertised media choices, and available resolution choices. Choose copies, submit one label or a queue, and inspect the CUPS queue status.
-- **Export:** Dimensioned PDF or PNG with output DPI metadata.
-- **Desktop basics:** Light, dark, or system theme; recent files; saved printer preferences; Ctrl+O and Ctrl+P; and an About dialog.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/import-dark.png">
+  <img src="docs/screenshots/import-light.png" width="1000" alt="Import and Convert showing a fictional shipping label, manual crop controls, queue navigation, and output preview">
+</picture>
 
-## Get started
+### Printer setup you can understand
 
-### Requirements
+Pick your printer and stock, see the paper proportions, and check readiness. Size warnings explain the mismatch and offer an action to match the output to the selected media.
 
-- Linux desktop with X11 or Wayland. The project is intended for Ubuntu, Debian, Fedora, Arch Linux, and similar distributions.
-- Rust **1.96 or newer** for building the Rust 2024 project.
-- A working CUPS installation and the `lp`, `lpstat`, and `lpoptions` client commands for printing. Export works without a configured printer.
-- For PDF input, either a compatible **PDFium** shared library (`libpdfium.so`) or the Poppler command-line utilities `pdfinfo` and `pdftoppm`. ThermalPrint tries PDFium first and falls back to Poppler.
-- A configured printer queue whose driver advertises the label media you intend to use. The app does not install printer drivers.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/print-center-dark.png">
+  <img src="docs/screenshots/print-center-light.png" width="1000" alt="Print Center with descriptive 4 by 6 inch media, label-stock preview, output settings, and a printer readiness summary">
+</picture>
 
-Package names vary by distribution. On Debian and Ubuntu, the PDF fallback utilities are commonly supplied by `poppler-utils`; on Fedora, by `poppler-utils`; and on Arch, by `poppler`. Install your distribution's CUPS client package and configure a printer through its printer settings before printing.
+<details>
+<summary><strong>A little printing clarity</strong></summary>
 
-### Build and launch
+The searchable **Printing terms** window explains CUPS, DPI, document formats, and barcode terminology. Open it from the hamburger menu; contextual help is also available next to relevant controls.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/printing-terms-dark.png">
+  <img src="docs/screenshots/printing-terms-light.png" width="1000" alt="Searchable Printing terms window with illustrated explanations of CUPS, DPI, and ZPL">
+</picture>
+
+</details>
+
+## Your first label
+
+1. **Open or create.** Choose **Import & Convert** for a downloaded PDF/image, or **Label Designer** for a custom layout.
+2. **Review.** Check the crop, address, barcode edges, and final preview. Adjust the crop when needed.
+3. **Match the paper.** Select the loaded stock and its matching printer media. The default label size is 4 × 6 inches; saved user choices are preserved.
+4. **Print or save.** Print the label, arrange a batch, or export a PDF/PNG.
+
+Useful shortcuts: **Ctrl+O** opens labels, **Ctrl+P** prints, and the designer supports **Ctrl+S**, **Ctrl+Z/Y**, **Ctrl+C/V**, and **Ctrl+D**.
+
+[Detailed usage guide](docs/USAGE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
+
+## Formats and compatibility
+
+| Task | Supported formats or options |
+| --- | --- |
+| Import | PDF, PNG, JPEG, TIFF, BMP, WebP; multipage PDFs join the queue |
+| Editable designs | Versioned `.thermalprint` files with embedded images |
+| Barcodes | Code 128, Code 39, EAN-13, UPC-A, QR |
+| Output | PDF, PNG; design SVG with embedded raster output; raster ZPL |
+| Layout | Automatic/manual/full-page extraction, rotation, fit/actual/custom scale, margins |
+| Print resolution | 203, 300, or 600 DPI |
+| Desktop | Linux with X11 or Wayland; configured CUPS printer |
+
+ThermalPrint prepares labels; it does not purchase postage or generate carrier tracking numbers. Raw ZPL requires a compatible printer and deliberately configured raw queue. This is an early release: check a physical test print and scan before relying on a shipping workflow. The app does not currently decode imported barcodes or verify physical scan quality. See the [usage guide](docs/USAGE.md) for processing limits and printer details.
+
+## Build from source
+
+Requires **Rust 1.96+**, a C/C++ build toolchain, and the usual Linux development libraries. Install CUPS client tools and Poppler utilities for printing and PDF fallback support.
 
 ```sh
 git clone https://github.com/arios4k/thermalprint.git
 cd thermalprint
-cargo run --release
+cargo run --release --locked
 ```
 
-Open a document directly from a terminal or file manager:
+PDFium is optional. To use a custom installation, set `THERMALPRINT_PDFIUM_DIR` to the directory containing `libpdfium.so`.
 
-```sh
-cargo run --release -- /path/to/downloaded-label.pdf
-```
+[Development and tests](docs/DEVELOPMENT.md) · [Fedora packaging / Copr setup](packaging/rpm/README.md) · [APT release maintenance](docs/RELEASING.md) · [Regenerate screenshots](docs/screenshots/README.md)
 
-If PDFium is installed outside the system library path, point ThermalPrint at its directory:
+## Support the project
 
-```sh
-THERMALPRINT_PDFIUM_DIR=/path/to/pdfium/lib cargo run --release
-```
+If ThermalPrint is useful to you, a [GitHub star](https://github.com/arios4k/thermalprint), a reproducible [bug report](https://github.com/arios4k/thermalprint/issues), or sharing it with another Linux user helps the project grow. Keep personal addresses and tracking information out of public reports.
 
-The repository includes a [desktop entry](data/org.thermalprint.ThermalPrint.desktop), colorful PNG/SVG icons, and Debian package metadata. Run `cargo deb --locked` (after installing `cargo-deb`) to build `target/debian/thermalprint_<version>-1_amd64.deb`. The package installs the binary, desktop entry, and icons, and depends on CUPS client commands and Poppler utilities.
-
-### First label: a Vinted PDF
-
-1. Download the shipping label PDF from Vinted.
-2. Open ThermalPrint and choose **Add labels**, or drag the PDF into the window.
-3. Inspect the automatic crop in **Original / crop**. If instructions or several content groups are present, select the appropriate region. Use **Manual** to draw, move, or resize a crop when needed.
-4. Check the preview for every address, tracking number, carrier mark, and barcode quiet zone. Confirm **I checked the crop and barcode edges** when the app asks you to review a crop.
-5. Select **4 × 6 in**, your printer, and the matching media advertised by its driver. Choose **Print label**. Alternatively, export a PDF or PNG for inspection.
-
-For a correctly sized 4 × 6 source, the automatic proposal may be the whole page. You can always switch to Full page.
-
-## 📦 Printing several labels
-
-Choose several files in **Add labels**, or drop several files together. Each PDF page is added as a queue entry. When Automatic mode finds multiple separated regions on one page, **Queue all detected regions** replaces that page's current queue entry with one entry per proposed region.
-
-Select each entry in the queue to inspect and adjust it. Crops, extraction mode, and review state are remembered per queue entry. Use **Move up**, **Move down**, and **Remove** to arrange the print order. **Print all** requires every entry to be reviewed and submits the jobs to CUPS **one after another in queue order**. The batch stops at the first load, layout, or CUPS error and reports how many jobs were submitted. Submission order is not a guarantee of physical print completion; use **Job status** and the printer itself to check progress.
-
-Paper size, DPI, rotation, margins, scaling, enhancement, printer, media, resolution, and copies are shared settings for the batch. The app re-renders each queued page at print resolution when submitting it. A label that would clip is blocked rather than silently cut off.
-
-## 🎨 Design a label from scratch
-
-Open **Label Designer** and choose a blank canvas or one of the built-in templates. Set width and height in millimeters, then add text, a proper Code 128/Code 39/EAN-13/UPC-A barcode, a QR code, a shape, or an image. Click an object to edit its content and exact geometry in the properties inspector. Drag it on the canvas or drag its resize handle; Shift-click selects several objects. The toolbar provides undo/redo, zoom, grid/snap controls, save/open, export, and printing. Designs are saved as `.thermalprint` files with a versioned JSON schema and embedded image data.
-
-The editor renders output at the selected printer DPI in a background worker. Save/print/export jobs run separately from the canvas. Design PDF and PNG export use the full-resolution output, while SVG export wraps that raster output in an SVG container. ZPL export uses `^GFA` raster data at the selected DPI; direct ZPL printing requires a CUPS raw queue configured for a ZPL-compatible printer. Selecting a regular PDF queue for raw ZPL will not work. The app does not create or certify postage, carrier service marks, or tracking numbers.
-
-### Built-in templates
-
-Blank 4 × 6, shipping, return address, product barcode, inventory, QR code, asset tracking, shelf, price tag, name, and fragile layouts are included. Template text and code values are examples: replace them with your own data before printing. Saved `.thermalprint` designs can be reopened and reused.
-
-## 🔍 Extraction and layout
-
-```mermaid
-flowchart LR
-    A[Local PDF or image] --> B[Render or decode page]
-    B --> C[Propose crop]
-    C --> D[Review or adjust crop]
-    D --> E[Rotate and fit to paper]
-    E --> F[Full-resolution output]
-    F --> G[Preview]
-    F --> H[PDF or PNG export]
-    F --> I[CUPS print job]
-```
-
-### Automatic
-
-Automatic mode identifies non-white content and proposes an outer crop with a safety buffer. It also looks for horizontal or vertical whitespace gaps that separate content groups. When a label-shaped region clearly dominates a separate instruction block, the proposed crop includes only the label, so those instructions are absent from the **processed preview**, export, and print. The original view still shows the entire document. If several regions are similarly plausible, Automatic keeps the full page until you select a candidate. A cropped proposal with excluded content requires your review before printing. This is layout analysis, not a carrier-specific label recognizer or proof that every carrier instruction was identified.
-
-### Manual
-
-Switch to **Original / crop**. Drag on the page to draw a crop, drag inside it to move it, or drag a corner to resize it. The green boundary describes the crop on the **original**, before rotation. The source document is never modified. Confirm the crop after checking its edges.
-
-### Full page
-
-Fits the complete page to the selected paper. This is useful when the source is already a label, when boundaries are ambiguous, or when you need to preserve everything on the page.
-
-### Fit, actual size, and custom scale
-
-- **Fit within paper** preserves aspect ratio and scales the selected crop to the usable area inside the margins.
-- **Actual size** uses the source's physical size. For raster images without a reliable physical size, ThermalPrint currently assumes 300 DPI.
-- **Custom scale** applies the chosen percentage to that physical size.
-
-The app warns when content is reduced substantially or source pixels are enlarged. If an actual-size or custom-scale layout exceeds the available area, output is marked clipped and printing/export is blocked until you adjust it. Source PDF pages are rasterized at 300 DPI, independently of the preview texture.
-
-### Barcode care
-
-ThermalPrint keeps proportions, centers content, and adds a crop buffer to help protect barcode quiet zones. Enhancement is **off by default**; its black-and-white threshold can harm thin bars. Inspect the original and processed preview, and print a test label. A successful PDF export or CUPS submission does **not** prove that a physical barcode will scan. ThermalPrint currently does not decode or validate barcodes, and enlarging low-quality pixels cannot restore lost detail.
-
-## 🖨️ CUPS and printer setup
-
-ThermalPrint uses the Linux CUPS client programs rather than brand-specific printer commands. It queries printer queues with `lpstat` and supported options with `lpoptions -l`. The selected output is sent through `lp` as a one-page PDF, with CUPS scaling disabled and the selected media and copy count supplied as job options.
-
-1. Add your printer in your desktop's printer settings or CUPS administration interface.
-2. Confirm the queue advertises the paper you loaded (for example, a 4 × 6 media choice). Select **Custom** only if the driver advertises it; ThermalPrint sends the exact output dimensions in millimeters.
-3. Choose an advertised resolution if available, or leave the driver's default.
-4. Print a test label and check the printer's physical margins, orientation, contrast, and feed behavior.
-
-The printer panel gives a **best-effort hint** when a queue name or advertised media suggests a label printer. CUPS does not expose a definitive “thermal printer” flag, and a hint does not establish driver compatibility. Printer names and media choices come from your local CUPS configuration. Zebra, Rollo, Brother, ORGSTA, and other printers can work when their CUPS driver or driverless queue accepts the chosen media and PDF jobs. The ORGSTA hint is based on the queue name, not a driver guarantee. Raw ZPL is available only through a compatible CUPS raw queue.
-
-**Job status** reports CUPS printer and pending-job information. A successful `lp` result means the scheduler accepted the job; it does not confirm that the printer physically produced a readable label.
-
-## 💾 Export files
-
-- **PDF:** One image-only page. The PDF `MediaBox` matches the paper dimensions in PDF points; the embedded image retains the selected output pixel dimensions.
-- **PNG:** The output canvas is stored at the chosen pixel dimensions with pixels-per-meter metadata derived from 203, 300, or 600 DPI.
-- **SVG for designs:** An SVG document with the output raster embedded. It retains the physical page size but is not editable vector artwork.
-- **ZPL for designs:** Raster `^GFA` generated from the rendered canvas. The printer must support ZPL and receive it through a raw queue.
-
-The export is produced from the full processing pipeline, not from a screenshot of the preview widget. The original input file remains untouched. Output is written through a temporary file and renamed into place after the write completes.
-
-## 🔒 Settings, privacy, and limits
-
-Preferences are saved as JSON in the user configuration directory selected by the [`directories`](https://docs.rs/directories/) crate. They include recent **file paths**, the last printer and media choice, paper and layout controls, copy count, theme choice, and related options. Window state is handled by eframe's persistence support. Imported document content is processed locally; ThermalPrint does not upload labels or contact marketplaces.
-
-Safety limits include a 256 MB input-file limit, a 45-megapixel page/image limit, and a 36-megapixel output limit. These bounds reduce accidental memory exhaustion but are not a hardened sandbox for untrusted documents. PDFium is a native shared library when used; Poppler utilities are an external runtime fallback. Encrypted or damaged PDFs may need to be re-exported before import.
-
-Other current limits:
-
-- Automatic extraction can mistake a large instruction block for another candidate, or miss a border with little whitespace. Review every proposal.
-- A PDF page is rasterized at 300 DPI. Details already missing from the source cannot be recovered.
-- The preview cannot predict physical printer calibration, heat, driver margins, or carrier scanner behavior.
-- Printer capabilities depend on what the CUPS queue advertises; the app does not install or repair drivers.
-- The queue is held in memory for the current session. Recent paths and preferences persist, but the queue itself is not restored after closing the app.
-- There is no imported-barcode decoder, marketplace integration, or automatic download feature yet. Designer ZPL is raster based and requires a compatible raw queue.
-
-## Debian/Ubuntu APT release
-
-The package name and executable are both `thermalprint`. The APT repository lives on the `gh-pages` branch of [arios4k/thermalprint](https://github.com/arios4k/thermalprint) and is served at `https://arios4k.github.io/thermalprint/`. `cups-client` supplies `lp`, `lpstat`, and `lpoptions`; `poppler-utils` supplies the PDF rendering fallback. The installer does not configure a printer or install a model-specific driver. Flatpak and Snap are planned for later.
-
-To install a downloaded `.deb` directly, use APT so package dependencies are installed:
-
-```sh
-sudo apt install ./thermalprint_0.1.1-1_amd64.deb
-```
-
-Replace the filename with the version you downloaded. The application appears as **ThermalPrint** in the desktop launcher, using the bundled color icon. You can also run `thermalprint` from a terminal.
-
-### Release automation
-
-The [release workflow](.github/workflows/release-apt.yml) checks formatting, Clippy, and tests, builds the Debian package on Ubuntu 22.04, signs an APT index with `reprepro`, keeps the index and public signing key on `gh-pages`, deploys them with GitHub Pages Actions, and attaches the package to a GitHub release. The tag must exactly match the `Cargo.toml` version, for example `v0.1.1`. Only create a release tag after reviewing the build and package contents.
-
-One-time repository setup is required: configure GitHub Pages to use **GitHub Actions**, permit Actions to write repository contents, and add `APT_GPG_PRIVATE_KEY_B64` (base64-encoded dedicated, unprotected CI signing key) and `APT_GPG_FINGERPRINT` as Actions secrets. Keep the private key outside the repository. The workflow creates the `gh-pages` branch on first release. It does not publish when ordinary commits land on `main`.
-
-To prepare a dedicated signing key on a trusted machine, generate a separate GPG key for this repository, record its full fingerprint, and export its secret key to a local file. Base64-encode that file without line wrapping and save the result as `APT_GPG_PRIVATE_KEY_B64`; save the fingerprint as `APT_GPG_FINGERPRINT`. Delete the temporary secret-key export after setting the secret. Never commit it. In GitHub **Settings → Actions → General**, set workflow permissions to **Read and write**. In **Settings → Pages**, select **GitHub Actions** as the source. Verify `key.asc`, `dists/stable/InRelease`, and the package URL are reachable before announcing the APT install command.
-
-## 🛠️ Troubleshooting
-
-| Symptom | What to check |
-| --- | --- |
-| PDF cannot open | Install PDFium or Poppler's `pdfinfo` and `pdftoppm`. Try re-exporting encrypted or damaged PDFs. |
-| No printers listed | Confirm CUPS is running, a queue exists, and `lpstat -p` works for your user. Export can still be used. |
-| No suitable media choice | Configure the printer queue for label stock. Custom dimensions require a driver that advertises Custom media. |
-| Print button is disabled | Finish rendering, review the crop, choose a printer and matching media, and resolve clipping. |
-| Print all is blocked | Select and review each queue entry. Each PDF page and detected region has its own review state. |
-| Label is too small | Crop excess whitespace first, then inspect Fit versus Actual size and the paper dimensions. |
-| Edges are cut on paper | Increase margins, check printer calibration and driver media, then try a test print. |
-| CUPS accepted the job but nothing printed | Use Job status, inspect the CUPS queue and printer, and check stock, connection, and driver configuration. |
-| Barcode looks weak | Disable enhancement, verify the source quality and quiet zones, and test a physical print. |
-
-Set `RUST_LOG=thermalprint=debug` when running from a terminal to see application diagnostics. Avoid posting logs together with private shipping labels or local file paths.
-
-## 🧰 Development
-
-The crate keeps stages separate so import formats and printer backends can be extended without coupling them to the GUI:
-
-| Module | Responsibility |
-| --- | --- |
-| `document` | Decode images; render PDF pages through PDFium or Poppler; retain page dimensions and count. |
-| `detection` | Propose conservative crop rectangles and separated candidate regions. |
-| `layout` | Crop, rotate, scale, center, warn, and build the output canvas. |
-| `export` | Write dimensioned PDF and DPI-tagged PNG files. |
-| `printing` | Discover CUPS queues and capabilities, submit jobs, and query status. |
-| `settings` | Validate and persist user preferences. |
-| `ui` | Manage the two-column egui workflow, previews, queue, dialogs, and background work. |
-| `design` | Versioned editable label model, validation, and built-in templates. |
-| `design_render` | Render designer objects, real barcodes, QR codes, text, and shapes at print DPI. |
-| `designer_ui` | Interactive canvas, object inspector, editing history, and designer actions. |
-| `zpl` | Raster ZPL output for compatible raw printer queues. |
-
-Build and check changes with:
-
-```sh
-cargo fmt --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo test --locked
-cargo build --release --locked
-```
-
-The repository includes unit tests for conservative crop proposals and integration tests for output dimensions, PDF paper size, and clipping behavior. GitHub Actions runs formatting, Clippy, and tests. Hardware, driver, barcode-scan, and large-corpus label tests still need to be added.
-
-Contributions and reproducible sample labels with private addresses and tracking information removed are welcome. For defects, include the input format, page dimensions, intended label size, printer queue/media, and steps to reproduce. Do not publish real shipping labels or tracking numbers in issues.
-
-## Author
-
-Created by **Alexis Rios-Negron**. Other Linux projects: [Voltkit](https://github.com/arios4k/voltkit) and [Battery Health Center](https://github.com/arios4k/battery-health-center).
+Created by **Alexis Rios-Negron**. Also explore [Voltkit](https://github.com/arios4k/voltkit) and [Battery Health Center](https://github.com/arios4k/battery-health-center).
 
 ## License
 
-[MIT](LICENSE) © 2026 Alexis Rios-Negron.
+[MIT](LICENSE) © 2026 Alexis Rios-Negron. Bundled fonts and dependencies retain their own licenses.
