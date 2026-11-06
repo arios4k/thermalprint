@@ -132,6 +132,8 @@ The searchable **Printing terms** window explains CUPS, DPI, document formats, a
 3. **Match the paper.** Select the loaded stock and its matching printer media. The default label size is 4 × 6 inches; saved user choices are preserved.
 4. **Print or save.** Print the label, arrange a batch, or export a PDF/PNG.
 
+Use the sidebar icon to collapse navigation. In **Label Designer**, **Focus** hides navigation and properties, **View** controls the grid and properties panel, and **Export** groups PDF, PNG, SVG, and ZPL output. The **Object** picker in Properties lets you select an element using the keyboard.
+
 Useful shortcuts: **Ctrl+O** opens labels, **Ctrl+P** prints, and the designer supports **Ctrl+S**, **Ctrl+Z/Y**, **Ctrl+C/V**, and **Ctrl+D**.
 
 [Detailed usage guide](docs/USAGE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)

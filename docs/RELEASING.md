@@ -9,14 +9,14 @@ The package name and executable are both `thermalprint`. The APT repository live
 To install a downloaded `.deb` directly, use APT so package dependencies are installed:
 
 ```sh
-sudo apt install ./thermalprint_0.2.1-1_amd64.deb
+sudo apt install ./thermalprint_0.3.0-1_amd64.deb
 ```
 
 Replace the filename with the version you downloaded. The application appears as **ThermalPrint** in the desktop launcher, using the bundled color icon. You can also run `thermalprint` from a terminal.
 
 ### Release automation
 
-The [release workflow](../.github/workflows/release-apt.yml) checks formatting, Clippy, and tests, builds the Debian package on Ubuntu 22.04, signs an APT index with `reprepro`, keeps the index and public signing key on `gh-pages`, deploys them with GitHub Pages Actions, and attaches the package to a GitHub release. The tag must exactly match the `Cargo.toml` version, for example `v0.2.1`. Only create a release tag after reviewing the build and package contents.
+The [release workflow](../.github/workflows/release-apt.yml) checks formatting, Clippy, and tests, builds the Debian package on Ubuntu 22.04, signs an APT index with `reprepro`, keeps the index and public signing key on `gh-pages`, deploys them with GitHub Pages Actions, and attaches the package to a GitHub release. The tag must exactly match the `Cargo.toml` version, for example `v0.3.0`. Only create a release tag after reviewing the build and package contents.
 
 One-time repository setup is required: configure GitHub Pages to use **GitHub Actions**, permit Actions to write repository contents, and add `APT_GPG_PRIVATE_KEY_B64` (base64-encoded dedicated, unprotected CI signing key) and `APT_GPG_FINGERPRINT` as Actions secrets. Keep the private key outside the repository. The workflow creates the `gh-pages` branch on first release. It does not publish when ordinary commits land on `main`.
 

@@ -72,6 +72,6 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/org.thermalprint.Ther
 %{_datadir}/icons/hicolor/256x256/apps/org.thermalprint.ThermalPrint.png
 
 %changelog
-* Thu Nov 05 2026 Alexis Rios-Negron <arios4k@gmail.com> - @VERSION@-1
-- Integrate the app menu and window controls in a draggable title bar.
-- Replace unsupported About symbols with drawn icons and refresh screenshots.
+* Fri Nov 06 2026 Alexis Rios-Negron <arios4k@gmail.com> - @VERSION@-1
+- Add collapsible sidebar navigation, a compact toolbar, and canvas focus mode.
+- Refresh the About dialog and improve keyboard and screen-reader support.
