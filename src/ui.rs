@@ -1,3 +1,4 @@
+mod about;
 mod screenshots;
 mod window_chrome;
 use crate::{
@@ -60,6 +61,7 @@ struct Drag {
 pub struct ThermalPrint {
     settings: Settings,
     area: Area,
+    navigation_collapsed: bool,
     designer: Designer,
     page: Option<Arc<Page>>,
     detection: Option<Detection>,
@@ -115,7 +117,33 @@ impl ThermalPrint {
         cc.egui_ctx.all_styles_mut(|style| {
             style.spacing.item_spacing = Vec2::new(10., 8.);
             style.spacing.button_padding = Vec2::new(12., 6.);
-            style.visuals.selection.bg_fill = Color32::from_rgb(28, 111, 100);
+            style.spacing.interact_size.y = 32.;
+            style
+                .text_styles
+                .insert(egui::TextStyle::Body, egui::FontId::proportional(14.));
+            style
+                .text_styles
+                .insert(egui::TextStyle::Button, egui::FontId::proportional(14.));
+            style
+                .text_styles
+                .insert(egui::TextStyle::Small, egui::FontId::proportional(12.));
+            style.visuals.weak_text_color = Some(if style.visuals.dark_mode {
+                Color32::from_rgb(180, 186, 196)
+            } else {
+                Color32::from_rgb(84, 92, 106)
+            });
+            style.visuals.selection.bg_fill = Color32::from_rgb(46, 101, 190);
+            style.visuals.widgets.inactive.corner_radius = egui::CornerRadius::same(8);
+            style.visuals.widgets.hovered.corner_radius = egui::CornerRadius::same(8);
+            style.visuals.widgets.active.corner_radius = egui::CornerRadius::same(8);
+            style
+                .text_styles
+                .insert(egui::TextStyle::Heading, egui::FontId::proportional(23.));
+            if !style.visuals.dark_mode {
+                style.visuals.panel_fill = Color32::from_rgb(242, 244, 248);
+                style.visuals.window_fill = Color32::WHITE;
+                style.visuals.override_text_color = Some(Color32::from_rgb(42, 48, 59));
+            }
             style.visuals.selection.stroke = Stroke::new(1., Color32::WHITE);
         });
         let (tx, rx) = mpsc::channel();
@@ -134,6 +162,7 @@ impl ThermalPrint {
         let mut app = Self {
             settings,
             area: Area::Home,
+            navigation_collapsed: false,
             designer: Designer::new(),
             page: None,
             detection: None,
@@ -1493,11 +1522,19 @@ impl eframe::App for ThermalPrint {
                 self.area = Area::Import;
                 self.append_files(dropped);
             }
-            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::O)) {
+            if !self.about_open
+                && !self.license_open
+                && !self.terms_open
+                && ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::O))
+            {
                 self.area = Area::Import;
                 self.open();
             }
-            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::P)) {
+            if !self.about_open
+                && !self.license_open
+                && !self.terms_open
+                && ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::P))
+            {
                 self.print();
             }
         }
@@ -1585,48 +1622,98 @@ impl eframe::App for ThermalPrint {
                     }
                 });
             });
-            ui.horizontal_wrapped(|ui| {
-                for (area, icon, label, tip) in [
-                    (
-                        Area::Home,
-                        "Home",
-                        "Home",
-                        "Open your workspace and label templates",
-                    ),
-                    (
-                        Area::Designer,
-                        "Design label",
-                        "Label Designer",
-                        "Create and edit a custom label",
-                    ),
-                    (
-                        Area::Import,
-                        "Import label",
-                        "Import & Convert",
-                        "Import, crop, and prepare existing labels",
-                    ),
-                    (
-                        Area::PrintCenter,
-                        "Print device",
-                        "Print Center",
-                        "Configure printer, stock, and queue settings",
-                    ),
-                ] {
-                    if crate::designer_ui::icon_action(
-                        ui,
-                        icon,
-                        label,
-                        tip,
-                        true,
-                        self.area == area,
-                    )
-                    .clicked()
-                    {
-                        self.area = area;
-                    }
-                }
-            });
         });
+        if self.area != Area::Designer || !self.designer.focus_canvas {
+            egui::Panel::left("workspace-navigation")
+                .default_size(if self.navigation_collapsed { 60. } else { 174. })
+                .exact_size(if self.navigation_collapsed { 60. } else { 174. })
+                .resizable(false)
+                .show(ui, |ui| {
+                    ui.add_space(12.);
+                    let action = if self.navigation_collapsed {
+                        "Expand navigation"
+                    } else {
+                        "Collapse navigation"
+                    };
+                    let toggle = ui
+                        .add(
+                            egui::Button::new("")
+                                .frame(false)
+                                .min_size(Vec2::splat(36.)),
+                        )
+                        .accessible_name(action)
+                        .on_hover_text(action);
+                    toggle.widget_info(|| {
+                        egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), action)
+                    });
+                    if toggle.hovered() || toggle.has_focus() {
+                        ui.painter().rect_stroke(
+                            toggle.rect.shrink(1.),
+                            8.,
+                            Stroke::new(
+                                2.,
+                                if ui.visuals().dark_mode {
+                                    Color32::from_rgb(140, 185, 255)
+                                } else {
+                                    ui.visuals().selection.bg_fill
+                                },
+                            ),
+                            StrokeKind::Inside,
+                        );
+                    }
+                    crate::designer_ui::paint_tool_icon(
+                        ui.painter(),
+                        toggle.rect.center(),
+                        ui.visuals().text_color(),
+                        action,
+                    );
+                    if toggle.clicked() {
+                        self.navigation_collapsed = !self.navigation_collapsed;
+                    }
+                    ui.add_space(8.);
+                    ui.vertical(|ui| {
+                        for (area, icon, label, tip) in [
+                            (
+                                Area::Home,
+                                "Home",
+                                "Home",
+                                "Open your workspace and label templates",
+                            ),
+                            (
+                                Area::Designer,
+                                "Design label",
+                                "Label Designer",
+                                "Create and edit a custom label",
+                            ),
+                            (
+                                Area::Import,
+                                "Import label",
+                                "Import & Convert",
+                                "Import, crop, and prepare existing labels",
+                            ),
+                            (
+                                Area::PrintCenter,
+                                "Print device",
+                                "Print Center",
+                                "Configure printer, stock, and queue settings",
+                            ),
+                        ] {
+                            if crate::designer_ui::icon_action(
+                                ui,
+                                icon,
+                                if self.navigation_collapsed { "" } else { label },
+                                tip,
+                                true,
+                                self.area == area,
+                            )
+                            .clicked()
+                            {
+                                self.area = area;
+                            }
+                        }
+                    });
+                });
+        }
         egui::Panel::bottom("status").show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 if self.busy {
@@ -1702,6 +1789,7 @@ impl eframe::App for ThermalPrint {
             let response =
                 egui::Modal::new(egui::Id::unique("thermalprint-about")).show(&ctx, |ui| {
                     ui.set_width((ctx.content_rect().width() - 72.).clamp(260., 480.));
+                    ui.set_height((ctx.content_rect().height() - 100.).clamp(180., 680.));
                     ui.horizontal(|ui| {
                         ui.label(RichText::new("About ThermalPrint").strong());
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -1711,67 +1799,16 @@ impl eframe::App for ThermalPrint {
                         });
                     });
                     ui.add_space(8.);
-                    ui.vertical_centered(|ui| {
-                        ui.add(egui::Image::new(&icon).fit_to_exact_size(Vec2::splat(64.)));
-                        ui.add_space(4.);
-                        ui.label(RichText::new("ThermalPrint").size(30.).strong());
-                        ui.label(RichText::new(env!("CARGO_PKG_AUTHORS")).weak());
-                        ui.label("Design and prepare thermal labels for Linux.");
-                        if crate::designer_ui::icon_action(
-                            ui,
-                            "Duplicate",
-                            &format!("Version {}", env!("CARGO_PKG_VERSION")),
-                            "Copy version information",
-                            true,
-                            false,
+                    egui::ScrollArea::vertical()
+                        .scroll_bar_visibility(
+                            egui::scroll_area::ScrollBarVisibility::AlwaysVisible,
                         )
-                        .clicked()
-                        {
-                            ui.ctx().copy_text(
-                                concat!("ThermalPrint ", env!("CARGO_PKG_VERSION")).into(),
-                            );
-                        }
-                    });
-                    ui.add_space(8.);
-                    Self::section_frame(ui).show(ui, |ui| {
-                        ui.set_width(ui.available_width());
-                        crate::help::external_link(
-                            ui,
-                            "Project & source code",
-                            env!("CARGO_PKG_REPOSITORY"),
-                        );
-                        crate::help::external_link(
-                            ui,
-                            "Report an issue",
-                            concat!(env!("CARGO_PKG_REPOSITORY"), "/issues"),
-                        );
-                        ui.separator();
-                        if crate::designer_ui::icon_action(
-                            ui,
-                            "New document",
-                            "MIT License",
-                            "Read the full MIT license",
-                            true,
-                            false,
-                        )
-                        .clicked()
-                        {
-                            self.license_open = true;
-                        }
-                        ui.label(
-                            RichText::new("Free to use, modify, and share")
-                                .small()
-                                .weak(),
-                        );
-                    });
-                    ui.add_space(8.);
-                    ui.vertical_centered(|ui| {
-                        ui.label(
-                            RichText::new(concat!("© 2026 ", env!("CARGO_PKG_AUTHORS")))
-                                .small()
-                                .weak(),
-                        );
-                    });
+                        .max_height((ctx.content_rect().height() - 160.).max(160.))
+                        .show(ui, |ui| {
+                            if about::content(ui, &icon) {
+                                self.license_open = true;
+                            }
+                        });
                 });
             if response.should_close() && !self.license_open {
                 self.about_open = false;

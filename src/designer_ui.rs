@@ -29,6 +29,8 @@ pub struct Designer {
     clipboard: Vec<DesignObject>,
     undo: Vec<LabelDocument>,
     redo: Vec<LabelDocument>,
+    pub focus_canvas: bool,
+    show_properties: bool,
     pub grid: bool,
     pub snap: bool,
     pub raw_zpl: bool,
@@ -60,6 +62,8 @@ impl Designer {
             clipboard: vec![],
             undo: vec![],
             redo: vec![],
+            focus_canvas: false,
+            show_properties: true,
             grid: false,
             snap: true,
             raw_zpl: false,
@@ -359,7 +363,9 @@ impl Designer {
         }
     }
     fn shortcut(&mut self, ctx: &egui::Context) {
-        if ctx.egui_wants_keyboard_input() {
+        if ctx.egui_wants_keyboard_input()
+            || ctx.memory(|memory| memory.top_modal_layer().is_some())
+        {
             return;
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z)) {
@@ -391,31 +397,66 @@ impl Designer {
         self.shortcut(&ctx);
         egui::Panel::top("designer-toolbar").show(root, |ui| {
             ui.horizontal_wrapped(|ui| {
-                ui.heading("Label Designer");
-                ui.separator();
-                if icon_action(ui, "New document", "New", "Create a blank label", true, false).clicked() {
-                    self.checkpoint();
-                    self.doc = LabelDocument::blank(101.6, 152.4);
-                    self.path = None;
-                    self.selected.clear();
-                    self.changed();
-                }
-                if icon_action(ui, "Import label", "Open…", "Open a saved label design", true, false).clicked() {
+                ui.menu_button("File", |ui| {
+                    if ui.button("New label").clicked() {
+                        self.checkpoint();
+                        self.doc = LabelDocument::blank(101.6, 152.4);
+                        self.path = None;
+                        self.selected.clear();
+                        self.changed();
+                        ui.close();
+                    }
+                    if ui.button("Save as…").clicked() {
+                        self.save(true);
+                        ui.close();
+                    }
+                });
+                if icon_action(
+                    ui,
+                    "Import label",
+                    "Open",
+                    "Open a saved label design",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
                     self.open();
                 }
-                if icon_action(ui, "Save document", "Save", "Save design (Ctrl+S)", true, false).clicked() {
+                if icon_action(
+                    ui,
+                    "Save document",
+                    "Save",
+                    "Save design (Ctrl+S)",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
                     self.save(false);
                 }
-                if icon_action(ui, "Save as", "Save As…", "Save a copy of this design", true, false).clicked() {
-                    self.save(true);
-                }
-                if icon_action(ui, "Undo", "", "Undo (Ctrl+Z)", !self.undo.is_empty(), false)
-                    .clicked()
+                ui.separator();
+                if icon_action(
+                    ui,
+                    "Undo",
+                    "",
+                    "Undo (Ctrl+Z)",
+                    !self.undo.is_empty(),
+                    false,
+                )
+                .clicked()
                 {
                     self.undo();
                 }
-                if icon_action(ui, "Redo", "", "Redo (Ctrl+Y)", !self.redo.is_empty(), false)
-                    .clicked()
+                if icon_action(
+                    ui,
+                    "Redo",
+                    "",
+                    "Redo (Ctrl+Y)",
+                    !self.redo.is_empty(),
+                    false,
+                )
+                .clicked()
                 {
                     self.redo();
                 }
@@ -425,22 +466,58 @@ impl Designer {
                 if icon_action(ui, "Zoom in", "", "Zoom in", true, false).clicked() {
                     self.zoom = (self.zoom * 1.25).min(5.);
                 }
-                if icon_action(ui, "Fit preview", "", "Fit label to canvas and reset panning", true, false).clicked() {
+                if icon_action(
+                    ui,
+                    "Fit preview",
+                    "",
+                    "Fit label to canvas and reset panning",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
                     self.zoom = 1.;
                     self.pan = Vec2::ZERO;
                 }
-                if icon_action(ui, "Grid", "Grid", "Show canvas grid", true, self.grid).clicked() { self.grid = !self.grid; }
-                if icon_action(ui, "Snap", "Snap", "Snap objects to the grid when moving or resizing", true, self.snap).clicked() { self.snap = !self.snap; }
-                if icon_action(ui, "Export document", "PDF", "Export label as PDF", true, false).clicked() {
-                    self.export("pdf", settings.dpi);
+                ui.menu_button("View", |ui| {
+                    ui.checkbox(&mut self.grid, "Show grid");
+                    ui.checkbox(&mut self.snap, "Snap to grid");
+                    ui.checkbox(&mut self.show_properties, "Properties panel");
+                    ui.checkbox(&mut self.focus_canvas, "Focus canvas");
+                });
+                ui.menu_button("Export", |ui| {
+                    for (name, format) in [
+                        ("PDF document", "pdf"),
+                        ("PNG image", "png"),
+                        ("SVG vector", "svg"),
+                        ("ZPL label", "zpl"),
+                    ] {
+                        if ui.button(name).clicked() {
+                            self.export(format, settings.dpi);
+                            ui.close();
+                        }
+                    }
+                    ui.separator();
+                    ui.checkbox(&mut self.raw_zpl, "Print using raw ZPL")
+                        .on_hover_text("Requires a ZPL-compatible printer and raw CUPS queue.");
+                });
+                if ui
+                    .selectable_label(self.focus_canvas, "Focus")
+                    .on_hover_text("Hide navigation and properties to expand the canvas")
+                    .clicked()
+                {
+                    self.focus_canvas = !self.focus_canvas;
                 }
-                if icon_action(ui, "Add image / logo...", "PNG", "Export label as PNG image", true, false).clicked() {
-                    self.export("png", settings.dpi);
-                }
-                if icon_action(ui, "Export document", "SVG", "Export label as SVG vector image", true, false).clicked(){self.export("svg",settings.dpi);}
-                if icon_action(ui, "Export document", "ZPL", "Export label as Zebra Programming Language", true, false).clicked(){self.export("zpl",settings.dpi);}
-                if icon_action(ui, "Export document", "Raw ZPL", "Use only with a ZPL-compatible raw CUPS queue; driver capability is not automatic.", true, self.raw_zpl).clicked() { self.raw_zpl = !self.raw_zpl; }
-                if icon_action(ui, "Print device", "Print", "Print label using the selected printer", true, false).clicked() {
+                if icon_action(
+                    ui,
+                    "Print device",
+                    "Print",
+                    "Print label using the selected printer",
+                    true,
+                    true,
+                )
+                .clicked()
+                {
                     self.print(settings, printers);
                 }
             });
@@ -452,12 +529,15 @@ impl Designer {
             .show(root, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| self.elements(ui));
             });
-        egui::Panel::right("designer-inspector")
-            .default_size(265.)
-            .size_range(240.0..=340.0)
-            .show(root, |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| self.inspector(ui));
-            });
+        if self.show_properties && !self.focus_canvas {
+            egui::Panel::right("designer-inspector")
+                .default_size(265.)
+                .size_range(260.0..=420.0)
+                .resizable(true)
+                .show(root, |ui| {
+                    egui::ScrollArea::vertical().show(ui, |ui| self.inspector(ui));
+                });
+        }
         egui::Panel::bottom("designer-status").show(root, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.label(format!(
@@ -618,28 +698,66 @@ impl Designer {
     fn inspector(&mut self, ui: &mut egui::Ui) {
         ui.heading("Properties");
         let before = self.doc.clone();
-        ui.label("Label");
-        ui.text_edit_singleline(&mut self.doc.title);
-        ui.horizontal(|ui| {
-            ui.label("Width");
-            ui.add(
-                egui::DragValue::new(&mut self.doc.width_mm)
-                    .range(1.0..=2000.0)
-                    .speed(0.2)
-                    .suffix(" mm"),
-            );
-            ui.label("Height");
-            ui.add(
-                egui::DragValue::new(&mut self.doc.height_mm)
-                    .range(1.0..=2000.0)
-                    .speed(0.2)
-                    .suffix(" mm"),
-            );
-        });
-        ui.horizontal(|ui| {
-            ui.label("Serial variable");
-            ui.add(egui::DragValue::new(&mut self.doc.serial_number));
-        });
+        let selected_name = self
+            .selected
+            .first()
+            .and_then(|id| self.doc.objects.iter().find(|object| object.id == *id))
+            .map(|object| format!("{} #{}", object.label(), object.id))
+            .unwrap_or_else(|| "Select an object".into());
+        ui.label("Object");
+        egui::ComboBox::from_id_salt("designer-object-picker")
+            .selected_text(selected_name)
+            .show_ui(ui, |ui| {
+                if ui
+                    .selectable_label(self.selected.is_empty(), "Label setup (no selection)")
+                    .clicked()
+                {
+                    self.selected.clear();
+                }
+                for object in &self.doc.objects {
+                    if ui
+                        .selectable_label(
+                            self.selected.contains(&object.id),
+                            format!("{} #{}", object.label(), object.id),
+                        )
+                        .clicked()
+                    {
+                        self.selected = vec![object.id];
+                    }
+                }
+            })
+            .response
+            .accessible_name("Select label object");
+        egui::CollapsingHeader::new("Label setup")
+            .default_open(self.selected.is_empty())
+            .show(ui, |ui| {
+                let label = ui.label("Label name");
+                ui.text_edit_singleline(&mut self.doc.title)
+                    .labelled_by(label.id);
+                ui.horizontal(|ui| {
+                    ui.label("Width");
+                    ui.add(
+                        egui::DragValue::new(&mut self.doc.width_mm)
+                            .range(1.0..=2000.0)
+                            .speed(0.2)
+                            .suffix(" mm"),
+                    )
+                    .accessible_name("Label width in millimeters");
+                    ui.label("Height");
+                    ui.add(
+                        egui::DragValue::new(&mut self.doc.height_mm)
+                            .range(1.0..=2000.0)
+                            .speed(0.2)
+                            .suffix(" mm"),
+                    )
+                    .accessible_name("Label height in millimeters");
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Serial variable");
+                    ui.add(egui::DragValue::new(&mut self.doc.serial_number))
+                        .accessible_name("Serial variable");
+                });
+            });
         ui.separator();
         if self.selected.len() > 1 {
             ui.label(format!("{} objects selected", self.selected.len()));
@@ -673,9 +791,11 @@ impl Designer {
         ui.heading(format!("{} #{}", o.label(), id));
         ui.horizontal(|ui| {
             ui.label("X");
-            ui.add(egui::DragValue::new(&mut o.x_mm).speed(0.1).suffix(" mm"));
+            ui.add(egui::DragValue::new(&mut o.x_mm).speed(0.1).suffix(" mm"))
+                .accessible_name("Object horizontal position in millimeters");
             ui.label("Y");
-            ui.add(egui::DragValue::new(&mut o.y_mm).speed(0.1).suffix(" mm"));
+            ui.add(egui::DragValue::new(&mut o.y_mm).speed(0.1).suffix(" mm"))
+                .accessible_name("Object vertical position in millimeters");
         });
         ui.horizontal(|ui| {
             ui.label("W");
@@ -684,14 +804,16 @@ impl Designer {
                     .range(1.0..=2000.0)
                     .speed(0.1)
                     .suffix(" mm"),
-            );
+            )
+            .accessible_name("Object width in millimeters");
             ui.label("H");
             ui.add(
                 egui::DragValue::new(&mut o.height_mm)
                     .range(1.0..=2000.0)
                     .speed(0.1)
                     .suffix(" mm"),
-            );
+            )
+            .accessible_name("Object height in millimeters");
         });
         egui::ComboBox::from_id_salt("design-rotate")
             .selected_text(format!("Rotation {}°", o.rotation))
@@ -708,12 +830,14 @@ impl Designer {
                 align,
             } => {
                 ui.label("Text · ${date} and ${serial} are dynamic");
-                ui.add(egui::TextEdit::multiline(text).desired_rows(6));
+                ui.add(egui::TextEdit::multiline(text).desired_rows(6))
+                    .accessible_name("Object text");
                 ui.add(
                     egui::DragValue::new(font_pt)
                         .range(3.0..=300.0)
                         .suffix(" pt"),
-                );
+                )
+                .accessible_name("Font size in points");
                 ui.checkbox(bold, "Bold");
                 ui.horizontal(|ui| {
                     ui.selectable_value(align, TextAlign::Left, "Left");
@@ -727,7 +851,8 @@ impl Designer {
                 show_text,
             } => {
                 ui.label("Enter your real product code or reference");
-                ui.text_edit_singleline(data);
+                ui.text_edit_singleline(data)
+                    .accessible_name("Barcode or QR code content");
                 egui::ComboBox::from_id_salt("barcode-kind")
                     .selected_text(match kind {
                         BarcodeKind::Code128 => "Code 128", BarcodeKind::Code39 => "Code 39",
@@ -754,7 +879,8 @@ impl Designer {
             Element::Qr { data } => {
                 ui.label("QR content")
                     .on_hover_text(crate::help::explanation("QR"));
-                ui.add(egui::TextEdit::multiline(data).desired_rows(4));
+                ui.add(egui::TextEdit::multiline(data).desired_rows(4))
+                    .accessible_name("QR code content");
             }
             Element::Shape {
                 kind,
@@ -785,7 +911,8 @@ impl Designer {
                     egui::DragValue::new(stroke_mm)
                         .range(0.05..=20.)
                         .suffix(" mm"),
-                );
+                )
+                .accessible_name("Shape stroke width in millimeters");
                 ui.checkbox(filled, "Filled");
             }
             Element::Image { .. } => {
@@ -849,8 +976,13 @@ impl Designer {
         }
     }
     fn canvas(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Canvas");
-        ui.label(RichText::new("Select and drag objects · drag the lower-right handle to resize · Shift-click for multiple selection").small().weak());
+        ui.label(
+            RichText::new(
+                "Drag to move · corner handle to resize · Shift-click to select multiple",
+            )
+            .small()
+            .weak(),
+        );
         let Some(tex) = self.texture.clone() else {
             ui.spinner();
             return;
@@ -869,8 +1001,11 @@ impl Designer {
                     Sense::hover(),
                 );
                 let rect = Rect::from_center_size(outer.center() + self.pan, size);
-                ui.painter()
-                    .rect_filled(rect.expand(6.), 8., Color32::from_gray(110));
+                ui.painter().rect_filled(
+                    rect.expand(6.),
+                    8.,
+                    ui.visuals().widgets.noninteractive.bg_stroke.color,
+                );
                 ui.painter().image(
                     tex.id(),
                     rect,
@@ -1139,6 +1274,15 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
                 (2., 12.),
             ]);
             painter.circle_stroke(point(12., 12.), 3., stroke);
+        }
+        "Collapse navigation" | "Expand navigation" => {
+            outline(3., 4., 18., 16., 2.);
+            path(&[(9., 4.), (9., 20.)]);
+            if label == "Collapse navigation" {
+                path(&[(16., 9.), (13., 12.), (16., 15.)]);
+            } else {
+                path(&[(13., 9.), (16., 12.), (13., 15.)]);
+            }
         }
         "Previous" | "Next" | "Move up" | "Move down" => {
             let points = match label {
