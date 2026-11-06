@@ -1710,120 +1710,68 @@ impl eframe::App for ThermalPrint {
                             }
                         });
                     });
-                    ui.add_space(10.);
-                    egui::ScrollArea::vertical()
-                        .max_height((ctx.content_rect().height() - 140.).max(200.))
-                        .show(ui, |ui| {
-                            ui.vertical_centered(|ui| {
-                                ui.add_space(8.);
-                                ui.add(egui::Image::new(&icon).fit_to_exact_size(Vec2::splat(72.)));
-                                ui.add_space(6.);
-                                ui.label(RichText::new("ThermalPrint").size(30.).strong());
-                                ui.label(
-                                    RichText::new("Design and prepare thermal labels for Linux.")
-                                        .weak(),
-                                );
-                                if crate::designer_ui::icon_action(
-                                    ui,
-                                    "Duplicate",
-                                    &format!("Version {}", env!("CARGO_PKG_VERSION")),
-                                    "Copy version information",
-                                    true,
-                                    false,
-                                )
-                                .clicked()
-                                {
-                                    ui.ctx().copy_text(
-                                        concat!("ThermalPrint ", env!("CARGO_PKG_VERSION")).into(),
-                                    );
-                                }
-                                ui.add_space(10.);
-                                ui.horizontal_wrapped(|ui| {
-                                    for text in ["Thermal labels", "Linux app", "Open source"] {
-                                        egui::Frame::group(ui.style()).corner_radius(10).show(
-                                            ui,
-                                            |ui| {
-                                                ui.label(RichText::new(text).small());
-                                            },
-                                        );
-                                    }
-                                });
-                            });
-                            ui.add_space(16.);
-                            ui.label(RichText::new("Explore ThermalPrint").strong());
-                            Self::section_frame(ui).show(ui, |ui| {
-                                ui.set_width(ui.available_width());
-                                crate::help::external_link(
-                                    ui,
-                                    "Project & source code",
-                                    env!("CARGO_PKG_REPOSITORY"),
-                                );
-                                ui.label(
-                                    RichText::new(
-                                        "Documentation, releases, and the code behind ThermalPrint",
-                                    )
-                                    .small()
-                                    .weak(),
-                                );
-                                ui.separator();
-                                crate::help::external_link(
-                                    ui,
-                                    "Report an issue",
-                                    concat!(env!("CARGO_PKG_REPOSITORY"), "/issues"),
-                                );
-                                ui.label(
-                                    RichText::new("Share a bug or suggest an improvement")
-                                        .small()
-                                        .weak(),
-                                );
-                            });
-                            ui.add_space(12.);
-                            ui.label(RichText::new("Credits and license").strong());
-                            Self::section_frame(ui).show(ui, |ui| {
-                                ui.set_width(ui.available_width());
-                                ui.label(RichText::new("Created by").small().weak());
-                                ui.label(env!("CARGO_PKG_AUTHORS"));
-                                ui.separator();
-                                if crate::designer_ui::icon_action(
-                                    ui,
-                                    "New document",
-                                    "MIT License",
-                                    "Read the full MIT license",
-                                    true,
-                                    false,
-                                )
-                                .clicked()
-                                {
-                                    self.license_open = true;
-                                }
-                                ui.label(
-                                    RichText::new("Free to use, modify, and share")
-                                        .small()
-                                        .weak(),
-                                );
-                            });
-                            ui.add_space(12.);
-                            ui.collapsing("More by Alexis", |ui| {
-                                crate::help::external_link(
-                                    ui,
-                                    "Voltkit",
-                                    "https://github.com/arios4k/voltkit",
-                                );
-                                crate::help::external_link(
-                                    ui,
-                                    "Battery Health Center",
-                                    "https://github.com/arios4k/battery-health-center",
-                                );
-                            });
-                            ui.add_space(12.);
-                            ui.vertical_centered(|ui| {
-                                ui.label(
-                                    RichText::new(concat!("© 2026 ", env!("CARGO_PKG_AUTHORS")))
-                                        .small()
-                                        .weak(),
-                                );
-                            });
-                        });
+                    ui.add_space(8.);
+                    ui.vertical_centered(|ui| {
+                        ui.add(egui::Image::new(&icon).fit_to_exact_size(Vec2::splat(64.)));
+                        ui.add_space(4.);
+                        ui.label(RichText::new("ThermalPrint").size(30.).strong());
+                        ui.label(RichText::new(env!("CARGO_PKG_AUTHORS")).weak());
+                        ui.label("Design and prepare thermal labels for Linux.");
+                        if crate::designer_ui::icon_action(
+                            ui,
+                            "Duplicate",
+                            &format!("Version {}", env!("CARGO_PKG_VERSION")),
+                            "Copy version information",
+                            true,
+                            false,
+                        )
+                        .clicked()
+                        {
+                            ui.ctx().copy_text(
+                                concat!("ThermalPrint ", env!("CARGO_PKG_VERSION")).into(),
+                            );
+                        }
+                    });
+                    ui.add_space(8.);
+                    Self::section_frame(ui).show(ui, |ui| {
+                        ui.set_width(ui.available_width());
+                        crate::help::external_link(
+                            ui,
+                            "Project & source code",
+                            env!("CARGO_PKG_REPOSITORY"),
+                        );
+                        crate::help::external_link(
+                            ui,
+                            "Report an issue",
+                            concat!(env!("CARGO_PKG_REPOSITORY"), "/issues"),
+                        );
+                        ui.separator();
+                        if crate::designer_ui::icon_action(
+                            ui,
+                            "New document",
+                            "MIT License",
+                            "Read the full MIT license",
+                            true,
+                            false,
+                        )
+                        .clicked()
+                        {
+                            self.license_open = true;
+                        }
+                        ui.label(
+                            RichText::new("Free to use, modify, and share")
+                                .small()
+                                .weak(),
+                        );
+                    });
+                    ui.add_space(8.);
+                    ui.vertical_centered(|ui| {
+                        ui.label(
+                            RichText::new(concat!("© 2026 ", env!("CARGO_PKG_AUTHORS")))
+                                .small()
+                                .weak(),
+                        );
+                    });
                 });
             if response.should_close() && !self.license_open {
                 self.about_open = false;
