@@ -91,7 +91,7 @@ jobs:
           reprepro -b apt-private includedeb stable "source/target/debian/thermalprint_${PACKAGE_VERSION}-1_amd64.deb"
           gpg --batch --armor --export "$APT_GPG_FINGERPRINT" > apt-site/key.asc
           touch apt-site/.nojekyll
-          printf '%s\n' '<!doctype html><title>ThermalPrint APT repository</title><h1>ThermalPrint APT repository</h1><p>See <a href="https://github.com/arios4k/thermalprint">installation instructions</a>.</p>' > apt-site/index.html
+          cp source/docs/apt/index.html apt-site/index.html
           git -C apt-site config user.name github-actions[bot]
           git -C apt-site config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git -C apt-site add -A

@@ -1,0 +1,56 @@
+name: Publish APT landing page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/apt/**'
+      - '.github/workflows/apt-page.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: thermalprint-apt-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: source
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: apt-site
+      - name: Update landing page and preserve signed repository
+        run: |
+          set -eu
+          test -s apt-site/dists/stable/InRelease
+          test -s apt-site/key.asc
+          cp source/docs/apt/index.html apt-site/index.html
+          git -C apt-site config user.name 'github-actions[bot]'
+          git -C apt-site config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C apt-site add index.html
+          if ! git -C apt-site diff --cached --quiet; then
+            git -C apt-site commit -m "Update ThermalPrint APT landing page"
+            git -C apt-site push origin HEAD:gh-pages
+          fi
+      - uses: actions/configure-pages@v5
+      - name: Stage public APT files
+        run: |
+          mkdir apt-public
+          cp -r apt-site/dists apt-site/pool apt-site/key.asc apt-site/index.html apt-site/.nojekyll apt-public/
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: apt-public
+      - uses: actions/deploy-pages@v4
+        id: deployment

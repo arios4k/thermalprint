@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Install ThermalPrint on Debian, Ubuntu and Fedora. Official signed APT repository and Fedora Copr installation instructions.">
+<title>ThermalPrint APT Repository</title>
+<style>
+  :root { --bg: #fafafa; --fg: #1f2328; --muted: #59636e; --card: #fff; --border: #d1d9e0; --accent: #5b3fd6; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1117; --fg: #e6edf3; --muted: #9198a1; --card: #161b22; --border: #30363d; --accent: #a78bfa; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1 { margin: 0 0 4px; font-size: 2rem; }
+  h2 { margin-top: 2rem; font-size: 1.15rem; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  pre { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px;
+        overflow-x: auto; font: 14px/1.5 ui-monospace, monospace; }
+  code { font-family: ui-monospace, monospace; }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); font-size: 0.9rem; }
+  .langs { float: right; font-size: 0.9rem; }
+
+  h1 { display: flex; align-items: center; gap: 12px; overflow-wrap: anywhere; }
+  .app-icon { width: 44px; height: 44px; flex: none; }
+  pre { max-width: 100%; box-sizing: border-box; white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main>
+  <h1><svg class="app-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#23d3c4"/>
+      <stop offset="0.48" stop-color="#3187e7"/>
+      <stop offset="1" stop-color="#7747db"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ecf8ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#102451" flood-opacity=".33"/>
+    </filter>
+  </defs>
+  <rect x="5" y="5" width="246" height="246" rx="58" fill="#17265a"/>
+  <rect x="12" y="12" width="232" height="232" rx="52" fill="url(#sky)"/>
+  <circle cx="207" cy="53" r="24" fill="#ffb44d"/>
+  <circle cx="207" cy="53" r="12" fill="#ffdc7d"/>
+  <path d="M30 176c17 19 35 29 57 32" fill="none" stroke="#91f2bc" stroke-width="10" stroke-linecap="round" opacity=".85"/>
+  <g filter="url(#shadow)">
+    <rect x="35" y="55" width="176" height="152" rx="25" fill="#122c65"/>
+    <rect x="43" y="63" width="160" height="128" rx="19" fill="#294977"/>
+    <path d="M56 92h134" stroke="#72e8d0" stroke-width="12" stroke-linecap="round"/>
+    <rect x="53" y="109" width="140" height="28" rx="8" fill="#102b57"/>
+    <rect x="68" y="104" width="110" height="130" rx="13" fill="url(#paper)"/>
+    <path d="M81 125h45" stroke="#34c4af" stroke-width="10" stroke-linecap="round"/>
+    <path d="M81 143h72" stroke="#9cb6c8" stroke-width="7" stroke-linecap="round"/>
+    <path d="M81 157h55" stroke="#9cb6c8" stroke-width="7" stroke-linecap="round"/>
+    <path d="M82 180v31m8-31v31m7-31v31m11-31v31m7-31v31m11-31v31m7-31v31m10-31v31m7-31v31m9-31v31" stroke="#1b315d" stroke-width="5"/>
+  </g>
+  <circle cx="181" cy="87" r="14" fill="#ff6b6b"/>
+</svg><span>ThermalPrint</span></h1>
+  <p class="lead">Design, prepare and print thermal labels on Linux. Import shipping labels,
+  crop and arrange pages, or create custom labels with real barcodes and QR codes.</p>
+
+  <h2>Install</h2>
+  <p>For Debian, Ubuntu and derivatives on 64-bit Intel/AMD (amd64), add the signed APT repository:</p>
+  <pre><code>sudo apt update
+sudo apt install curl
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://arios4k.github.io/thermalprint/key.asc \
+  | sudo tee /etc/apt/keyrings/thermalprint.asc &gt;/dev/null
+
+echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/thermalprint.asc] https://arios4k.github.io/thermalprint/ stable main' \
+  | sudo tee /etc/apt/sources.list.d/thermalprint.list &gt;/dev/null
+
+sudo apt update
+sudo apt install thermalprint</code></pre>
+  <p>Updates arrive with <code>sudo apt upgrade</code>.</p>
+
+  <h2>Install on Fedora</h2>
+  <p>For Fedora 44 and 45 on 64-bit Intel/AMD, from the community
+  <a href="https://copr.fedorainfracloud.org/coprs/arios/thermalprint/">Copr repository</a>:</p>
+  <pre><code>sudo dnf install dnf5-plugins
+sudo dnf copr enable arios/thermalprint
+sudo dnf install thermalprint</code></pre>
+  <p class="muted">Copr is separate from Fedora’s official package repositories.</p>
+
+  <h2>Set up</h2>
+  <p>Configure your thermal printer in your desktop’s printer settings, then open
+  <strong>ThermalPrint</strong> from your applications menu. Choose a template, create a custom
+  label, or import an existing shipping label. Check the paper size and print preview before printing.</p>
+  <p>Packages include CUPS client tools and Poppler PDF utilities. Documents are processed locally on your computer.</p>
+
+  <h2>Uninstall</h2>
+  <p>Debian / Ubuntu:</p>
+  <pre><code>sudo apt remove thermalprint
+sudo rm /etc/apt/sources.list.d/thermalprint.list /etc/apt/keyrings/thermalprint.asc</code></pre>
+  <p>Fedora:</p>
+  <pre><code>sudo dnf remove thermalprint
+sudo dnf copr disable arios/thermalprint</code></pre>
+
+  <p class="muted">Source, documentation and issues:
+  <a href="https://github.com/arios4k/thermalprint">github.com/arios4k/thermalprint</a>.
+  Standalone packages: <a href="https://github.com/arios4k/thermalprint/releases/latest">latest release</a>.
+  The APT repository is signed; the public key is <a href="key.asc">key.asc</a>.</p>
+  <p class="muted">Created by Alexis Rios-Negron · MIT License</p>
+</main>
+</body>
+</html>
