@@ -62,7 +62,6 @@ struct Drag {
 pub struct ThermalPrint {
     settings: Settings,
     area: Area,
-    navigation_collapsed: bool,
     designer: Designer,
     page: Option<Arc<Page>>,
     detection: Option<Detection>,
@@ -164,7 +163,6 @@ impl ThermalPrint {
         let mut app = Self {
             settings,
             area: Area::Home,
-            navigation_collapsed: false,
             designer: Designer::new(),
             page: None,
             detection: None,
@@ -1645,12 +1643,20 @@ impl eframe::App for ThermalPrint {
         });
         if self.area != Area::Designer || !self.designer.focus_canvas {
             egui::Panel::left("workspace-navigation")
-                .default_size(if self.navigation_collapsed { 60. } else { 200. })
-                .exact_size(if self.navigation_collapsed { 60. } else { 200. })
+                .default_size(if self.settings.navigation_collapsed {
+                    60.
+                } else {
+                    200.
+                })
+                .exact_size(if self.settings.navigation_collapsed {
+                    60.
+                } else {
+                    200.
+                })
                 .resizable(false)
                 .show(ui, |ui| {
                     ui.add_space(12.);
-                    let action = if self.navigation_collapsed {
+                    let action = if self.settings.navigation_collapsed {
                         "Expand navigation"
                     } else {
                         "Collapse navigation"
@@ -1688,7 +1694,8 @@ impl eframe::App for ThermalPrint {
                         action,
                     );
                     if toggle.clicked() {
-                        self.navigation_collapsed = !self.navigation_collapsed;
+                        self.settings.navigation_collapsed = !self.settings.navigation_collapsed;
+                        self.persist();
                     }
                     ui.add_space(8.);
                     ui.vertical(|ui| {
@@ -1722,7 +1729,11 @@ impl eframe::App for ThermalPrint {
                             if navigation::item(
                                 ui,
                                 icon,
-                                if self.navigation_collapsed { "" } else { label },
+                                if self.settings.navigation_collapsed {
+                                    ""
+                                } else {
+                                    label
+                                },
                                 tip,
                                 self.area == area,
                             )

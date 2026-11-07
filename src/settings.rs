@@ -41,6 +41,8 @@ pub struct Settings {
     pub theme: ThemeChoice,
     pub recent: Vec<PathBuf>,
     pub print_history: Vec<String>,
+    /// Whether the navigation sidebar is collapsed to icons.
+    pub navigation_collapsed: bool,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -61,6 +63,7 @@ impl Default for Settings {
             theme: ThemeChoice::System,
             recent: vec![],
             print_history: vec![],
+            navigation_collapsed: false,
         }
     }
 }
@@ -110,4 +113,27 @@ impl Settings {
 }
 fn finite(v: f32, default: f32) -> f32 {
     if v.is_finite() { v } else { default }
+}
+
+#[cfg(test)]
+mod sidebar_tests {
+    use super::*;
+
+    #[test]
+    fn sidebar_state_defaults_to_expanded_and_round_trips() {
+        assert!(!Settings::default().navigation_collapsed);
+        // Preferences saved before this setting existed still load.
+        let old: Settings = serde_json::from_str(r#"{"copies": 2}"#).unwrap();
+        assert!(!old.navigation_collapsed);
+        let saved = serde_json::to_string(&Settings {
+            navigation_collapsed: true,
+            ..Settings::default()
+        })
+        .unwrap();
+        assert!(
+            serde_json::from_str::<Settings>(&saved)
+                .unwrap()
+                .navigation_collapsed
+        );
+    }
 }

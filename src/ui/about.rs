@@ -9,6 +9,15 @@ pub(super) struct AppIcons {
 
 impl AppIcons {
     pub(super) fn load(ctx: &egui::Context) -> Self {
+        // A bold family for the About title; the default UI font has no heavy weight.
+        ctx.add_font(egui::epaint::text::FontInsert::new(
+            "about-bold",
+            egui::FontData::from_static(include_bytes!("../../assets/fonts/DejaVuSans-Bold.ttf")),
+            vec![egui::epaint::text::InsertFontFamily {
+                family: bold_family(),
+                priority: egui::epaint::text::FontPriority::Highest,
+            }],
+        ));
         let texture = |name: &str, bytes: &[u8]| {
             let image = image::load_from_memory(bytes)
                 .expect("bundled app icon must decode")
@@ -33,6 +42,10 @@ impl AppIcons {
             ),
         }
     }
+}
+
+fn bold_family() -> egui::FontFamily {
+    egui::FontFamily::Name("about-bold".into())
 }
 
 pub(super) fn show(
@@ -67,29 +80,85 @@ pub(super) fn show(
     (response.should_close(), license, response.response.rect)
 }
 
+/// The accent color at a given opacity (unmultiplied, so it stays blue instead of darkening).
+fn tinted(color: Color32, alpha: f32) -> Color32 {
+    Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), (alpha * 255.) as u8)
+}
+
+/// Brand blue for the About tints; the theme's selection color is translucent, so its
+/// channels cannot be reused as a tint base.
+const ACCENT: Color32 = Color32::from_rgb(53, 132, 228);
+
+fn accent_text(dark: bool) -> Color32 {
+    if dark {
+        Color32::from_rgb(140, 185, 255)
+    } else {
+        Color32::from_rgb(28, 90, 190)
+    }
+}
+
 fn hero_details(ui: &mut egui::Ui) {
-    ui.label(RichText::new("ThermalPrint").size(28.).strong());
-    ui.label("Design and prepare thermal labels for Linux.");
+    let dark = ui.visuals().dark_mode;
+    ui.label(
+        RichText::new("ThermalPrint")
+            .font(egui::FontId::new(32., bold_family()))
+            .color(ui.visuals().strong_text_color()),
+    );
+    ui.label(RichText::new("Design and prepare thermal labels for Linux.").weak());
     let copied = ui
         .data_mut(|data| data.get_temp::<f64>(egui::Id::unique("about-version-copied")))
         .is_some_and(|time| ui.input(|input| input.time) - time < 2.);
-    if ui
-        .add(
-            egui::Button::new(
-                RichText::new(if copied {
-                    "Version copied".into()
-                } else {
-                    format!("Version {} · Copy", env!("CARGO_PKG_VERSION"))
-                })
-                .color(Color32::WHITE),
-            )
-            .fill(ui.visuals().selection.bg_fill)
-            .corner_radius(20),
-        )
-        .accessible_name("Copy ThermalPrint version information")
+    let label = if copied {
+        "Version copied".to_owned()
+    } else {
+        format!("Version {}", env!("CARGO_PKG_VERSION"))
+    };
+    // A flat, tinted pill with a copy icon, in the accent color.
+    let color = accent_text(dark);
+    let font = egui::TextStyle::Button.resolve(ui.style());
+    let galley = ui.painter().layout_no_wrap(label.clone(), font, color);
+    let size = Vec2::new(galley.size().x + 56., 30.);
+    let response = ui
+        .allocate_response(size, egui::Sense::click())
         .on_hover_text("Copy version information")
-        .clicked()
-    {
+        .on_hover_cursor(egui::CursorIcon::PointingHand);
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(
+            egui::Role::Button,
+            true,
+            "Copy ThermalPrint version information",
+        )
+    });
+    let tint = tinted(ACCENT, if dark { 0.30 } else { 0.14 });
+    let tint = if response.hovered() {
+        tinted(ACCENT, if dark { 0.45 } else { 0.22 })
+    } else {
+        tint
+    };
+    ui.painter().rect_filled(response.rect, 15., tint);
+    if response.has_focus() {
+        ui.painter().rect_stroke(
+            response.rect,
+            15.,
+            egui::Stroke::new(2., color),
+            egui::StrokeKind::Outside,
+        );
+    }
+    crate::designer_ui::paint_tool_icon(
+        ui.painter(),
+        egui::pos2(response.rect.left() + 22., response.rect.center().y),
+        color,
+        "Duplicate",
+    );
+    ui.painter().galley(
+        egui::pos2(
+            response.rect.left() + 38.,
+            response.rect.center().y - galley.size().y / 2.,
+        ),
+        galley,
+        color,
+    );
+    if response.clicked() {
         ui.ctx()
             .copy_text(concat!("ThermalPrint ", env!("CARGO_PKG_VERSION")).into());
         let time = ui.input(|input| input.time);
@@ -101,14 +170,50 @@ fn hero_details(ui: &mut egui::Ui) {
     }
 }
 
+/// A rounded card shape whose tint fades from top to bottom.
+fn gradient_card(
+    rect: egui::Rect,
+    radius: f32,
+    base: Color32,
+    top: f32,
+    bottom: f32,
+) -> egui::Shape {
+    let strips = rect.height().ceil() as usize;
+    let mut shapes = Vec::with_capacity(strips);
+    for i in 0..strips {
+        let y = i as f32;
+        let t = (y + 0.5) / rect.height();
+        let inset = |distance: f32| {
+            if distance >= radius {
+                0.
+            } else {
+                radius
+                    - (radius * radius - (radius - distance).powi(2))
+                        .max(0.)
+                        .sqrt()
+            }
+        };
+        let edge = inset(y + 0.5).max(inset(rect.height() - y - 0.5));
+        let color = tinted(base, top + (bottom - top) * t);
+        shapes.push(egui::Shape::rect_filled(
+            egui::Rect::from_min_max(
+                egui::pos2(rect.left() + edge, rect.top() + y),
+                egui::pos2(
+                    rect.right() - edge,
+                    (rect.top() + y + 1.).min(rect.bottom()),
+                ),
+            ),
+            0.,
+            color,
+        ));
+    }
+    egui::Shape::Vec(shapes)
+}
+
 fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle, apps: &AppIcons, compact: bool) -> bool {
     let dark = ui.visuals().dark_mode;
-    egui::Frame::new()
-        .fill(if dark {
-            Color32::from_rgb(29, 42, 65)
-        } else {
-            Color32::from_rgb(225, 234, 249)
-        })
+    let backdrop = ui.painter().add(egui::Shape::Noop);
+    let hero = egui::Frame::new()
         .corner_radius(14)
         .inner_margin(14)
         .show(ui, |ui| {
@@ -126,21 +231,10 @@ fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle, apps: &AppIcons, compa
                 });
             }
         });
-    ui.horizontal_wrapped(|ui| {
-        for text in ["Thermal labels", "Linux app", "Open source"] {
-            egui::Frame::new()
-                .fill(if dark {
-                    Color32::from_gray(48)
-                } else {
-                    Color32::from_rgb(232, 235, 240)
-                })
-                .corner_radius(8)
-                .inner_margin(6)
-                .show(ui, |ui| {
-                    ui.label(text);
-                });
-        }
-    });
+    let (top, bottom) = if dark { (0.30, 0.04) } else { (0.16, 0.02) };
+    let backdrop_shape = gradient_card(hero.response.rect, 14., ACCENT, top, bottom);
+    ui.painter().set(backdrop, backdrop_shape);
+    tags(ui, dark);
     let mut license = false;
     if compact {
         ui.columns(2, |columns| {
@@ -160,6 +254,66 @@ fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle, apps: &AppIcons, compa
         );
     });
     license
+}
+
+/// Equal-width tag chips with icons under the version, centered when they fit one row.
+fn tags(ui: &mut egui::Ui, dark: bool) {
+    const TAGS: [(&str, &str); 3] = [
+        ("Print device", "Thermal labels"),
+        ("System", "Linux app"),
+        ("External link", "Open source"),
+    ];
+    const ICON: f32 = 24.;
+    const PADDING: f32 = 12.;
+    let font = egui::TextStyle::Body.resolve(ui.style());
+    let text_width = TAGS
+        .iter()
+        .map(|(_, text)| {
+            ui.painter()
+                .layout_no_wrap((*text).into(), font.clone(), Color32::WHITE)
+                .size()
+                .x
+        })
+        .fold(0., f32::max);
+    let chip = Vec2::new(ICON + 4. + text_width + PADDING * 2., 36.);
+    let spacing = ui.spacing().item_spacing.x;
+    let total = chip.x * TAGS.len() as f32 + spacing * (TAGS.len() - 1) as f32;
+    let lead = ((ui.available_width() - total) / 2.).max(0.);
+    ui.horizontal_wrapped(|ui| {
+        // Narrow windows wrap to several rows, where the lead would unbalance them.
+        if lead > 0. {
+            ui.add_space(lead);
+        }
+        for (icon, text) in TAGS {
+            let (rect, response) = ui.allocate_exact_size(chip, egui::Sense::hover());
+            response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, true, text));
+            ui.painter().rect_filled(
+                rect,
+                8.,
+                if dark {
+                    Color32::from_gray(48)
+                } else {
+                    Color32::from_rgb(232, 235, 240)
+                },
+            );
+            let galley =
+                ui.painter()
+                    .layout_no_wrap(text.into(), font.clone(), ui.visuals().text_color());
+            let content = ICON + 4. + galley.size().x;
+            let left = rect.center().x - content / 2.;
+            crate::designer_ui::paint_tool_icon(
+                ui.painter(),
+                egui::pos2(left + ICON / 2., rect.center().y),
+                ui.visuals().text_color(),
+                icon,
+            );
+            ui.painter().galley(
+                egui::pos2(left + ICON + 4., rect.center().y - galley.size().y / 2.),
+                galley,
+                ui.visuals().text_color(),
+            );
+        }
+    });
 }
 
 fn project(ui: &mut egui::Ui) {
