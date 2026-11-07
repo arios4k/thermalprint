@@ -8,6 +8,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      - name: Verify desktop file associations
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shared-mime-info desktop-file-utils xdg-utils libfile-mimeinfo-perl
+          desktop-file-validate data/org.thermalprint.ThermalPrint.desktop
+          python3 -m unittest discover -s scripts -p test_desktop_integration.py
       - run: cargo fmt --check
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked

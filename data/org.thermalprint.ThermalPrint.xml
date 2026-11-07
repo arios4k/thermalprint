@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-thermalprint">
+    <comment>ThermalPrint label design</comment>
+    <sub-class-of type="application/json"/>
+    <icon name="org.thermalprint.ThermalPrint"/>
+    <glob pattern="*.thermalprint" weight="80"/>
+  </mime-type>
+</mime-info>

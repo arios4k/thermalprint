@@ -298,13 +298,63 @@ fn render_object(o: &DesignObject, dpi: u32, serial: u64) -> Result<RgbaImage> {
         } => draw_shape(&mut im, *kind, *stroke_mm, *filled, dpi),
         Element::Image { data_base64 } => draw_image(&mut im, data_base64)?,
     };
-    Ok(match o.rotation % 360 {
-        90 => imageops::rotate90(&im),
-        180 => imageops::rotate180(&im),
-        270 => imageops::rotate270(&im),
-        _ => im,
-    })
+    rotate_layer(im, o.rotation)
 }
+
+fn rotate_layer(im: RgbaImage, degrees: f32) -> Result<RgbaImage> {
+    let degrees = degrees.rem_euclid(360.);
+    match degrees {
+        0. => return Ok(im),
+        90. => return Ok(imageops::rotate90(&im)),
+        180. => return Ok(imageops::rotate180(&im)),
+        270. => return Ok(imageops::rotate270(&im)),
+        _ => {}
+    }
+    let (width, height) =
+        crate::design::rotated_size(im.width() as f32, im.height() as f32, degrees);
+    let (width, height) = (width.ceil() as u32, height.ceil() as u32);
+    if width as u64 * height as u64 > 36_000_000 {
+        bail!("Rotated object exceeds render limit");
+    }
+    let mut output = RgbaImage::new(width, height);
+    let (sin, cos) = degrees.to_radians().sin_cos();
+    for (x, y, target) in output.enumerate_pixels_mut() {
+        let dx = x as f32 + 0.5 - width as f32 / 2.;
+        let dy = y as f32 + 0.5 - height as f32 / 2.;
+        let sx = cos * dx + sin * dy + im.width() as f32 / 2. - 0.5;
+        let sy = -sin * dx + cos * dy + im.height() as f32 / 2. - 0.5;
+        let (ix, iy) = (sx.floor() as i32, sy.floor() as i32);
+        let (fx, fy) = (sx - ix as f32, sy - iy as f32);
+        // Interpolate premultiplied colors so transparent image edges do not acquire dark halos.
+        let mut alpha = 0.;
+        let mut colors = [0.; 3];
+        for (xx, yy, weight) in [
+            (ix, iy, (1. - fx) * (1. - fy)),
+            (ix + 1, iy, fx * (1. - fy)),
+            (ix, iy + 1, (1. - fx) * fy),
+            (ix + 1, iy + 1, fx * fy),
+        ] {
+            if xx >= 0 && yy >= 0 && xx < im.width() as i32 && yy < im.height() as i32 {
+                let pixel = im.get_pixel(xx as u32, yy as u32);
+                let a = pixel[3] as f32 * weight;
+                alpha += a;
+                for channel in 0..3 {
+                    colors[channel] += pixel[channel] as f32 * a;
+                }
+            }
+        }
+        if alpha > 0. {
+            *target = Rgba([
+                (colors[0] / alpha).round() as u8,
+                (colors[1] / alpha).round() as u8,
+                (colors[2] / alpha).round() as u8,
+                alpha.round() as u8,
+            ]);
+        }
+    }
+    Ok(output)
+}
+
 pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
     doc.validate()?;
     if ![203, 300, 600].contains(&dpi) {
@@ -321,16 +371,20 @@ pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
     for o in &doc.objects {
         let layer = render_object(o, dpi, doc.serial_number)
             .with_context(|| format!("{} #{}", o.label(), o.id))?;
-        let ox = dots(o.x_mm, dpi) as i64;
-        let oy = dots(o.y_mm, dpi) as i64;
-        if ox + layer.width() as i64 > w as i64 || oy + layer.height() as i64 > h as i64 {
+        let ox = (o.x_mm * dpi as f32 / 25.4).round() as i64;
+        let oy = (o.y_mm * dpi as f32 / 25.4).round() as i64;
+        if ox < 0
+            || oy < 0
+            || ox + layer.width() as i64 > w as i64
+            || oy + layer.height() as i64 > h as i64
+        {
             clipped = true;
             warnings.push(format!("{} #{} extends past paper edge", o.label(), o.id));
         }
         for (x, y, p) in layer.enumerate_pixels() {
             let px = ox + x as i64;
             let py = oy + y as i64;
-            if px >= w as i64 || py >= h as i64 {
+            if px < 0 || py < 0 || px >= w as i64 || py >= h as i64 {
                 continue;
             }
             let dest = image.get_pixel_mut(px as u32, py as u32);
@@ -379,5 +433,65 @@ mod tests {
             let result = render_label(&d, 203);
             assert!(result.is_ok(), "{}: {:?}", d.title, result.err());
         }
+    }
+}
+
+#[cfg(test)]
+mod rotation_tests {
+    use super::*;
+
+    #[test]
+    fn free_rotation_expands_bounds_and_preserves_alpha_colors() {
+        let source = RgbaImage::from_pixel(64, 24, Rgba([255, 0, 0, 255]));
+        let rotated = rotate_layer(source.clone(), 37.25).unwrap();
+        assert_eq!(rotated.dimensions(), (66, 58));
+        assert_eq!(rotated.get_pixel(0, 0)[3], 0);
+        assert!(rotated.get_pixel(33, 29)[3] > 250);
+        assert!(
+            rotated
+                .pixels()
+                .filter(|pixel| pixel[3] > 0)
+                .all(|pixel| pixel[0] == 255 && pixel[1] == 0 && pixel[2] == 0)
+        );
+        assert_eq!(
+            rotate_layer(source.clone(), 90.).unwrap(),
+            imageops::rotate90(&source)
+        );
+        assert_eq!(
+            rotate_layer(source.clone(), 270.).unwrap(),
+            imageops::rotate270(&source)
+        );
+    }
+
+    #[test]
+    fn rotated_objects_keep_their_center_and_report_left_edge_clipping() {
+        let mut doc = LabelDocument::blank(100., 100.);
+        doc.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 0.4,
+                filled: true,
+            },
+            30.,
+            35.,
+            30.,
+            10.,
+        );
+        doc.objects[0].rotate_to(37.5);
+        let result = render_label(&doc, 203).unwrap();
+        assert!(!result.clipped);
+        assert_eq!(
+            result.image.get_pixel(dots(45., 203), dots(40., 203)),
+            &Rgb([0, 0, 0])
+        );
+        doc.objects[0].x_mm = -5.;
+        let result = render_label(&doc, 203).unwrap();
+        assert!(result.clipped);
+        assert!(
+            result
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("paper edge"))
+        );
     }
 }

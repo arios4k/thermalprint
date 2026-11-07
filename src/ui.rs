@@ -1,4 +1,5 @@
 mod about;
+mod navigation;
 mod screenshots;
 mod window_chrome;
 use crate::{
@@ -529,6 +530,15 @@ impl ThermalPrint {
             }
         });
     }
+    fn open_path(&mut self, path: PathBuf) {
+        if design::is_design_path(&path) {
+            self.area = Area::Designer;
+            self.designer.request_open(path);
+        } else {
+            self.area = Area::Import;
+            self.append_files(vec![path]);
+        }
+    }
     fn home(&mut self, ui: &mut egui::Ui) {
         ui.vertical_centered(|ui| {
             ui.add_space(20.);
@@ -548,7 +558,7 @@ impl ThermalPrint {
             )
             .clicked()
             {
-                self.designer = Designer::new();
+                self.designer.request_new();
                 self.area = Area::Designer;
             }
             if Self::home_card(
@@ -574,8 +584,7 @@ impl ThermalPrint {
                     .on_hover_text(t.description)
                     .clicked()
                 {
-                    self.designer = Designer::new();
-                    self.designer.doc = design::from_template(i);
+                    self.designer.request_template(i);
                     self.area = Area::Designer;
                 }
             }
@@ -1490,6 +1499,12 @@ impl ThermalPrint {
     }
 }
 impl eframe::App for ThermalPrint {
+    fn logic(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+        if self.capture.is_none() {
+            self.designer.protect_window_close(ctx);
+        }
+    }
+
     fn raw_input_hook(&mut self, _: &egui::Context, input: &mut egui::RawInput) {
         if self.capture.is_some() {
             // Documentation capture is unattended; ignore incidental pointer/scroll input.
@@ -1507,8 +1522,7 @@ impl eframe::App for ThermalPrint {
         if !self.busy
             && let Some(path) = self.startup_file.take()
         {
-            self.area = Area::Import;
-            self.append_files(vec![path]);
+            self.open_path(path);
         }
         if !self.busy {
             let dropped = ctx.input(|i| {
@@ -1518,7 +1532,9 @@ impl eframe::App for ThermalPrint {
                     .map(|f| f.path().to_path_buf())
                     .collect::<Vec<_>>()
             });
-            if !dropped.is_empty() {
+            if dropped.len() == 1 && design::is_design_path(&dropped[0]) {
+                self.open_path(dropped[0].clone());
+            } else if !dropped.is_empty() {
                 self.area = Area::Import;
                 self.append_files(dropped);
             }
@@ -1625,8 +1641,8 @@ impl eframe::App for ThermalPrint {
         });
         if self.area != Area::Designer || !self.designer.focus_canvas {
             egui::Panel::left("workspace-navigation")
-                .default_size(if self.navigation_collapsed { 60. } else { 174. })
-                .exact_size(if self.navigation_collapsed { 60. } else { 174. })
+                .default_size(if self.navigation_collapsed { 60. } else { 200. })
+                .exact_size(if self.navigation_collapsed { 60. } else { 200. })
                 .resizable(false)
                 .show(ui, |ui| {
                     ui.add_space(12.);
@@ -1672,6 +1688,7 @@ impl eframe::App for ThermalPrint {
                     }
                     ui.add_space(8.);
                     ui.vertical(|ui| {
+                        ui.spacing_mut().item_spacing.y = 2.;
                         for (area, icon, label, tip) in [
                             (
                                 Area::Home,
@@ -1698,12 +1715,11 @@ impl eframe::App for ThermalPrint {
                                 "Configure printer, stock, and queue settings",
                             ),
                         ] {
-                            if crate::designer_ui::icon_action(
+                            if navigation::item(
                                 ui,
                                 icon,
                                 if self.navigation_collapsed { "" } else { label },
                                 tip,
-                                true,
                                 self.area == area,
                             )
                             .clicked()
@@ -1785,32 +1801,11 @@ impl eframe::App for ThermalPrint {
                 .show(&ctx, |ui| crate::help::glossary(ui, &mut self.terms_search));
         }
         if self.about_open {
-            let icon = self.icon_texture.clone();
-            let response =
-                egui::Modal::new(egui::Id::unique("thermalprint-about")).show(&ctx, |ui| {
-                    ui.set_width((ctx.content_rect().width() - 72.).clamp(260., 480.));
-                    ui.set_height((ctx.content_rect().height() - 100.).clamp(180., 680.));
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new("About ThermalPrint").strong());
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.button("Close").clicked() {
-                                ui.close();
-                            }
-                        });
-                    });
-                    ui.add_space(8.);
-                    egui::ScrollArea::vertical()
-                        .scroll_bar_visibility(
-                            egui::scroll_area::ScrollBarVisibility::AlwaysVisible,
-                        )
-                        .max_height((ctx.content_rect().height() - 160.).max(160.))
-                        .show(ui, |ui| {
-                            if about::content(ui, &icon) {
-                                self.license_open = true;
-                            }
-                        });
-                });
-            if response.should_close() && !self.license_open {
+            let (close, license, _) = about::show(&ctx, &self.icon_texture);
+            if license {
+                self.license_open = true;
+            }
+            if close && !self.license_open {
                 self.about_open = false;
             }
         }
@@ -1834,6 +1829,7 @@ impl eframe::App for ThermalPrint {
                 self.license_open = false;
             }
         }
+        self.designer.confirm_pending(&ctx);
         window_chrome::resize_edges(&ctx);
         self.save_selection();
         if self.dirty && !self.busy && self.drag.is_none() {

@@ -7,4 +7,4 @@ Terminal=false
 Icon=org.thermalprint.ThermalPrint
 StartupWMClass=org.thermalprint.ThermalPrint
 Categories=Graphics;Utility;
-MimeType=application/pdf;image/png;image/jpeg;image/tiff;image/bmp;image/webp;
+MimeType=application/x-thermalprint;application/pdf;image/png;image/jpeg;image/tiff;image/bmp;image/webp;

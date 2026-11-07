@@ -109,3 +109,20 @@ Other current limits:
 - The queue is held in memory for the current session. Recent paths and preferences persist, but the queue itself is not restored after closing the app.
 - There is no imported-barcode decoder, marketplace integration, or automatic download feature yet. Designer ZPL is raster based and requires a compatible raw queue.
 
+
+## Saved label files
+
+Installed packages register `.thermalprint` files as **ThermalPrint label designs**.
+Double-click a saved design to launch ThermalPrint directly in Label Designer.
+PDFs and images continue to open in Import & Convert. You can also drop a single
+`.thermalprint` file onto ThermalPrint to open it in the Designer.
+
+When a design has unsaved changes, closing the app, creating a new label,
+choosing a template, or opening another design offers **Save**, **Discard**, and
+**Cancel**. Cancelling or a failed save preserves the current design.
+
+Select an object in Label Designer to reveal its handles. Drag the round handle
+above it to rotate freely around its center; hold **Shift** to snap to 15° steps.
+The **Rotation** field accepts precise angles, including fractional degrees.
+The corner handle resizes along the rotated object's own axes. Rotation is
+included in saved designs, previews, printing, and exports.
