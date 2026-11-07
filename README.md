@@ -13,6 +13,7 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 [![Fedora RPM](https://github.com/arios4k/thermalprint/actions/workflows/release-rpm.yml/badge.svg)](https://github.com/arios4k/thermalprint/actions/workflows/release-rpm.yml)
 [![Install with APT](https://img.shields.io/badge/install-APT-ffb44d?logo=debian&logoColor=white)](#debian--ubuntu)
 [![Fedora Copr](https://img.shields.io/badge/Fedora-Copr-51a2da?logo=fedora&logoColor=white)](https://copr.fedorainfracloud.org/coprs/arios/thermalprint/)
+[![Snap Store](https://snapcraft.io/thermalprint/badge.svg)](https://snapcraft.io/thermalprint)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3187e7)](LICENSE)
 
 [Install on Fedora](#fedora) · [Install on Debian / Ubuntu](#debian--ubuntu) · [See the app](#screenshots) · [Download packages](https://github.com/arios4k/thermalprint/releases/latest)
@@ -70,7 +71,13 @@ Updates arrive through normal APT updates.
 
 ### Snap
 
-Tagged releases are published to the Snap Store automatically. To try a locally built package ([build instructions](docs/SNAP.md#build-and-inspect)):
+Install from the [Snap Store](https://snapcraft.io/thermalprint) (amd64). Tagged releases are published there automatically, and Snap updates itself:
+
+```sh
+sudo snap install thermalprint
+```
+
+To try a locally built package instead ([build instructions](docs/SNAP.md#build-and-inspect)):
 
 ```sh
 sudo snap install --dangerous target/snap/thermalprint_*_amd64.snap
