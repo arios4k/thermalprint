@@ -1,7 +1,45 @@
 //! Compact branded About content, matching the workspace palette.
 use eframe::egui::{self, Color32, RichText, Vec2};
 
-pub(super) fn show(ctx: &egui::Context, icon: &egui::TextureHandle) -> (bool, bool, egui::Rect) {
+/// Icons for the author's other apps, shown in the "More from the author" card.
+pub(super) struct AppIcons {
+    pub voltkit: egui::TextureHandle,
+    pub battery_health_center: egui::TextureHandle,
+}
+
+impl AppIcons {
+    pub(super) fn load(ctx: &egui::Context) -> Self {
+        let texture = |name: &str, bytes: &[u8]| {
+            let image = image::load_from_memory(bytes)
+                .expect("bundled app icon must decode")
+                .to_rgba8();
+            ctx.load_texture(
+                name,
+                egui::ColorImage::from_rgba_unmultiplied(
+                    [image.width() as usize, image.height() as usize],
+                    image.as_raw(),
+                ),
+                egui::TextureOptions::LINEAR,
+            )
+        };
+        Self {
+            voltkit: texture(
+                "voltkit-icon",
+                include_bytes!("../../assets/apps/voltkit.png"),
+            ),
+            battery_health_center: texture(
+                "battery-health-center-icon",
+                include_bytes!("../../assets/apps/battery-health-center.png"),
+            ),
+        }
+    }
+}
+
+pub(super) fn show(
+    ctx: &egui::Context,
+    icon: &egui::TextureHandle,
+    apps: &AppIcons,
+) -> (bool, bool, egui::Rect) {
     let compact = ctx.content_rect().height() < 720.;
     let mut license = false;
     let response = egui::Modal::new(egui::Id::unique("thermalprint-about"))
@@ -24,7 +62,7 @@ pub(super) fn show(ctx: &egui::Context, icon: &egui::TextureHandle) -> (bool, bo
                 });
             });
             ui.add_space(4.);
-            license = content(ui, icon, compact);
+            license = content(ui, icon, apps, compact);
         });
     (response.should_close(), license, response.response.rect)
 }
@@ -63,7 +101,7 @@ fn hero_details(ui: &mut egui::Ui) {
     }
 }
 
-fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle, compact: bool) -> bool {
+fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle, apps: &AppIcons, compact: bool) -> bool {
     let dark = ui.visuals().dark_mode;
     egui::Frame::new()
         .fill(if dark {
@@ -113,6 +151,7 @@ fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle, compact: bool) -> bool
         project(ui);
         license = credits(ui);
     }
+    more_apps(ui, apps);
     ui.vertical_centered(|ui| {
         ui.label(
             RichText::new(concat!("© 2026 ", env!("CARGO_PKG_AUTHORS")))
@@ -150,6 +189,104 @@ fn project(ui: &mut egui::Ui) {
             )));
         }
     });
+}
+
+fn more_apps(ui: &mut egui::Ui, apps: &AppIcons) {
+    ui.heading(RichText::new("More from the author").size(16.).strong());
+    card(ui, |ui| {
+        ui.columns(2, |columns| {
+            if app_link(
+                &mut columns[0],
+                &apps.voltkit,
+                "Voltkit",
+                "Power tools for your desktop",
+            ) {
+                columns[0]
+                    .ctx()
+                    .open_url(egui::OpenUrl::new_tab("https://github.com/arios4k/voltkit"));
+            }
+            if app_link(
+                &mut columns[1],
+                &apps.battery_health_center,
+                "Battery Health Center",
+                "Battery health for GNOME",
+            ) {
+                columns[1].ctx().open_url(egui::OpenUrl::new_tab(
+                    "https://github.com/arios4k/battery-health-center",
+                ));
+            }
+        });
+    });
+}
+
+/// An icon with a title and subtitle that opens the app's project page.
+fn app_link(ui: &mut egui::Ui, icon: &egui::TextureHandle, title: &str, subtitle: &str) -> bool {
+    const ICON: f32 = 36.;
+    let width = ui.available_width();
+    let text_width = (width - ICON - 34.).max(60.);
+    let title_text = ui.painter().layout(
+        title.into(),
+        egui::TextStyle::Body.resolve(ui.style()),
+        ui.visuals().text_color(),
+        text_width,
+    );
+    let subtitle_text = ui.painter().layout(
+        subtitle.into(),
+        egui::TextStyle::Small.resolve(ui.style()),
+        ui.visuals().weak_text_color(),
+        text_width,
+    );
+    let height = (title_text.size().y + subtitle_text.size().y + 16.).max(ICON + 16.);
+    // A real button keeps focus, keyboard activation, and accessibility actions.
+    let response = ui
+        .add_sized([width, height], egui::Button::new("").frame(false))
+        .accessible_name(format!("{title}. {subtitle}. Opens in your browser"));
+    let rect = response.rect;
+    ui.painter().image(
+        icon.id(),
+        egui::Rect::from_min_size(
+            egui::pos2(rect.left() + 4., rect.center().y - ICON / 2.),
+            Vec2::splat(ICON),
+        ),
+        egui::Rect::from_min_max(egui::pos2(0., 0.), egui::pos2(1., 1.)),
+        Color32::WHITE,
+    );
+    let text_x = rect.left() + ICON + 12.;
+    let text_height = title_text.size().y + subtitle_text.size().y + 2.;
+    let text_y = rect.center().y - text_height / 2.;
+    let subtitle_y = text_y + title_text.size().y + 2.;
+    ui.painter().galley(
+        egui::pos2(text_x, text_y),
+        title_text,
+        ui.visuals().text_color(),
+    );
+    ui.painter().galley(
+        egui::pos2(text_x, subtitle_y),
+        subtitle_text,
+        ui.visuals().weak_text_color(),
+    );
+    crate::designer_ui::paint_tool_icon(
+        ui.painter(),
+        egui::pos2(rect.right() - 12., rect.center().y),
+        ui.visuals().text_color(),
+        "Export document",
+    );
+    if response.hovered() || response.has_focus() {
+        ui.painter().rect_stroke(
+            rect,
+            6.,
+            egui::Stroke::new(
+                2.,
+                if ui.visuals().dark_mode {
+                    Color32::from_rgb(140, 185, 255)
+                } else {
+                    ui.visuals().selection.bg_fill
+                },
+            ),
+            egui::StrokeKind::Inside,
+        );
+    }
+    response.clicked()
 }
 
 fn credits(ui: &mut egui::Ui) -> bool {
@@ -274,6 +411,7 @@ mod tests {
                 egui::ColorImage::from_rgba_unmultiplied([1, 1], &[255; 4]),
                 Default::default(),
             );
+            let apps = AppIcons::load(&ctx);
             let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, size);
             let mut bounds = egui::Rect::NOTHING;
             for _ in 0..3 {
@@ -283,7 +421,7 @@ mod tests {
                         ..Default::default()
                     },
                     |_| {
-                        bounds = show(&ctx, &icon).2;
+                        bounds = show(&ctx, &icon, &apps).2;
                     },
                 );
                 output.textures_delta.clear();
