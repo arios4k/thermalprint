@@ -6,7 +6,7 @@ order references, addresses, barcodes, and QR contents are fictional demo data;
 no real shipping documents, printer names, or account information are included.
 The example shipping label is explicitly marked **not postage**.
 
-To regenerate all six screens in both themes from a Linux desktop session:
+To regenerate all eight screens in both themes from a Linux desktop session:
 
 ```sh
 sh scripts/capture-screenshots.sh

@@ -5,6 +5,11 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 pub const FORMAT_VERSION: u32 = 1;
+
+pub fn is_design_path(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("thermalprint"))
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TextAlign {
     Left,
@@ -59,11 +64,53 @@ pub struct DesignObject {
     pub y_mm: f32,
     pub width_mm: f32,
     pub height_mm: f32,
-    /// Clockwise quarter turns. Canvas and renderer apply the same transform.
-    pub rotation: u16,
+    /// Clockwise degrees. X/Y locate the rotated bounding box.
+    #[serde(serialize_with = "serialize_rotation")]
+    pub rotation: f32,
     pub element: Element,
 }
+// Keep whole-degree values compatible with existing integer-valued documents.
+fn serialize_rotation<S: serde::Serializer>(angle: &f32, serializer: S) -> Result<S::Ok, S::Error> {
+    if angle.fract() == 0. && (0.0..=65535.0).contains(angle) {
+        serializer.serialize_u16(*angle as u16)
+    } else {
+        serializer.serialize_f32(*angle)
+    }
+}
+
+pub fn rotated_size(width: f32, height: f32, degrees: f32) -> (f32, f32) {
+    let degrees = degrees.rem_euclid(360.);
+    if degrees == 0. || degrees == 180. {
+        return (width, height);
+    }
+    if degrees == 90. || degrees == 270. {
+        return (height, width);
+    }
+    let (sin, cos) = degrees.to_radians().sin_cos();
+    (
+        width * cos.abs() + height * sin.abs(),
+        width * sin.abs() + height * cos.abs(),
+    )
+}
+
 impl DesignObject {
+    pub fn rotated_size_mm(&self) -> (f32, f32) {
+        rotated_size(self.width_mm, self.height_mm, self.rotation)
+    }
+    pub fn center_mm(&self) -> (f32, f32) {
+        let (width, height) = self.rotated_size_mm();
+        (self.x_mm + width / 2., self.y_mm + height / 2.)
+    }
+    pub fn rotate_to(&mut self, degrees: f32) {
+        if !degrees.is_finite() {
+            return;
+        }
+        let (cx, cy) = self.center_mm();
+        self.rotation = degrees.rem_euclid(360.);
+        let (width, height) = self.rotated_size_mm();
+        self.x_mm = cx - width / 2.;
+        self.y_mm = cy - height / 2.;
+    }
     pub fn label(&self) -> &'static str {
         match &self.element {
             Element::Text { .. } => "Text",
@@ -118,7 +165,7 @@ impl LabelDocument {
             y_mm,
             width_mm,
             height_mm,
-            rotation: 0,
+            rotation: 0.,
             element,
         });
         id
@@ -146,7 +193,7 @@ impl LabelDocument {
                 || o.height_mm <= 0.
                 || o.width_mm > 2000.
                 || o.height_mm > 2000.
-                || o.rotation % 90 != 0
+                || !o.rotation.is_finite()
             {
                 bail!("Invalid design object");
             }
@@ -472,5 +519,57 @@ mod tests {
         let mut d = LabelDocument::blank(50.8, 25.4);
         d.add(Element::Qr { data: "abc".into() }, f32::NAN, 1., 5., 5.);
         assert!(d.validate().is_err());
+    }
+}
+
+#[cfg(test)]
+mod rotation_tests {
+    use super::*;
+
+    #[test]
+    fn fractional_rotation_round_trips_and_keeps_the_center_fixed() {
+        let mut doc = from_template(0);
+        doc.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 0.4,
+                filled: true,
+            },
+            20.,
+            30.,
+            40.,
+            10.,
+        );
+        let object = &mut doc.objects[0];
+        let center = object.center_mm();
+        object.rotate_to(37.25);
+        assert_eq!(object.rotation, 37.25);
+        let rotated_center = object.center_mm();
+        assert!((center.0 - rotated_center.0).abs() < 0.0001);
+        assert!((center.1 - rotated_center.1).abs() < 0.0001);
+        doc.validate().unwrap();
+        let json = serde_json::to_string(&doc).unwrap();
+        assert_eq!(serde_json::from_str::<LabelDocument>(&json).unwrap(), doc);
+        doc.objects[0].rotate_to(-12.5);
+        assert_eq!(doc.objects[0].rotation, 347.5);
+    }
+
+    #[test]
+    fn whole_degree_serialization_remains_compatible_and_nonfinite_angles_are_rejected() {
+        let mut doc = from_template(1);
+        doc.objects[0].rotation = 90.;
+        let json = serde_json::to_value(&doc).unwrap();
+        assert_eq!(json["objects"][0]["rotation"].as_u64(), Some(90));
+        assert_eq!(
+            serde_json::from_value::<LabelDocument>(json)
+                .unwrap()
+                .objects[0]
+                .rotation,
+            90.
+        );
+        doc.objects[0].rotation = f32::NAN;
+        assert!(doc.validate().is_err());
+        doc.objects[0].rotation = f32::INFINITY;
+        assert!(doc.validate().is_err());
     }
 }

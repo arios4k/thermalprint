@@ -16,15 +16,28 @@ use std::{
 enum DragKind {
     Move,
     Resize,
+    Rotate,
 }
 struct Drag {
     kind: DragKind,
     start: Pos2,
-    initial: Vec<(u64, f32, f32, f32, f32)>,
+    initial: Vec<DesignObject>,
+    center: Pos2,
 }
+#[derive(Clone, Debug)]
+enum PendingAction {
+    New,
+    Open(PathBuf),
+    Template(usize),
+    Close,
+}
+
 pub struct Designer {
     pub doc: LabelDocument,
     pub path: Option<PathBuf>,
+    saved_document: LabelDocument,
+    pending_action: Option<PendingAction>,
+    close_approved: bool,
     selected: Vec<u64>,
     clipboard: Vec<DesignObject>,
     undo: Vec<LabelDocument>,
@@ -58,6 +71,9 @@ impl Designer {
         Self {
             doc: design::from_template(0),
             path: None,
+            saved_document: design::from_template(0),
+            pending_action: None,
+            close_approved: false,
             selected: vec![],
             clipboard: vec![],
             undo: vec![],
@@ -83,6 +99,21 @@ impl Designer {
     pub(crate) fn select_object(&mut self, id: u64) {
         if self.doc.objects.iter().any(|object| object.id == id) {
             self.selected = vec![id];
+        }
+    }
+    pub(crate) fn rotate_selected_to(&mut self, degrees: f32) {
+        if self.selected.len() != 1 || !degrees.is_finite() {
+            return;
+        }
+        self.checkpoint();
+        if let Some(object) = self
+            .doc
+            .objects
+            .iter_mut()
+            .find(|object| self.selected.contains(&object.id))
+        {
+            object.rotate_to(degrees);
+            self.changed();
         }
     }
     fn checkpoint(&mut self) {
@@ -178,49 +209,217 @@ impl Designer {
         self.doc.objects.swap(i, j);
         self.changed();
     }
-    fn save(&mut self, as_new: bool) {
+    pub(crate) fn is_modified(&self) -> bool {
+        self.doc != self.saved_document
+    }
+    fn save_to_path(&mut self, path: PathBuf) -> bool {
+        match self.doc.save(&path) {
+            Ok(()) => {
+                self.path = Some(path.clone());
+                self.saved_document = self.doc.clone();
+                self.status = format!("Saved {}", path.display());
+                self.error = false;
+                true
+            }
+            Err(error) => {
+                self.status = format!("Save failed: {error:#}");
+                self.error = true;
+                false
+            }
+        }
+    }
+    fn save(&mut self, as_new: bool) -> bool {
         let path = if !as_new { self.path.clone() } else { None }.or_else(|| {
             rfd::FileDialog::new()
                 .add_filter("ThermalPrint design", &["thermalprint"])
                 .set_file_name(format!("{}.thermalprint", self.doc.title.replace(' ', "-")))
                 .save_file()
         });
-        if let Some(mut p) = path {
-            if p.extension().is_none() {
-                p.set_extension("thermalprint");
-            }
-            match self.doc.save(&p) {
-                Ok(()) => {
-                    self.path = Some(p.clone());
-                    self.status = format!("Saved {}", p.display());
-                    self.error = false;
-                }
-                Err(e) => {
-                    self.status = format!("Save failed: {e:#}");
-                    self.error = true;
-                }
-            }
+        let Some(mut path) = path else {
+            return false;
+        };
+        if path.extension().is_none() {
+            path.set_extension("thermalprint");
         }
+        self.save_to_path(path)
     }
     fn open(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
             .add_filter("ThermalPrint design", &["thermalprint"])
             .pick_file()
         {
-            match LabelDocument::load(&path) {
+            self.request_open(path);
+        }
+    }
+    fn request_action(&mut self, action: PendingAction) {
+        if self.is_modified() {
+            self.pending_action = Some(action);
+        } else {
+            self.apply_action(action);
+        }
+    }
+    pub(crate) fn request_new(&mut self) {
+        self.request_action(PendingAction::New);
+    }
+    pub(crate) fn request_template(&mut self, index: usize) {
+        self.request_action(PendingAction::Template(index));
+    }
+    pub(crate) fn request_open(&mut self, path: PathBuf) {
+        self.request_action(PendingAction::Open(path));
+    }
+    pub(crate) fn request_close(&mut self) -> bool {
+        if self.close_approved || !self.is_modified() {
+            return true;
+        }
+        self.pending_action = Some(PendingAction::Close);
+        false
+    }
+    pub(crate) fn protect_window_close(&mut self, ctx: &egui::Context) {
+        if ctx.input(|input| input.viewport().close_requested()) && !self.request_close() {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+            ctx.request_repaint();
+        }
+    }
+    fn replace_document(&mut self, doc: LabelDocument, path: Option<PathBuf>, saved: bool) {
+        self.saved_document = if saved {
+            doc.clone()
+        } else {
+            LabelDocument::blank(doc.width_mm, doc.height_mm)
+        };
+        self.doc = doc;
+        self.path = path;
+        self.selected.clear();
+        self.undo.clear();
+        self.redo.clear();
+        self.drag = None;
+        self.zoom = 1.;
+        self.pan = Vec2::ZERO;
+        self.changed();
+    }
+    fn apply_action(&mut self, action: PendingAction) {
+        match action {
+            PendingAction::New => {
+                self.replace_document(LabelDocument::blank(101.6, 152.4), None, true);
+                self.status = "New label".into();
+            }
+            PendingAction::Template(index) => {
+                self.replace_document(design::from_template(index), None, false);
+                self.status = "Template opened · save to keep your label".into();
+            }
+            PendingAction::Open(path) => match LabelDocument::load(&path) {
                 Ok(doc) => {
-                    self.checkpoint();
-                    self.doc = doc;
-                    self.path = Some(path);
-                    self.selected.clear();
-                    self.changed();
+                    self.replace_document(doc, Some(path), true);
                     self.status = "Design opened".into();
                 }
-                Err(e) => {
-                    self.status = format!("Cannot open design: {e:#}");
+                Err(error) => {
+                    self.status = format!("Cannot open design: {error:#}");
                     self.error = true;
                 }
+            },
+            PendingAction::Close => self.close_approved = true,
+        }
+    }
+    // Called from the app shell so switching workspaces never hides this prompt.
+    pub(crate) fn confirm_pending(&mut self, ctx: &egui::Context) {
+        if self.pending_action.is_none() {
+            return;
+        }
+        let mut proceed = false;
+        let mut cancel = false;
+        let response = egui::Modal::new(egui::Id::unique("unsaved-designer-label"))
+            .frame(
+                egui::Frame::window(&ctx.global_style())
+                    .inner_margin(24)
+                    .corner_radius(16),
+            )
+            .show(ctx, |ui| {
+                ui.set_width((ctx.content_rect().width() - 96.).clamp(240., 440.));
+                let accent = ui.visuals().selection.bg_fill;
+                ui.horizontal(|ui| {
+                    let (rect, _) = ui.allocate_exact_size(Vec2::splat(48.), Sense::hover());
+                    ui.painter().rect_filled(
+                        rect,
+                        12.,
+                        if ui.visuals().dark_mode {
+                            Color32::from_rgb(29, 47, 77)
+                        } else {
+                            Color32::from_rgb(225, 234, 249)
+                        },
+                    );
+                    paint_tool_icon(
+                        ui.painter(),
+                        rect.center(),
+                        if ui.visuals().dark_mode {
+                            Color32::from_rgb(140, 185, 255)
+                        } else {
+                            accent
+                        },
+                        "Save document",
+                    );
+                    ui.add_space(4.);
+                    ui.vertical(|ui| {
+                        ui.label(RichText::new("Save changes?").size(24.).strong());
+                        ui.label(RichText::new("Your label has unsaved changes.").weak());
+                    });
+                });
+                ui.add_space(12.);
+                egui::Frame::new()
+                    .fill(ui.visuals().extreme_bg_color)
+                    .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+                    .corner_radius(10)
+                    .inner_margin(14)
+                    .show(ui, |ui| {
+                        ui.set_width(ui.available_width());
+                        ui.label(RichText::new("Label").small().weak());
+                        ui.label(RichText::new(&self.doc.title).strong());
+                    });
+                ui.add_space(4.);
+                ui.label(
+                    RichText::new("Save your changes to keep them, or discard them to continue.")
+                        .weak(),
+                );
+                if self.error {
+                    ui.add_space(4.);
+                    ui.colored_label(ui.visuals().error_fg_color, &self.status);
+                }
+                ui.add_space(16.);
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui
+                        .add(
+                            egui::Button::new(RichText::new("Save").color(Color32::WHITE))
+                                .fill(accent)
+                                .min_size(Vec2::new(96., 38.)),
+                        )
+                        .clicked()
+                    {
+                        proceed = self.save(false);
+                    }
+                    if ui
+                        .add(egui::Button::new("Discard").min_size(Vec2::new(96., 38.)))
+                        .clicked()
+                    {
+                        proceed = true;
+                    }
+                    if ui
+                        .add(egui::Button::new("Cancel").min_size(Vec2::new(96., 38.)))
+                        .clicked()
+                    {
+                        cancel = true;
+                    }
+                });
+            });
+        if proceed {
+            if let Some(action) = self.pending_action.take() {
+                self.apply_action(action);
             }
+            if self.close_approved {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+        } else if cancel || response.should_close() {
+            self.pending_action = None;
         }
     }
     fn start_job(
@@ -363,9 +562,13 @@ impl Designer {
         }
     }
     fn shortcut(&mut self, ctx: &egui::Context) {
-        if ctx.egui_wants_keyboard_input()
-            || ctx.memory(|memory| memory.top_modal_layer().is_some())
-        {
+        if ctx.memory(|memory| memory.top_modal_layer().is_some()) {
+            return;
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::S)) {
+            self.save(false);
+        }
+        if ctx.egui_wants_keyboard_input() {
             return;
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z)) {
@@ -386,24 +589,16 @@ impl Designer {
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Delete)) {
             self.delete();
         }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::S)) {
-            self.save(false);
-        }
     }
     pub fn show(&mut self, root: &mut egui::Ui, settings: &Settings, printers: &[Printer]) {
         let ctx = root.ctx().clone();
         self.poll(&ctx);
         self.poll_job(&ctx);
-        self.shortcut(&ctx);
         egui::Panel::top("designer-toolbar").show(root, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("New label").clicked() {
-                        self.checkpoint();
-                        self.doc = LabelDocument::blank(101.6, 152.4);
-                        self.path = None;
-                        self.selected.clear();
-                        self.changed();
+                        self.request_new();
                         ui.close();
                     }
                     if ui.button("Save as…").clicked() {
@@ -541,8 +736,9 @@ impl Designer {
         egui::Panel::bottom("designer-status").show(root, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.label(format!(
-                    "{} · {:.1} × {:.1} mm · {}% · {} objects",
+                    "{}{} · {:.1} × {:.1} mm · {}% · {} objects",
                     self.doc.title,
+                    if self.is_modified() { " · Unsaved" } else { "" },
                     self.doc.width_mm,
                     self.doc.height_mm,
                     (self.zoom * 100.) as u32,
@@ -582,6 +778,7 @@ impl Designer {
             }
         });
         egui::CentralPanel::default().show(root, |ui| self.canvas(ui));
+        self.shortcut(&ctx);
         self.start_render(settings.dpi);
     }
     fn elements(&mut self, ui: &mut egui::Ui) {
@@ -684,12 +881,8 @@ impl Designer {
                         .on_hover_text(t.description)
                         .clicked()
                     {
-                        self.checkpoint();
-                        self.doc = design::from_template(i);
+                        self.request_template(i);
                         ui.close();
-                        self.path = None;
-                        self.selected.clear();
-                        self.changed();
                     }
                 }
             });
@@ -815,13 +1008,23 @@ impl Designer {
             )
             .accessible_name("Object height in millimeters");
         });
-        egui::ComboBox::from_id_salt("design-rotate")
-            .selected_text(format!("Rotation {}°", o.rotation))
-            .show_ui(ui, |ui| {
-                for r in [0, 90, 180, 270] {
-                    ui.selectable_value(&mut o.rotation, r, format!("{r}°"));
-                }
-            });
+        ui.horizontal(|ui| {
+            let label = ui.label("Rotation");
+            let mut angle = o.rotation;
+            if ui
+                .add(
+                    egui::DragValue::new(&mut angle)
+                        .speed(0.5)
+                        .range(-360.0..=360.0)
+                        .max_decimals(2)
+                        .suffix("°"),
+                )
+                .labelled_by(label.id)
+                .changed()
+            {
+                o.rotate_to(angle);
+            }
+        });
         match &mut o.element {
             Element::Text {
                 text,
@@ -977,17 +1180,15 @@ impl Designer {
     }
     fn canvas(&mut self, ui: &mut egui::Ui) {
         ui.label(
-            RichText::new(
-                "Drag to move · corner handle to resize · Shift-click to select multiple",
-            )
-            .small()
-            .weak(),
+            RichText::new("Drag to move · square to resize · circle to rotate · Shift: 15°")
+                .small()
+                .weak(),
         );
         let Some(tex) = self.texture.clone() else {
             ui.spinner();
             return;
         };
-        let available = ui.available_size() - Vec2::splat(40.);
+        let available = (ui.available_size() - Vec2::splat(64.)).max(Vec2::splat(1.));
         let source = tex.size_vec2();
         let fit = (available.x / source.x)
             .min(available.y / source.y)
@@ -997,71 +1198,124 @@ impl Designer {
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 let (outer, _) = ui.allocate_exact_size(
-                    Vec2::new(size.x.max(available.x), size.y.max(available.y)) + Vec2::splat(30.),
+                    Vec2::new(size.x.max(available.x), size.y.max(available.y)) + Vec2::splat(64.),
                     Sense::hover(),
                 );
-                let rect = Rect::from_center_size(outer.center() + self.pan, size);
+                let paper = Rect::from_center_size(outer.center() + self.pan, size);
                 ui.painter().rect_filled(
-                    rect.expand(6.),
+                    paper.expand(6.),
                     8.,
                     ui.visuals().widgets.noninteractive.bg_stroke.color,
                 );
                 ui.painter().image(
                     tex.id(),
-                    rect,
+                    paper,
                     Rect::from_min_max(Pos2::ZERO, Pos2::new(1., 1.)),
                     Color32::WHITE,
                 );
                 if self.grid {
-                    let step = (size.x / self.doc.width_mm * 5.).max(5.);
                     let color = Color32::from_rgba_unmultiplied(90, 110, 130, 45);
-                    let mut x = rect.left();
-                    while x < rect.right() {
+                    let step = (size.x / self.doc.width_mm * 5.).max(5.);
+                    let mut x = paper.left();
+                    while x < paper.right() {
                         ui.painter().line_segment(
-                            [Pos2::new(x, rect.top()), Pos2::new(x, rect.bottom())],
+                            [Pos2::new(x, paper.top()), Pos2::new(x, paper.bottom())],
                             Stroke::new(1., color),
                         );
                         x += step;
                     }
-                    let mut y = rect.top();
-                    while y < rect.bottom() {
+                    let mut y = paper.top();
+                    while y < paper.bottom() {
                         ui.painter().line_segment(
-                            [Pos2::new(rect.left(), y), Pos2::new(rect.right(), y)],
+                            [Pos2::new(paper.left(), y), Pos2::new(paper.right(), y)],
                             Stroke::new(1., color),
                         );
-                        y += size.y / self.doc.height_mm * 5.;
+                        y += (size.y / self.doc.height_mm * 5.).max(5.);
                     }
                 }
-                for o in &self.doc.objects {
-                    if self.selected.contains(&o.id) {
-                        let r = self.object_rect(o, rect);
-                        ui.painter().rect_stroke(
-                            r,
-                            2.,
-                            Stroke::new(2., Color32::from_rgb(70, 130, 240)),
-                            StrokeKind::Outside,
-                        );
-                        ui.painter().rect_filled(
-                            Rect::from_center_size(r.right_bottom(), Vec2::splat(10.)),
-                            2.,
-                            Color32::from_rgb(70, 130, 240),
-                        );
+                let single = if self.selected.len() == 1 {
+                    self.doc
+                        .objects
+                        .iter()
+                        .find(|object| self.selected.contains(&object.id))
+                } else {
+                    None
+                };
+                let handles = single.map(|object| self.object_geometry(object, paper));
+                let blue = Color32::from_rgb(70, 130, 240);
+                for object in &self.doc.objects {
+                    if self.selected.contains(&object.id) {
+                        let geometry = self.object_geometry(object, paper);
+                        ui.painter().add(egui::Shape::closed_line(
+                            geometry.corners.to_vec(),
+                            Stroke::new(2., blue),
+                        ));
+                        if self.selected.len() == 1 {
+                            let top = geometry.corners[0]
+                                + (geometry.corners[1] - geometry.corners[0]) * 0.5;
+                            ui.painter().line_segment(
+                                [top, geometry.rotation_handle],
+                                Stroke::new(1.5, blue),
+                            );
+                            ui.painter().circle_filled(
+                                geometry.rotation_handle,
+                                7.,
+                                Color32::WHITE,
+                            );
+                            ui.painter().circle_stroke(
+                                geometry.rotation_handle,
+                                7.,
+                                Stroke::new(2., blue),
+                            );
+                            ui.painter().rect_filled(
+                                Rect::from_center_size(geometry.corners[2], Vec2::splat(10.)),
+                                2.,
+                                blue,
+                            );
+                            if self
+                                .drag
+                                .as_ref()
+                                .is_some_and(|drag| matches!(drag.kind, DragKind::Rotate))
+                            {
+                                ui.painter().text(
+                                    geometry.rotation_handle + Vec2::new(13., 0.),
+                                    egui::Align2::LEFT_CENTER,
+                                    format!("{:.1}°", object.rotation),
+                                    egui::TextStyle::Body.resolve(ui.style()),
+                                    blue,
+                                );
+                            }
+                        }
                     }
                 }
-                let response = ui.interact(
-                    rect,
+                let mut response = ui.interact(
+                    outer,
                     ui.scope_id().with("design-canvas"),
                     Sense::click_and_drag(),
                 );
-                if response.clicked() {
-                    if let Some(p) = response.interact_pointer_pos() {
-                        if let Some(id) = self.hit(p, rect) {
-                            let shift = ui.input(|i| i.modifiers.shift);
-                            if shift {
+                if let (Some(geometry), Some(pointer)) = (handles, response.hover_pos()) {
+                    if geometry.rotation_handle.distance(pointer) <= 14. {
+                        response = response
+                            .on_hover_cursor(egui::CursorIcon::Crosshair)
+                            .on_hover_text("Drag to rotate freely. Hold Shift to snap to 15°.");
+                    } else if geometry.corners[2].distance(pointer) <= 14. {
+                        response = response.on_hover_cursor(egui::CursorIcon::ResizeNwSe);
+                    }
+                }
+                if response.clicked()
+                    && let Some(pointer) = response.interact_pointer_pos()
+                {
+                    let handle_clicked = handles.is_some_and(|geometry| {
+                        geometry.rotation_handle.distance(pointer) <= 14.
+                            || geometry.corners[2].distance(pointer) <= 14.
+                    });
+                    if !handle_clicked {
+                        if let Some(id) = self.hit(pointer, paper) {
+                            if ui.input(|input| input.modifiers.shift) {
                                 if self.selected.contains(&id) {
-                                    self.selected.retain(|x| *x != id)
+                                    self.selected.retain(|selected| *selected != id);
                                 } else {
-                                    self.selected.push(id)
+                                    self.selected.push(id);
                                 }
                             } else {
                                 self.selected = vec![id];
@@ -1071,61 +1325,85 @@ impl Designer {
                         }
                     }
                 }
-                if response.drag_started() {
-                    if let Some(p) = response.interact_pointer_pos() {
-                        if let Some(id) = self.hit(p, rect) {
-                            if !self.selected.contains(&id) {
-                                self.selected = vec![id];
-                            }
-                            self.checkpoint();
-                            let kind = if self.selected.len() == 1
-                                && self
-                                    .doc
-                                    .objects
-                                    .iter()
-                                    .find(|o| o.id == id)
-                                    .is_some_and(|o| {
-                                        self.object_rect(o, rect).right_bottom().distance(p) < 17.
-                                    }) {
-                                DragKind::Resize
-                            } else {
-                                DragKind::Move
-                            };
-                            self.drag = Some(Drag {
-                                kind,
-                                start: p,
-                                initial: self
-                                    .doc
-                                    .objects
-                                    .iter()
-                                    .filter(|o| self.selected.contains(&o.id))
-                                    .map(|o| (o.id, o.x_mm, o.y_mm, o.width_mm, o.height_mm))
-                                    .collect(),
-                            });
+                if response.drag_started_by(egui::PointerButton::Primary)
+                    && let Some(pointer) = response.interact_pointer_pos()
+                {
+                    let start = ui
+                        .input(|input| input.pointer.press_origin())
+                        .unwrap_or(pointer);
+                    let kind = if handles
+                        .is_some_and(|geometry| geometry.rotation_handle.distance(start) <= 14.)
+                    {
+                        Some(DragKind::Rotate)
+                    } else if handles
+                        .is_some_and(|geometry| geometry.corners[2].distance(start) <= 14.)
+                    {
+                        Some(DragKind::Resize)
+                    } else if let Some(id) = self.hit(start, paper) {
+                        if !self.selected.contains(&id) {
+                            self.selected = vec![id];
                         }
+                        Some(DragKind::Move)
+                    } else {
+                        None
+                    };
+                    if let Some(kind) = kind {
+                        self.checkpoint();
+                        self.drag = Some(Drag {
+                            kind,
+                            start,
+                            center: handles.map_or(start, |geometry| geometry.center),
+                            initial: self
+                                .doc
+                                .objects
+                                .iter()
+                                .filter(|object| self.selected.contains(&object.id))
+                                .cloned()
+                                .collect(),
+                        });
                     }
                 }
-                if response.dragged() {
-                    if let (Some(d), Some(pos)) = (&self.drag, response.interact_pointer_pos()) {
-                        let dx = (pos.x - d.start.x) / size.x * self.doc.width_mm;
-                        let dy = (pos.y - d.start.y) / size.y * self.doc.height_mm;
-                        let step = if self.snap { 1.0 } else { 0.1 };
-                        for (id, x, y, w, h) in &d.initial {
-                            if let Some(o) = self.doc.objects.iter_mut().find(|o| o.id == *id) {
-                                match d.kind {
-                                    DragKind::Move => {
-                                        o.x_mm = ((x + dx) / step).round() * step;
-                                        o.y_mm = ((y + dy) / step).round() * step;
-                                    }
-                                    DragKind::Resize => {
-                                        o.width_mm = ((w + dx).max(1.) / step).round() * step;
-                                        o.height_mm = ((h + dy).max(1.) / step).round() * step;
-                                    }
+                if response.dragged_by(egui::PointerButton::Primary)
+                    && let (Some(drag), Some(pointer)) =
+                        (&self.drag, response.interact_pointer_pos())
+                {
+                    let delta = Vec2::new(
+                        (pointer.x - drag.start.x) / size.x * self.doc.width_mm,
+                        (pointer.y - drag.start.y) / size.y * self.doc.height_mm,
+                    );
+                    let step = if self.snap { 1. } else { 0.1 };
+                    let angle_delta = vector_angle(pointer - drag.center)
+                        - vector_angle(drag.start - drag.center);
+                    let snap_angle = ui.input(|input| input.modifiers.shift);
+                    for initial in &drag.initial {
+                        if let Some(object) = self
+                            .doc
+                            .objects
+                            .iter_mut()
+                            .find(|object| object.id == initial.id)
+                        {
+                            match drag.kind {
+                                DragKind::Move => {
+                                    object.x_mm = ((initial.x_mm + delta.x) / step).round() * step;
+                                    object.y_mm = ((initial.y_mm + delta.y) / step).round() * step;
+                                }
+                                DragKind::Resize => resize_rotated(object, initial, delta, step),
+                                DragKind::Rotate => {
+                                    let angle = rotation_from_drag(
+                                        initial.rotation,
+                                        angle_delta,
+                                        snap_angle,
+                                    );
+                                    let (cx, cy) = initial.center_mm();
+                                    object.rotation = angle;
+                                    let (width, height) = object.rotated_size_mm();
+                                    object.x_mm = cx - width / 2.;
+                                    object.y_mm = cy - height / 2.;
                                 }
                             }
                         }
-                        self.changed();
                     }
+                    self.changed();
                 }
                 if response.drag_stopped() {
                     self.drag = None;
@@ -1135,27 +1413,87 @@ impl Designer {
                 }
             });
     }
-    fn object_rect(&self, o: &DesignObject, paper: Rect) -> Rect {
-        let x = paper.left() + o.x_mm / self.doc.width_mm * paper.width();
-        let y = paper.top() + o.y_mm / self.doc.height_mm * paper.height();
-        let w = o.width_mm / self.doc.width_mm * paper.width();
-        let h = o.height_mm / self.doc.height_mm * paper.height();
-        Rect::from_min_size(
-            Pos2::new(x, y),
-            Vec2::new(
-                if o.rotation % 180 == 90 { h } else { w },
-                if o.rotation % 180 == 90 { w } else { h },
-            ),
-        )
+    fn object_geometry(&self, object: &DesignObject, paper: Rect) -> ObjectGeometry {
+        let (cx, cy) = object.center_mm();
+        let center = Pos2::new(
+            paper.left() + cx / self.doc.width_mm * paper.width(),
+            paper.top() + cy / self.doc.height_mm * paper.height(),
+        );
+        let (sin, cos) = object.rotation.rem_euclid(360.).to_radians().sin_cos();
+        let w = object.width_mm / 2.;
+        let h = object.height_mm / 2.;
+        let corners = [(-w, -h), (w, -h), (w, h), (-w, h)].map(|(x, y)| {
+            center
+                + Vec2::new(
+                    (cos * x - sin * y) / self.doc.width_mm * paper.width(),
+                    (sin * x + cos * y) / self.doc.height_mm * paper.height(),
+                )
+        });
+        let top = corners[0] + (corners[1] - corners[0]) * 0.5;
+        let rotation_handle = top + (top - center).normalized() * 28.;
+        ObjectGeometry {
+            center,
+            corners,
+            rotation_handle,
+        }
     }
-    fn hit(&self, p: Pos2, paper: Rect) -> Option<u64> {
+    fn hit(&self, pointer: Pos2, paper: Rect) -> Option<u64> {
+        let point_mm = Vec2::new(
+            (pointer.x - paper.left()) / paper.width() * self.doc.width_mm,
+            (pointer.y - paper.top()) / paper.height() * self.doc.height_mm,
+        );
+        let tolerance = 6. * self.doc.width_mm / paper.width();
         self.doc
             .objects
             .iter()
             .rev()
-            .find(|o| self.object_rect(o, paper).expand(8.).contains(p))
-            .map(|o| o.id)
+            .find(|object| {
+                let (cx, cy) = object.center_mm();
+                let (sin, cos) = object.rotation.rem_euclid(360.).to_radians().sin_cos();
+                let dx = point_mm.x - cx;
+                let dy = point_mm.y - cy;
+                (cos * dx + sin * dy).abs() <= object.width_mm / 2. + tolerance
+                    && (-sin * dx + cos * dy).abs() <= object.height_mm / 2. + tolerance
+            })
+            .map(|object| object.id)
     }
+}
+
+#[derive(Clone, Copy)]
+struct ObjectGeometry {
+    center: Pos2,
+    corners: [Pos2; 4],
+    rotation_handle: Pos2,
+}
+
+fn vector_angle(vector: Vec2) -> f32 {
+    vector.y.atan2(vector.x).to_degrees()
+}
+fn rotation_from_drag(initial: f32, delta: f32, snap: bool) -> f32 {
+    let angle = initial + delta;
+    (if snap {
+        (angle / 15.).round() * 15.
+    } else {
+        angle
+    })
+    .rem_euclid(360.)
+}
+fn resize_rotated(object: &mut DesignObject, initial: &DesignObject, delta: Vec2, step: f32) {
+    let (sin, cos) = initial.rotation.rem_euclid(360.).to_radians().sin_cos();
+    let local = Vec2::new(
+        cos * delta.x + sin * delta.y,
+        -sin * delta.x + cos * delta.y,
+    );
+    let width = (((initial.width_mm + local.x) / step).round() * step).clamp(1., 2000.);
+    let height = (((initial.height_mm + local.y) / step).round() * step).clamp(1., 2000.);
+    let (cx, cy) = initial.center_mm();
+    let dw = (width - initial.width_mm) / 2.;
+    let dh = (height - initial.height_mm) / 2.;
+    object.width_mm = width;
+    object.height_mm = height;
+    let (bounds_w, bounds_h) = object.rotated_size_mm();
+    object.x_mm = cx + cos * dw - sin * dh - bounds_w / 2.;
+    object.y_mm = cy + sin * dw + cos * dh - bounds_h / 2.;
 }
 
 /// A shared 24-point outline grid keeps the tools visually balanced.
@@ -1628,4 +1966,308 @@ pub(crate) fn icon_action(
     }
 
     response
+}
+
+#[cfg(test)]
+mod document_lifecycle_tests {
+    use super::*;
+
+    #[test]
+    fn opening_saved_design_preserves_path_and_starts_clean() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("label with spaces.thermalprint");
+        let doc = design::from_template(1);
+        doc.save(&path).unwrap();
+        let mut designer = Designer::new();
+        designer.request_open(path.clone());
+        assert_eq!(designer.doc, doc);
+        assert_eq!(designer.path, Some(path));
+        assert!(!designer.is_modified());
+        designer.checkpoint();
+        designer.doc.title.push_str(" edited");
+        assert!(designer.is_modified());
+        designer.undo();
+        assert!(!designer.is_modified());
+        designer.redo();
+        assert!(designer.is_modified());
+    }
+
+    #[test]
+    fn destructive_actions_wait_for_confirmation_and_cancel_preserves_changes() {
+        let mut designer = Designer::new();
+        designer.doc.title = "Unsaved work".into();
+        let original = designer.doc.clone();
+        designer.request_new();
+        assert!(matches!(designer.pending_action, Some(PendingAction::New)));
+        assert_eq!(designer.doc, original);
+        designer.pending_action = None; // Cancel
+        assert_eq!(designer.doc, original);
+        designer.request_template(1);
+        assert!(matches!(
+            designer.pending_action,
+            Some(PendingAction::Template(1))
+        ));
+        assert_eq!(designer.doc, original);
+        designer.request_open(PathBuf::from("another.thermalprint"));
+        assert!(matches!(
+            designer.pending_action,
+            Some(PendingAction::Open(_))
+        ));
+        assert_eq!(designer.doc, original);
+        assert!(!designer.request_close());
+        assert!(matches!(
+            designer.pending_action,
+            Some(PendingAction::Close)
+        ));
+        assert_eq!(designer.doc, original);
+    }
+
+    #[test]
+    fn save_tracks_latest_changes_and_failed_save_keeps_pending_action() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut designer = Designer::new();
+        designer.doc.title = "First revision".into();
+        let path = directory.path().join("label.thermalprint");
+        assert!(designer.save_to_path(path.clone()));
+        assert!(!designer.is_modified());
+        designer.doc.title = "Latest revision".into();
+        assert!(designer.is_modified());
+        designer.request_new();
+        assert!(!designer.save_to_path(directory.path().join("missing/label.thermalprint")));
+        assert!(designer.is_modified());
+        assert!(designer.pending_action.is_some());
+        assert!(designer.save_to_path(path.clone()));
+        assert!(!designer.is_modified());
+        assert_eq!(LabelDocument::load(&path).unwrap().title, "Latest revision");
+        let action = designer.pending_action.take().unwrap();
+        designer.apply_action(action);
+        assert!(!designer.is_modified());
+        assert!(designer.path.is_none());
+    }
+
+    #[test]
+    fn invalid_open_keeps_current_document_and_close_discard_is_not_reprompted() {
+        let mut designer = Designer::new();
+        designer.request_open(PathBuf::from("/missing/label.thermalprint"));
+        assert!(designer.error);
+        assert_eq!(designer.doc, designer.saved_document);
+        designer.doc.title.push_str(" modified");
+        assert!(!designer.request_close());
+        let action = designer.pending_action.take().unwrap();
+        designer.apply_action(action);
+        assert!(designer.request_close());
+    }
+
+    #[test]
+    fn only_design_extension_routes_to_designer() {
+        for path in [
+            "label.thermalprint",
+            "LABEL.THERMALPRINT",
+            "folder with spaces/label.thermalprint",
+        ] {
+            assert!(design::is_design_path(std::path::Path::new(path)));
+        }
+        for path in [
+            "label.pdf",
+            "label.png",
+            "label.thermaprint",
+            "label.thermalprint.json",
+        ] {
+            assert!(!design::is_design_path(std::path::Path::new(path)));
+        }
+    }
+}
+
+#[cfg(test)]
+mod rotation_interaction_tests {
+    use super::*;
+
+    #[test]
+    fn rotation_wraps_and_only_snaps_when_requested() {
+        assert_eq!(rotation_from_drag(350., 20., false), 10.);
+        assert_eq!(rotation_from_drag(0., 12.25, false), 12.25);
+        assert_eq!(rotation_from_drag(0., 17., true), 15.);
+        assert_eq!(rotation_from_drag(0., -17., true), 345.);
+    }
+
+    #[test]
+    fn rotated_hit_testing_and_resize_follow_the_object_axes() {
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(100., 100.);
+        let id = designer.doc.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 0.4,
+                filled: true,
+            },
+            20.,
+            30.,
+            40.,
+            10.,
+        );
+        designer.doc.objects[0].rotate_to(45.);
+        let initial = designer.doc.objects[0].clone();
+        let paper = Rect::from_min_size(Pos2::ZERO, Vec2::splat(400.));
+        let geometry = designer.object_geometry(&initial, paper);
+        assert_eq!(designer.hit(geometry.center, paper), Some(id));
+        assert_eq!(
+            designer.hit(geometry.center + Vec2::new(-60., 60.), paper),
+            None
+        );
+        assert!(
+            (geometry
+                .rotation_handle
+                .distance(geometry.corners[0] + (geometry.corners[1] - geometry.corners[0]) * 0.5)
+                - 28.)
+                .abs()
+                < 0.001
+        );
+        let mut resized = initial.clone();
+        resize_rotated(&mut resized, &initial, Vec2::splat(10.), 0.1);
+        // A drag along the local X axis widens the object and keeps its opposite corner fixed.
+        assert!(resized.width_mm > initial.width_mm);
+        assert!((resized.height_mm - initial.height_mm).abs() < 0.01);
+        let resized_geometry = designer.object_geometry(&resized, paper);
+        assert!(resized_geometry.corners[0].distance(geometry.corners[0]) < 0.01);
+        designer.checkpoint();
+        designer.doc.objects[0].rotate_to(123.45);
+        designer.undo();
+        assert_eq!(designer.doc.objects[0].rotation, 45.);
+        designer.redo();
+        assert_eq!(designer.doc.objects[0].rotation, 123.45);
+    }
+}
+
+#[cfg(test)]
+mod mouse_rotation_tests {
+    use super::*;
+
+    #[test]
+    fn dragging_rotation_handle_changes_angle_and_undoes_as_one_edit() {
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(100., 100.);
+        let id = designer.doc.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 0.4,
+                filled: true,
+            },
+            30.,
+            40.,
+            30.,
+            10.,
+        );
+        designer.saved_document = designer.doc.clone();
+        designer.selected = vec![id];
+        designer.texture = Some(ctx.load_texture(
+            "rotation-test-page",
+            egui::ColorImage::from_rgba_unmultiplied([1, 1], &[255; 4]),
+            Default::default(),
+        ));
+        let frame = |designer: &mut Designer, events| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(800., 600.))),
+                    events,
+                    ..Default::default()
+                },
+                |root| {
+                    egui::CentralPanel::default().show(root, |ui| designer.canvas(ui));
+                },
+            );
+            output.textures_delta.clear();
+            output
+        };
+        frame(&mut designer, vec![]);
+        let output = frame(&mut designer, vec![]);
+        let handle = output
+            .shapes
+            .iter()
+            .find_map(|shape| match &shape.shape {
+                egui::Shape::Circle(circle) if circle.radius == 7. => Some(circle.center),
+                _ => None,
+            })
+            .expect("rotation handle");
+        let center = output
+            .shapes
+            .iter()
+            .find_map(|shape| match &shape.shape {
+                egui::Shape::Path(path) if path.closed && path.points.len() == 4 => {
+                    Some(Pos2::new(
+                        path.points.iter().map(|point| point.x).sum::<f32>() / 4.,
+                        path.points.iter().map(|point| point.y).sum::<f32>() / 4.,
+                    ))
+                }
+                _ => None,
+            })
+            .expect("selected object outline");
+        let vector = handle - center;
+        let (sin, cos) = 23.5_f32.to_radians().sin_cos();
+        let target = center
+            + Vec2::new(
+                cos * vector.x - sin * vector.y,
+                sin * vector.x + cos * vector.y,
+            );
+        let button = |pressed| egui::Event::PointerButton {
+            pos: if pressed { handle } else { target },
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        frame(
+            &mut designer,
+            vec![egui::Event::PointerMoved(handle), button(true)],
+        );
+        frame(&mut designer, vec![egui::Event::PointerMoved(target)]);
+        frame(&mut designer, vec![button(false)]);
+        assert!(
+            (designer.doc.objects[0].rotation - 23.5).abs() < 0.01,
+            "angle: {}",
+            designer.doc.objects[0].rotation
+        );
+        assert_eq!(designer.undo.len(), 1);
+        assert!(designer.is_modified());
+        designer.undo();
+        assert_eq!(designer.doc.objects[0].rotation, 0.);
+        assert!(!designer.is_modified());
+        designer.redo();
+        assert!((designer.doc.objects[0].rotation - 23.5).abs() < 0.01);
+    }
+}
+
+#[cfg(test)]
+mod window_close_tests {
+    use super::*;
+
+    #[test]
+    fn hidden_window_close_is_cancelled_until_unsaved_changes_are_resolved() {
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.doc.title.push_str(" changed");
+        let mut input = egui::RawInput::default();
+        let viewport = input.viewports.get_mut(&egui::ViewportId::ROOT).unwrap();
+        viewport.events.push(egui::ViewportEvent::Close);
+        viewport.minimized = Some(true);
+        let output = ctx.run_logic(&input, |ctx| designer.protect_window_close(ctx));
+        let commands = output
+            .viewport_commands
+            .get(&egui::ViewportId::ROOT)
+            .unwrap();
+        assert!(commands.contains(&egui::ViewportCommand::CancelClose));
+        assert!(commands.contains(&egui::ViewportCommand::Minimized(false)));
+        assert!(matches!(
+            designer.pending_action,
+            Some(PendingAction::Close)
+        ));
+        let action = designer.pending_action.take().unwrap();
+        designer.apply_action(action);
+        let output = ctx.run_logic(&input, |ctx| designer.protect_window_close(ctx));
+        assert!(
+            !output
+                .viewport_commands
+                .get(&egui::ViewportId::ROOT)
+                .is_some_and(|commands| commands.contains(&egui::ViewportCommand::CancelClose))
+        );
+    }
 }

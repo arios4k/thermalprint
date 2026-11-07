@@ -1,59 +1,93 @@
 //! Compact branded About content, matching the workspace palette.
 use eframe::egui::{self, Color32, RichText, Vec2};
 
-pub(super) fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle) -> bool {
-    let accent = ui.visuals().selection.bg_fill;
+pub(super) fn show(ctx: &egui::Context, icon: &egui::TextureHandle) -> (bool, bool, egui::Rect) {
+    let compact = ctx.content_rect().height() < 720.;
+    let mut license = false;
+    let response = egui::Modal::new(egui::Id::unique("thermalprint-about"))
+        .frame(
+            egui::Frame::window(&ctx.global_style())
+                .inner_margin(16)
+                .corner_radius(16),
+        )
+        .show(ctx, |ui| {
+            ui.set_width(
+                (ctx.content_rect().width() - 64.).clamp(260., if compact { 620. } else { 500. }),
+            );
+            ui.spacing_mut().item_spacing.y = 6.;
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("About ThermalPrint").strong());
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("Close").clicked() {
+                        ui.close();
+                    }
+                });
+            });
+            ui.add_space(4.);
+            license = content(ui, icon, compact);
+        });
+    (response.should_close(), license, response.response.rect)
+}
+
+fn hero_details(ui: &mut egui::Ui) {
+    ui.label(RichText::new("ThermalPrint").size(28.).strong());
+    ui.label("Design and prepare thermal labels for Linux.");
+    let copied = ui
+        .data_mut(|data| data.get_temp::<f64>(egui::Id::unique("about-version-copied")))
+        .is_some_and(|time| ui.input(|input| input.time) - time < 2.);
+    if ui
+        .add(
+            egui::Button::new(
+                RichText::new(if copied {
+                    "Version copied".into()
+                } else {
+                    format!("Version {} · Copy", env!("CARGO_PKG_VERSION"))
+                })
+                .color(Color32::WHITE),
+            )
+            .fill(ui.visuals().selection.bg_fill)
+            .corner_radius(20),
+        )
+        .accessible_name("Copy ThermalPrint version information")
+        .on_hover_text("Copy version information")
+        .clicked()
+    {
+        ui.ctx()
+            .copy_text(concat!("ThermalPrint ", env!("CARGO_PKG_VERSION")).into());
+        let time = ui.input(|input| input.time);
+        ui.data_mut(|data| data.insert_temp(egui::Id::unique("about-version-copied"), time));
+    }
+    if copied {
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_secs(2));
+    }
+}
+
+fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle, compact: bool) -> bool {
     let dark = ui.visuals().dark_mode;
-    let hero_fill = if dark {
-        Color32::from_rgb(29, 42, 65)
-    } else {
-        Color32::from_rgb(225, 234, 249)
-    };
     egui::Frame::new()
-        .fill(hero_fill)
-        .corner_radius(16)
-        .inner_margin(18)
+        .fill(if dark {
+            Color32::from_rgb(29, 42, 65)
+        } else {
+            Color32::from_rgb(225, 234, 249)
+        })
+        .corner_radius(14)
+        .inner_margin(14)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.vertical_centered(|ui| {
-                ui.add(egui::Image::new(icon).fit_to_exact_size(Vec2::splat(64.)));
-                ui.label(RichText::new("ThermalPrint").size(30.).strong());
-                ui.label("Design and prepare thermal labels for Linux.");
-                ui.add_space(4.);
-                let copied = ui
-                    .data_mut(|data| data.get_temp::<f64>(egui::Id::unique("about-version-copied")))
-                    .is_some_and(|time| ui.input(|input| input.time) - time < 2.);
-                if ui
-                    .add(
-                        egui::Button::new(
-                            RichText::new(if copied {
-                                "Version copied".into()
-                            } else {
-                                format!("Version {} · Copy", env!("CARGO_PKG_VERSION"))
-                            })
-                            .color(Color32::WHITE),
-                        )
-                        .fill(accent)
-                        .corner_radius(20),
-                    )
-                    .accessible_name("Copy ThermalPrint version information")
-                    .on_hover_text("Copy version information")
-                    .clicked()
-                {
-                    ui.ctx()
-                        .copy_text(concat!("ThermalPrint ", env!("CARGO_PKG_VERSION")).into());
-                    let time = ui.input(|input| input.time);
-                    ui.data_mut(|data| {
-                        data.insert_temp(egui::Id::unique("about-version-copied"), time)
-                    });
-                }
-                if copied {
-                    ui.ctx()
-                        .request_repaint_after(std::time::Duration::from_secs(2));
-                }
-            });
+            if compact {
+                ui.horizontal(|ui| {
+                    ui.add(egui::Image::new(icon).fit_to_exact_size(Vec2::splat(64.)));
+                    ui.add_space(10.);
+                    ui.vertical(hero_details);
+                });
+            } else {
+                ui.vertical_centered(|ui| {
+                    ui.add(egui::Image::new(icon).fit_to_exact_size(Vec2::splat(56.)));
+                    hero_details(ui);
+                });
+            }
         });
-    ui.add_space(4.);
     ui.horizontal_wrapped(|ui| {
         for text in ["Thermal labels", "Linux app", "Open source"] {
             egui::Frame::new()
@@ -63,19 +97,39 @@ pub(super) fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle) -> bool {
                     Color32::from_rgb(232, 235, 240)
                 })
                 .corner_radius(8)
-                .inner_margin(8)
+                .inner_margin(6)
                 .show(ui, |ui| {
                     ui.label(text);
                 });
         }
     });
-    ui.add_space(8.);
-    ui.heading("Explore ThermalPrint");
+    let mut license = false;
+    if compact {
+        ui.columns(2, |columns| {
+            project(&mut columns[0]);
+            license = credits(&mut columns[1]);
+        });
+    } else {
+        project(ui);
+        license = credits(ui);
+    }
+    ui.vertical_centered(|ui| {
+        ui.label(
+            RichText::new(concat!("© 2026 ", env!("CARGO_PKG_AUTHORS")))
+                .small()
+                .weak(),
+        );
+    });
+    license
+}
+
+fn project(ui: &mut egui::Ui) {
+    ui.heading(RichText::new("Explore ThermalPrint").size(16.).strong());
     card(ui, |ui| {
         if row(
             ui,
             "Project & source code",
-            "Documentation, releases, and the code behind ThermalPrint",
+            "Documentation, releases, and source",
             "↗",
             true,
         ) {
@@ -96,8 +150,10 @@ pub(super) fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle) -> bool {
             )));
         }
     });
-    ui.add_space(8.);
-    ui.heading("Credits and license");
+}
+
+fn credits(ui: &mut egui::Ui) -> bool {
+    ui.heading(RichText::new("Credits and license").size(16.).strong());
     let mut license = false;
     card(ui, |ui| {
         row(ui, "Created by", env!("CARGO_PKG_AUTHORS"), "", false);
@@ -110,14 +166,6 @@ pub(super) fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle) -> bool {
             true,
         );
     });
-    ui.add_space(4.);
-    ui.vertical_centered(|ui| {
-        ui.label(
-            RichText::new(concat!("© 2026 ", env!("CARGO_PKG_AUTHORS")))
-                .small()
-                .weak(),
-        );
-    });
     license
 }
 
@@ -126,7 +174,7 @@ fn card(ui: &mut egui::Ui, content: impl FnOnce(&mut egui::Ui)) {
         .fill(ui.visuals().extreme_bg_color)
         .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
         .corner_radius(12)
-        .inner_margin(12)
+        .inner_margin(10)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
             content(ui);
@@ -153,12 +201,12 @@ fn row(ui: &mut egui::Ui, title: &str, subtitle: &str, suffix: &str, clickable: 
         ui.visuals().weak_text_color(),
         text_width,
     );
-    let height = (title_text.size().y + subtitle_text.size().y + 20.).max(60.);
+    let height = (title_text.size().y + subtitle_text.size().y + 16.).max(44.);
     // Use a real button for focus, keyboard activation, and accessibility actions.
     let response = ui
         .add_sized([width, height], egui::Button::new("").frame(false))
         .accessible_name(format!("{title}. {subtitle}"));
-    let text_origin = response.rect.left_top() + Vec2::new(4., 8.);
+    let text_origin = response.rect.left_top() + Vec2::new(4., 6.);
     let subtitle_origin = text_origin + Vec2::new(0., title_text.size().y + 4.);
     ui.painter()
         .galley(text_origin, title_text, ui.visuals().text_color());
@@ -198,6 +246,54 @@ fn row(ui: &mut egui::Ui, title: &str, subtitle: &str, suffix: &str, clickable: 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn about_fits_supported_window_sizes_without_scrolling() {
+        for size in [
+            Vec2::new(760., 560.),
+            Vec2::new(1024., 768.),
+            Vec2::new(1240., 840.),
+        ] {
+            let ctx = egui::Context::default();
+            ctx.all_styles_mut(|style| {
+                style.spacing.item_spacing = Vec2::new(10., 8.);
+                style.spacing.button_padding = Vec2::new(12., 6.);
+                style.spacing.interact_size.y = 32.;
+                for (kind, size) in [
+                    (egui::TextStyle::Body, 14.),
+                    (egui::TextStyle::Button, 14.),
+                    (egui::TextStyle::Small, 12.),
+                ] {
+                    style
+                        .text_styles
+                        .insert(kind, egui::FontId::proportional(size));
+                }
+            });
+            let icon = ctx.load_texture(
+                "about-test-icon",
+                egui::ColorImage::from_rgba_unmultiplied([1, 1], &[255; 4]),
+                Default::default(),
+            );
+            let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, size);
+            let mut bounds = egui::Rect::NOTHING;
+            for _ in 0..3 {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(screen),
+                        ..Default::default()
+                    },
+                    |_| {
+                        bounds = show(&ctx, &icon).2;
+                    },
+                );
+                output.textures_delta.clear();
+            }
+            assert!(
+                screen.contains_rect(bounds),
+                "About {bounds:?} exceeds window {size:?}"
+            );
+        }
+    }
 
     #[test]
     fn about_rows_are_keyboard_activatable_and_expose_accessible_names() {

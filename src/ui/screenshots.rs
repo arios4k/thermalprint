@@ -13,6 +13,8 @@ const SCREENS: &[&str] = &[
     "print-center",
     "printing-terms",
     "about",
+    "rotation",
+    "save-changes",
 ];
 
 pub(super) struct Capture {
@@ -51,13 +53,28 @@ impl Capture {
         }
         if !self.prepared {
             app.area = match self.index {
-                1 => Area::Designer,
+                1 | 6 | 7 => Area::Designer,
                 2 => Area::Import,
                 3 => Area::PrintCenter,
                 _ => Area::Home,
             };
             app.terms_open = self.index == 4;
             app.about_open = self.index == 5;
+            if self.index == 6
+                && let Some(id) = app
+                    .designer
+                    .doc
+                    .objects
+                    .iter()
+                    .find(|object| matches!(object.element, Element::Qr { .. }))
+                    .map(|object| object.id)
+            {
+                app.designer.select_object(id);
+                app.designer.rotate_selected_to(23.5);
+            }
+            if self.index == 7 {
+                app.designer.request_new();
+            }
             self.since = Instant::now();
             self.prepared = true;
         }
