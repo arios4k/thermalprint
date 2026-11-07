@@ -86,11 +86,15 @@ fn driver_description_from(
     stream
         .set_write_timeout(Some(Duration::from_secs(2)))
         .ok()?;
-    write!(
-        stream,
-        "GET /printers/{name}.ppd HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n"
-    )
-    .ok()?;
+    // One write keeps the request in a single packet for the server to read.
+    stream
+        .write_all(
+            format!(
+                "GET /printers/{name}.ppd HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+            )
+            .as_bytes(),
+        )
+        .ok()?;
     let mut bytes = Vec::new();
     stream.take(4 * 1024 * 1024).read_to_end(&mut bytes).ok()?;
     let response = String::from_utf8_lossy(&bytes);
@@ -474,10 +478,16 @@ mod confined_driver_tests {
         let listener = UnixListener::bind(&socket).unwrap();
         let server = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
-            let mut request = [0; 1024];
-            let size = stream.read(&mut request).unwrap();
+            // The request can arrive in several pieces; read through the header end.
+            let mut request = Vec::new();
+            let mut chunk = [0; 256];
+            while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                let size = stream.read(&mut chunk).unwrap();
+                assert!(size > 0, "client closed before finishing its request");
+                request.extend_from_slice(&chunk[..size]);
+            }
             assert!(
-                String::from_utf8_lossy(&request[..size])
+                String::from_utf8_lossy(&request)
                     .starts_with("GET /printers/label_printer.ppd HTTP/1.0")
             );
             stream.write_all(b"HTTP/1.0 200 OK\r\n\r\n*PPD-Adobe: \"4.3\"\n*PaperDimension Label/Label stock: \"288 432\"\n").unwrap();
