@@ -2,3 +2,8 @@
 *.tmp
 
 __pycache__/
+/*.snap
+/parts/
+/stage/
+/prime/
+/snap/.snapcraft/

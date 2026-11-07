@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+: "${SNAP:?This launcher must run through snap run thermalprint}"
+# GNOME's extension sets up graphics, desktop portals, themes, and accessibility.
+# Preserve an explicitly selected server; otherwise use the cups interface proxy.
+export CUPS_SERVER="${CUPS_SERVER:-/var/cups/cups.sock}"
+# Use the GNOME runtime's desktop link handler on any desktop environment.
+export BROWSER="${BROWSER:-gio open}"
+export PATH="$SNAP/bin:$SNAP/usr/bin:$PATH"
+export XDG_DATA_DIRS="$SNAP/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+exec "$SNAP/bin/thermalprint" "$@"

@@ -68,6 +68,37 @@ sudo apt install thermalprint
 
 Updates arrive through normal APT updates.
 
+### Snap
+
+Tagged releases are published to the Snap Store automatically. To try a locally built package ([build instructions](docs/SNAP.md#build-and-inspect)):
+
+```sh
+sudo snap install --dangerous target/snap/thermalprint_*_amd64.snap
+snap connections thermalprint
+snap run thermalprint
+```
+
+If the `cups` row in `snap connections` shows `-` in the Slot column, or ThermalPrint says printing is not connected:
+
+```sh
+sudo snap install cups
+sudo snap connect thermalprint:cups cups:cups
+```
+
+To save labels to USB drives or other removable storage:
+
+```sh
+sudo snap connect thermalprint:removable-media
+```
+
+To open saved `.thermalprint` labels by double-clicking, run this once from your normal terminal (not `snap run`):
+
+```sh
+sh /snap/thermalprint/current/usr/share/doc/thermalprint/register-mime.sh
+```
+
+Snap packages cannot run these steps automatically; see [Snap release preparation](docs/SNAP.md) for details.
+
 ### Standalone packages and source builds
 
 [GitHub Releases](https://github.com/arios4k/thermalprint/releases) contains the published packages. Tagged releases with the Fedora workflow produce a binary RPM for each supported Fedora version and a source RPM, alongside the Debian package.
@@ -168,7 +199,7 @@ cargo run --release --locked
 
 PDFium is optional. To use a custom installation, set `THERMALPRINT_PDFIUM_DIR` to the directory containing `libpdfium.so`.
 
-[Development and tests](docs/DEVELOPMENT.md) · [Fedora packaging / Copr setup](packaging/rpm/README.md) · [APT release maintenance](docs/RELEASING.md) · [Regenerate screenshots](docs/screenshots/README.md)
+[Snap packaging](docs/SNAP.md) · [Development and tests](docs/DEVELOPMENT.md) · [Fedora packaging / Copr setup](packaging/rpm/README.md) · [APT release maintenance](docs/RELEASING.md) · [Regenerate screenshots](docs/screenshots/README.md)
 
 ## Support ThermalPrint
 

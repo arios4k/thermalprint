@@ -15,10 +15,19 @@ fn main() -> eframe::Result {
         width: 64,
         height: 64,
     };
+    // Match snapd's exported desktop filename for Wayland and X11 grouping.
+    let app_id = if std::env::var("SNAP_NAME").is_ok_and(|name| name == "thermalprint") {
+        format!(
+            "{}_thermalprint",
+            std::env::var("SNAP_INSTANCE_NAME").unwrap_or_else(|_| "thermalprint".into())
+        )
+    } else {
+        "org.thermalprint.ThermalPrint".into()
+    };
     let options = eframe::NativeOptions {
         persist_window: std::env::var_os("THERMALPRINT_SCREENSHOTS").is_none(),
         viewport: eframe::egui::ViewportBuilder::default()
-            .with_app_id("org.thermalprint.ThermalPrint")
+            .with_app_id(app_id)
             .with_decorations(false)
             .with_inner_size([1240.0, 840.0])
             .with_min_inner_size([760.0, 560.0])

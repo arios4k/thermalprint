@@ -57,19 +57,28 @@ impl Printer {
 /// Read the public driver description through CUPS; the on-disk PPD may be root-only.
 /// HTTP/1.0 avoids chunked transfer encoding, and the response is bounded.
 fn driver_description(name: &str) -> Option<String> {
+    let server = std::env::var("CUPS_SERVER").ok();
+    driver_description_from(name, server.as_deref(), std::env::var_os("SNAP").is_none())
+}
+
+fn driver_description_from(
+    name: &str,
+    server: Option<&str>,
+    allow_local_ppd: bool,
+) -> Option<String> {
     if !name
         .bytes()
         .all(|c| c.is_ascii_alphanumeric() || b"-_.".contains(&c))
     {
         return None;
     }
-    let server = std::env::var("CUPS_SERVER").ok();
-    let socket = match server.as_deref() {
+    let socket = match server {
         Some(path) if path.starts_with('/') => path,
         Some(_) => return None, // Never substitute a local driver for a remote server.
         None => "/run/cups/cups.sock",
     };
-    if let Ok(ppd) = std::fs::read_to_string(format!("/etc/cups/ppd/{name}.ppd")) {
+    if allow_local_ppd && let Ok(ppd) = std::fs::read_to_string(format!("/etc/cups/ppd/{name}.ppd"))
+    {
         return Some(ppd);
     }
     let mut stream = std::os::unix::net::UnixStream::connect(socket).ok()?;
@@ -147,7 +156,30 @@ fn run(program: &str, args: &[&str]) -> Result<String> {
     }
     Ok(String::from_utf8_lossy(&o.stdout).into_owned())
 }
+/// Inside a Snap, printing works only while the `cups` interface is connected
+/// (a sideloaded package is not auto-connected). Returns a hint when the
+/// printing socket is missing; `None` outside a Snap or when it is available.
+pub fn snap_connection_hint() -> Option<&'static str> {
+    snap_hint_for(
+        std::env::var_os("SNAP").is_some(),
+        std::env::var("CUPS_SERVER").ok().as_deref(),
+    )
+}
+
+fn snap_hint_for(in_snap: bool, server: Option<&str>) -> Option<&'static str> {
+    const HINT: &str = "Printing is not connected. In a terminal run: sudo snap connect thermalprint:cups cups:cups (install the cups Snap first if needed)";
+    let socket = match server {
+        Some(path) if path.starts_with('/') => path,
+        Some(_) => return None, // A remote server is the user's explicit choice.
+        None => "/var/cups/cups.sock",
+    };
+    (in_snap && !std::path::Path::new(socket).exists()).then_some(HINT)
+}
+
 pub fn discover() -> Result<Vec<Printer>> {
+    if let Some(hint) = snap_connection_hint() {
+        bail!(hint);
+    }
     let printers = run("lpstat", &["-p"])?;
     let default = run("lpstat", &["-d"]).unwrap_or_default();
     let default = default
@@ -235,6 +267,10 @@ pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
         "fit-to-page=false",
         "-o",
         "sides=one-sided",
+        // Never let a queue default add start/end banner pages: on label stock
+        // each banner prints as an extra label.
+        "-o",
+        "job-sheets=none",
     ]);
     if !s.resolution.is_empty() {
         if !p.resolutions.contains(&s.resolution) {
@@ -318,7 +354,16 @@ pub fn submit_raw_zpl(data: &[u8], s: &Settings, p: &Printer) -> Result<String> 
     let mut last = String::new();
     for _ in 0..s.copies {
         let o = Command::new("lp")
-            .args(["-d", &p.name, "-o", "raw", "-t", "ThermalPrint ZPL label"])
+            .args([
+                "-d",
+                &p.name,
+                "-o",
+                "raw",
+                "-o",
+                "job-sheets=none",
+                "-t",
+                "ThermalPrint ZPL label",
+            ])
             .arg(file.path())
             .output()
             .context("Could not start CUPS lp")?;
@@ -398,5 +443,55 @@ mod media_tests {
             printer.media_label("Custom"),
             "Custom — match output dimensions"
         );
+    }
+}
+
+#[cfg(test)]
+mod snap_hint_tests {
+    use super::*;
+
+    #[test]
+    fn hints_only_in_a_snap_when_the_printing_socket_is_missing() {
+        assert!(snap_hint_for(true, Some("/nonexistent/cups.sock")).is_some());
+        assert!(snap_hint_for(false, Some("/nonexistent/cups.sock")).is_none());
+        assert!(snap_hint_for(true, Some("print.example:631")).is_none());
+        let directory = tempfile::tempdir().unwrap();
+        let socket = directory.path().join("cups.sock");
+        std::fs::write(&socket, "").unwrap();
+        assert!(snap_hint_for(true, socket.to_str()).is_none());
+    }
+}
+
+#[cfg(test)]
+mod confined_driver_tests {
+    use super::*;
+    use std::os::unix::net::UnixListener;
+
+    #[test]
+    fn reads_driver_description_from_the_selected_socket_without_host_ppd_access() {
+        let directory = tempfile::tempdir().unwrap();
+        let socket = directory.path().join("cups proxy.sock");
+        let listener = UnixListener::bind(&socket).unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0; 1024];
+            let size = stream.read(&mut request).unwrap();
+            assert!(
+                String::from_utf8_lossy(&request[..size])
+                    .starts_with("GET /printers/label_printer.ppd HTTP/1.0")
+            );
+            stream.write_all(b"HTTP/1.0 200 OK\r\n\r\n*PPD-Adobe: \"4.3\"\n*PaperDimension Label/Label stock: \"288 432\"\n").unwrap();
+        });
+        let ppd = driver_description_from("label_printer", socket.to_str(), false).unwrap();
+        assert_eq!(media_sizes(&ppd).get("Label"), Some(&(101.6, 152.4)));
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn remote_servers_and_invalid_queue_names_do_not_probe_a_local_socket() {
+        assert!(
+            driver_description_from("label_printer", Some("print.example:631"), false).is_none()
+        );
+        assert!(driver_description_from("../private", Some("/missing/cups.sock"), false).is_none());
     }
 }
