@@ -71,6 +71,7 @@ pub struct ThermalPrint {
     original_texture: Option<egui::TextureHandle>,
     output_texture: Option<egui::TextureHandle>,
     icon_texture: egui::TextureHandle,
+    app_icons: about::AppIcons,
     printers: Vec<Printer>,
     tx: mpsc::Sender<Message>,
     rx: mpsc::Receiver<Message>,
@@ -172,6 +173,7 @@ impl ThermalPrint {
             original_texture: None,
             output_texture: None,
             icon_texture,
+            app_icons: about::AppIcons::load(&cc.egui_ctx),
             printers: vec![],
             tx,
             rx,
@@ -1803,7 +1805,7 @@ impl eframe::App for ThermalPrint {
                 .show(&ctx, |ui| crate::help::glossary(ui, &mut self.terms_search));
         }
         if self.about_open {
-            let (close, license, _) = about::show(&ctx, &self.icon_texture);
+            let (close, license, _) = about::show(&ctx, &self.icon_texture, &self.app_icons);
             if license {
                 self.license_open = true;
             }
