@@ -1,0 +1,56 @@
+name: Snap package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'snap/**'
+      - 'src/**'
+      - 'data/**'
+      - 'assets/**'
+      - 'Cargo.*'
+      - 'scripts/*snap*'
+      - 'docs/SNAP.md'
+      - '.github/workflows/snap.yml'
+  pull_request:
+    paths:
+      - 'snap/**'
+      - 'src/**'
+      - 'data/**'
+      - 'assets/**'
+      - 'Cargo.*'
+      - 'scripts/*snap*'
+      - 'docs/SNAP.md'
+      - '.github/workflows/snap.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thermalprint-snap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install verification tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-yaml squashfs-tools shared-mime-info xdg-utils libfile-mimeinfo-perl
+      - name: Verify Snap packaging contracts
+        run: /usr/bin/python3 -m unittest discover -s scripts -p test_snap_packaging.py
+      - uses: canonical/action-build@v1
+        id: build
+      - name: Inspect built Snap
+        env:
+          SNAP_FILE: ${{ steps.build.outputs.snap }}
+        run: /usr/bin/python3 scripts/verify-snap.py "$SNAP_FILE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: thermalprint-snap-amd64
+          path: ${{ steps.build.outputs.snap }}
+          if-no-files-found: error

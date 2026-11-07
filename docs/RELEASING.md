@@ -4,12 +4,12 @@
 
 ## Debian/Ubuntu APT release
 
-The package name and executable are both `thermalprint`. The APT repository lives on the `gh-pages` branch of [arios4k/thermalprint](https://github.com/arios4k/thermalprint) and is served at `https://arios4k.github.io/thermalprint/`. `cups-client` supplies `lp`, `lpstat`, and `lpoptions`; `poppler-utils` supplies the PDF rendering fallback. The installer does not configure a printer or install a model-specific driver. Flatpak and Snap are planned for later.
+The package name and executable are both `thermalprint`. The APT repository lives on the `gh-pages` branch of [arios4k/thermalprint](https://github.com/arios4k/thermalprint) and is served at `https://arios4k.github.io/thermalprint/`. `cups-client` supplies `lp`, `lpstat`, and `lpoptions`; `poppler-utils` supplies the PDF rendering fallback. The installer does not configure a printer or install a model-specific driver. Snap Store publishing for tagged releases and its acceptance checklist are documented in [Snap release preparation](SNAP.md). Flatpak is planned for later.
 
 To install a downloaded `.deb` directly, use APT so package dependencies are installed:
 
 ```sh
-sudo apt install ./thermalprint_0.4.0-1_amd64.deb
+sudo apt install ./thermalprint_0.4.1-1_amd64.deb
 ```
 
 Replace the filename with the version you downloaded. The application appears as **ThermalPrint** in the desktop launcher, using the bundled color icon. You can also run `thermalprint` from a terminal.

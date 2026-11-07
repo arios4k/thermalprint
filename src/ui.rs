@@ -443,7 +443,9 @@ impl ThermalPrint {
                         self.settings.resolution.clear();
                     }
                     self.status = if self.printers.is_empty() {
-                        "No printers found. Add a label printer in your system settings; export is available.".into()
+                        printing::snap_connection_hint()
+                            .unwrap_or("No printers found. Add a label printer in your system settings; export is available.")
+                            .into()
                     } else {
                         "CUPS printers refreshed".into()
                     };
