@@ -212,6 +212,7 @@ pub struct Designer {
     sscc_form: SsccForm,
     logos: Vec<crate::symbols::Logo>,
     addresses: Vec<crate::address_book::Entry>,
+    fonts: Vec<String>,
     symbol_textures: Vec<(crate::symbols::Symbol, egui::TextureHandle)>,
     logo_textures: std::collections::HashMap<PathBuf, egui::TextureHandle>,
     /// Crash recovery: a design left over from an unexpected exit, offered at startup.
@@ -268,6 +269,7 @@ impl Designer {
                 .map(|dir| crate::symbols::list_logos_in(&dir))
                 .unwrap_or_default(),
             addresses: crate::address_book::load(),
+            fonts: crate::fonts::list(),
             symbol_textures: Vec::new(),
             logo_textures: Default::default(),
             recovered: None,
@@ -2175,6 +2177,7 @@ impl Designer {
         let locked = o.locked;
         let mut center = (false, false);
         let mut save_logo: Option<String> = None;
+        let mut add_font = false;
         let mut save_address: Option<String> = None;
         ui.add_enabled_ui(!locked, |ui| {
             ui.horizontal(|ui| {
@@ -2314,11 +2317,58 @@ impl Designer {
                 )
                 .accessible_name(crate::i18n::tr("Font size in points"));
                 ui.horizontal_wrapped(|ui| {
-                    ui.checkbox(bold, crate::i18n::tr("Bold"));
+                    ui.add_enabled(
+                        o.options.font.is_empty(),
+                        egui::Checkbox::new(bold, crate::i18n::tr("Bold")),
+                    )
+                    .on_disabled_hover_text(crate::i18n::tr(
+                        "Your own fonts have no bold switch. Install a bold font file instead.",
+                    ));
                     ui.checkbox(&mut o.options.italic, crate::i18n::tr("Italic"));
                     ui.checkbox(&mut o.options.inverse, crate::i18n::tr("Inverse"))
                         .on_hover_text(crate::i18n::tr("White letters on a black box"));
                 });
+                ui.horizontal_wrapped(|ui| {
+                    let current = if o.options.font.is_empty() {
+                        crate::i18n::tr("Built-in font").to_string()
+                    } else {
+                        o.options.font.clone()
+                    };
+                    egui::ComboBox::from_id_salt("text-font")
+                        .selected_text(current)
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut o.options.font,
+                                String::new(),
+                                crate::i18n::tr("Built-in font"),
+                            );
+                            for name in &self.fonts {
+                                ui.selectable_value(&mut o.options.font, name.clone(), name);
+                            }
+                        })
+                        .response
+                        .accessible_name(crate::i18n::tr("Font"));
+                    if icon_action(
+                        ui,
+                        "Add text",
+                        "",
+                        "Add a font from a .ttf or .otf file",
+                        true,
+                        false,
+                    )
+                    .clicked()
+                    {
+                        add_font = true;
+                    }
+                });
+                if !o.options.font.is_empty() && !self.fonts.contains(&o.options.font) {
+                    ui.colored_label(
+                        Color32::from_rgb(200, 120, 20),
+                        crate::i18n::tr(
+                            "This font is not installed on this computer, so the built-in font is used.",
+                        ),
+                    );
+                }
                 ui.horizontal(|ui| {
                     ui.selectable_value(align, TextAlign::Left, crate::i18n::tr("Left"));
                     ui.selectable_value(align, TextAlign::Center, crate::i18n::tr("Center"));
@@ -2548,6 +2598,26 @@ impl Designer {
                         wrap: keep.wrap,
                         ..Default::default()
                     };
+                }
+            }
+        }
+        if add_font
+            && let Some(path) = rfd::FileDialog::new()
+                .add_filter("Font", &["ttf", "otf"])
+                .pick_file()
+        {
+            match crate::fonts::install(&path) {
+                Ok(name) => {
+                    self.status = format!("Font {name} added");
+                    self.error = false;
+                    self.fonts = crate::fonts::list();
+                    if let Some(o) = self.doc.objects.iter_mut().find(|o| o.id == id) {
+                        o.options.font = name;
+                    }
+                }
+                Err(error) => {
+                    self.status = format!("{error:#}");
+                    self.error = true;
                 }
             }
         }

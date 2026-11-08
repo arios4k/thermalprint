@@ -20,5 +20,6 @@ pub mod user_templates;
 pub mod watch;
 pub mod zpl;
 
+pub mod fonts;
 pub mod gs1;
 pub mod help;

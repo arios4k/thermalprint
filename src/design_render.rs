@@ -230,7 +230,7 @@ fn draw_text(
     serial: u64,
     options: &ObjectOptions,
 ) -> Result<()> {
-    let f = font(bold);
+    let f = crate::fonts::lookup(&options.font).unwrap_or_else(|| font(bold));
     let expanded = expand(text, serial);
     let width = im.width() as f32;
     let spacing = options.line_spacing.clamp(0.5, 3.);
@@ -775,6 +775,53 @@ pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
         dpi,
     })
 }
+#[cfg(test)]
+mod font_option_tests {
+    use super::*;
+    use crate::design::LabelDocument;
+
+    fn doc_with_font(font: &str) -> LabelDocument {
+        let mut doc = LabelDocument::blank(50., 20.);
+        let id = doc.add(
+            Element::Text {
+                text: "Hello".into(),
+                font_pt: 14.,
+                bold: false,
+                align: crate::design::TextAlign::Left,
+            },
+            2.,
+            2.,
+            40.,
+            10.,
+        );
+        doc.objects
+            .iter_mut()
+            .find(|o| o.id == id)
+            .unwrap()
+            .options
+            .font = font.into();
+        doc
+    }
+
+    #[test]
+    fn a_font_that_is_not_installed_falls_back_to_the_built_in_one() {
+        let plain = render_label(&doc_with_font(""), 203).unwrap();
+        let missing = render_label(&doc_with_font("No Such Font 123"), 203).unwrap();
+        assert_eq!(plain.image.as_raw(), missing.image.as_raw());
+    }
+
+    #[test]
+    fn font_names_cannot_point_outside_the_fonts_folder() {
+        assert!(doc_with_font("../../etc/passwd").validate().is_err());
+        assert!(doc_with_font("Open Sans").validate().is_ok());
+        let json = serde_json::to_string(&doc_with_font("")).unwrap();
+        assert!(
+            !json.contains("\"font\":"),
+            "the default adds nothing to a saved file"
+        );
+    }
+}
+
 #[cfg(test)]
 mod auto_length_tests {
     use super::*;

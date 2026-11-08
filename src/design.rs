@@ -139,6 +139,8 @@ pub struct ObjectOptions {
     /// Barcode: put the readable text above the bars.
     pub text_above: bool,
     pub qr_level: QrLevel,
+    /// Text: the name of a font installed in the fonts folder; empty is the built-in font.
+    pub font: String,
 }
 impl Default for ObjectOptions {
     fn default() -> Self {
@@ -155,6 +157,7 @@ impl Default for ObjectOptions {
             barcode_text_pt: 0.,
             text_above: false,
             qr_level: QrLevel::Medium,
+            font: String::new(),
         }
     }
 }
@@ -173,6 +176,9 @@ impl ObjectOptions {
             || !(self.barcode_text_pt == 0. || (2.0..=60.).contains(&self.barcode_text_pt))
         {
             bail!("Invalid barcode text size");
+        }
+        if !self.font.is_empty() && !crate::fonts::is_valid_name(&self.font) {
+            bail!("Invalid font name");
         }
         Ok(())
     }
