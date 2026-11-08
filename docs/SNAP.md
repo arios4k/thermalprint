@@ -65,6 +65,13 @@ provider. `cups-control`, direct USB access, and printer-administration
 permissions are not requested. Poppler and the CUPS client utilities are bundled;
 PDFium is optional and is not downloaded by this recipe.
 
+Features that read your files work in the Snap within these limits: batch
+printing from CSV and the watch folder read files you choose through the file
+chooser or in your home folder; the watch folder cannot read hidden folders
+(such as `~/.cache`) or other drives unless `removable-media` is connected. The
+app shows a hint when it chooses a folder the Snap cannot read. Preferences,
+printer profiles, and print history live in the Snap's own user-data directory.
+
 The GNOME extension enables file chooser portals. The `home` connection also
 allows ordinary documents in the user's home directory. Direct access to USB
 storage is optional and needs an explicit connection:
@@ -122,6 +129,9 @@ Before promoting the package beyond an experimental channel:
   capability/driver-description lookup through the proxy works; the Snap does
   not read host PPD files under `/etc/cups/ppd`.
 - Test optional removable-media access and saving a design on an external drive.
+- Choose a watch folder in Downloads, drop in a PDF, and confirm it joins the queue;
+  choose a hidden or external folder and confirm the hint appears.
+- Open a CSV from Downloads in Batch print and confirm the preview renders.
 - Review confinement denials and package/library lint results. Build success
   alone does not demonstrate printer or desktop compatibility.
 

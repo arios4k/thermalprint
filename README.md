@@ -33,7 +33,10 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 - **Prepare existing labels.** Import PDFs or images, crop instructions and whitespace, review the result, and arrange several labels into a print queue.
 - **Get the size right.** Start at **4 × 6 inches**, choose another preset or enter custom dimensions. Descriptive printer media names and one-click size matching help resolve mismatches.
 - **Print or export.** Submit to a configured CUPS printer, save a dimensioned PDF or PNG, or export a design as SVG or raster ZPL.
-- **Stay comfortable.** A single title bar with the app menu and window controls; light, dark, and system themes; consistent icon tools; keyboard shortcuts; and a searchable guide explaining printing terminology.
+- **Print many at once.** Merge a spreadsheet into a design: put `${column}` placeholders in text, barcode, and QR content, choose a CSV file, preview any row, and print one label per row. Every row is checked before anything is sent.
+- **Fit your printer.** Each printer remembers its media, resolution, size, and copies, plus a small alignment offset. Print a ruler test label to measure how far your printer is off-center.
+- **Save clicks.** Watch a folder such as Downloads and new PDF and image labels join the queue on their own. Recent prints are listed in Print Center so a label can be reopened and printed again after you review it.
+- **Stay comfortable.** A single title bar with the app menu and window controls; light, dark, and system themes; English, Spanish, German, and French (set in the main menu); consistent icon tools; keyboard shortcuts; and a searchable guide explaining printing terminology.
 
 Document processing happens on your computer. ThermalPrint works with local files from carriers and marketplaces, including Vinted, eBay, Etsy, Shopify, USPS, UPS, and FedEx, without connecting to their accounts.
 
@@ -184,9 +187,9 @@ Useful shortcuts: **Ctrl+O** opens labels, **Ctrl+P** prints, and the designer s
 
 | Task | Supported formats or options |
 | --- | --- |
-| Import | PDF, PNG, JPEG, TIFF, BMP, WebP; multipage PDFs join the queue |
+| Import | PDF, PNG, JPEG, TIFF, BMP, WebP; multipage PDFs join the queue; CSV, semicolon, or tab-separated tables for batch printing |
 | Editable designs | Versioned `.thermalprint` files with embedded images |
-| Barcodes | Code 128, Code 39, EAN-13, UPC-A, QR |
+| Barcodes | Code 128, Code 39, Code 93, EAN-13, EAN-8, UPC-A, ITF, Codabar, Data Matrix, QR |
 | Output | PDF, PNG; design SVG with embedded raster output; raster ZPL |
 | Layout | Automatic/manual/full-page extraction, rotation, fit/actual/custom scale, margins |
 | Print resolution | 203, 300, or 600 DPI |
