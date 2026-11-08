@@ -10,7 +10,7 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <h2>Starting a label</h2>
 <ul>
   <li><strong>Blank:</strong> choose <strong>File → New label</strong>, or <strong>Create new label</strong> on Home. A blank label is 101.6 × 152.4 mm (4 × 6 inches).</li>
-  <li><strong>From a template:</strong> pick one on the Home screen, or open the template menu (the last icon in the element palette). Templates are ordinary labels you can change freely. They open as <em>unsaved</em>, so save them under your own name to keep your edits.</li>
+  <li><strong>From a template:</strong> pick one on the Home screen, or open the template menu (the last icon in the element palette). Templates are ordinary labels you can change freely. They open as <em>unsaved</em>, so save them under your own name to keep your edits. Designs you saved with <strong>File → Save as template…</strong> are listed under <em>Your templates</em> in the same menu (see below).</li>
   <li><strong>From a saved design:</strong> press <strong>Open</strong>, drop a <code>.thermalprint</code> file on the window, or double-click one in your file manager.</li>
 </ul>
 
@@ -27,11 +27,11 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <h2>The toolbar</h2>
 <table>
   <tr><th>Control</th><th>What it does</th></tr>
-  <tr><td><strong>File</strong></td><td><em>New label</em>, <em>Save as…</em>, and <em>Batch print from CSV…</em> (see <a href="batch.html">Batch printing</a>).</td></tr>
+  <tr><td><strong>File</strong></td><td><em>New label</em>, <em>Save as…</em>, <em>Save as template…</em>, and <em>Batch print from CSV…</em> (see <a href="batch.html">Batch printing</a>).</td></tr>
   <tr><td><strong>Open</strong> / <strong>Save</strong></td><td>Open a design file; save the current one (<kbd>Ctrl</kbd>+<kbd>S</kbd>).</td></tr>
   <tr><td>Undo / redo</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> and <kbd>Ctrl</kbd>+<kbd>Y</kbd>.</td></tr>
   <tr><td>Zoom out / in / fit</td><td>Zoom from 25 % to 500 %. <em>Fit</em> returns to 100 % and re-centers. Drag with the <strong>middle mouse button</strong> to pan.</td></tr>
-  <tr><td><strong>View</strong></td><td><em>Show grid</em>, <em>Snap to grid</em>, <em>Properties panel</em>, and <em>Focus canvas</em>.</td></tr>
+  <tr><td><strong>View</strong></td><td><em>Show grid</em>, <em>Snap to grid</em>, <em>Smart guides</em>, <em>Show printable area</em>, <em>Properties panel</em>, and <em>Focus canvas</em>.</td></tr>
   <tr><td><strong>Export</strong></td><td>Save as PDF, PNG, SVG, or ZPL, and the <em>Print using raw ZPL</em> switch. See <a href="export.html">Exporting</a>.</td></tr>
   <tr><td><strong>Focus</strong></td><td>Hide the sidebar and properties to give the canvas the whole window. Press it again to bring them back.</td></tr>
   <tr><td><strong>Print</strong></td><td>Print the label on the printer chosen in Print Center.</td></tr>
@@ -58,7 +58,10 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
   <li><strong>Move:</strong> drag the object.</li>
   <li><strong>Resize:</strong> drag the <strong>square handle</strong> at the bottom-right corner. It resizes along the object's own direction, even when it is rotated.</li>
   <li><strong>Rotate:</strong> drag the <strong>round handle</strong> above the object. Hold <kbd>Shift</kbd> to snap to 15° steps. For an exact angle, type it into <strong>Rotation</strong>; fractional degrees such as 23.5° work.</li>
-  <li><strong>Grid and snapping:</strong> turn on <em>Show grid</em> to see a guide grid, and <em>Snap to grid</em> to make movement land on it.</li>
+  <li><strong>Grid and snapping:</strong> turn on <em>Show grid</em> to see a guide grid, and <em>Snap to grid</em> to make movement land on it. <strong>Label setup → Grid size</strong> sets the spacing in millimeters (5 mm to start); snapping moves in steps of a fifth of it.</li>
+  <li><strong>Smart guides:</strong> with <em>View → Smart guides</em> on, a dragged object snaps to the edges and centers of the other objects and to the label's center, and magenta lines show what it lined up with.</li>
+  <li><strong>Nudge with the keyboard:</strong> the arrow keys move the selection by 0.1 mm, and <kbd>Shift</kbd>+arrow by 1 mm.</li>
+  <li><strong>Lock:</strong> tick <strong>Lock position and size</strong> to protect an object. A locked object cannot be dragged, resized, rotated, nudged, or deleted from the canvas until you unlock it.</li>
 </ul>
 <p>The line above the canvas reminds you: <em>Drag to move · square to resize · circle to rotate · Shift: 15°</em>.</p>
 {{figure:rotation|A QR code rotated to 23.5 degrees on the label canvas, with its rotation handle|Rotating an object freely. The Rotation field accepts exact and fractional angles.}}
@@ -71,13 +74,30 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
   <li>Content settings for that object type (text, barcode value and type, QR content, stroke).</li>
   <li><strong>Forward</strong> and <strong>Backward</strong> to change which object is on top, <strong>Duplicate</strong>, and <strong>Delete</strong>.</li>
 </ul>
-<p>With several objects selected, the panel shows the count and a <strong>Delete selected</strong> button. Hide the panel with <em>View → Properties panel</em>.</p>
+<p>With several objects selected, the panel shows the count and tools to arrange them. Hide the panel with <em>View → Properties panel</em>.</p>
+{{figure:designer-arrange|Four text objects selected in the Label Designer, with the Align, Distribute evenly, and Center on label buttons in the properties panel|Several objects selected. The panel offers alignment, even spacing, centering, locking, and delete.}}
+<table>
+  <tr><th>Tool</th><th>What it does</th></tr>
+  <tr><td><strong>Align</strong>: Left, Center, Right, Top, Middle, Bottom</td><td>Lines the selected objects up with each other.</td></tr>
+  <tr><td><strong>Distribute evenly</strong>: Horizontally, Vertically</td><td>Makes the gaps between three or more objects equal. The two outermost objects stay where they are.</td></tr>
+  <tr><td><strong>Center on label</strong></td><td>Centers the selection as a group on the label, horizontally or vertically. A single object has the same buttons.</td></tr>
+  <tr><td><strong>Lock all</strong> / <strong>Unlock all</strong></td><td>Locks or unlocks every selected object.</td></tr>
+  <tr><td><strong>Delete selected</strong></td><td>Deletes the unlocked objects in the selection.</td></tr>
+</table>
+<p>Locked objects are skipped by every one of these tools. A single object also has <strong>Rotate 90°</strong> (a quarter turn clockwise) and <strong>Flip horizontally</strong> / <strong>Flip vertically</strong>, which mirror it before it is rotated.</p>
 
 <h2>Saving and the unsaved-changes prompt</h2>
 <p>Designs are saved as <code>.thermalprint</code> files. They are editable, versioned, and include embedded images, so a design is a single file you can copy or email. The status bar shows <em>Unsaved</em> when there are changes.</p>
 <p>Whenever an action would replace your current design (New, Open, choosing a template, a past print, or closing the app), ThermalPrint asks first:</p>
 {{figure:save-changes|The Save changes dialog with Cancel, Discard, and Save buttons and a label name field|The Save changes? prompt. Cancel keeps working; Discard throws the changes away; Save keeps them.}}
 <p>If a save fails or you cancel the file chooser, your design stays open and unchanged.</p>
+
+<h2>Your own templates</h2>
+<p>When you reuse a design, choose <strong>File → Save as template…</strong>. The design is stored in a <code>templates</code> folder inside ThermalPrint's settings folder, named after the label, and appears under <em>Your templates</em> in the template menu next to the built-in ones. Choosing one opens an unsaved copy, so the template itself never changes. Saving a template under a name you already used replaces it, and the <strong>✕</strong> beside a template removes it. You can keep up to 100.</p>
+
+<h2>The printable area</h2>
+<p>Most printers cannot print right to the edge of the media. When the label size matches the media of the selected printer and the printer reports its margins, the canvas shades that border in amber, and the status area names any object that reaches into it, because that part may be cut off. Turn the shading off with <em>View → Show printable area</em>.</p>
+{{figure:designer-printable|The Label Designer with the printer's unprintable border shaded and a warning under the canvas about an object that reaches into it|The shaded border is the part the printer cannot print. The warning lists the object that reaches into it.}}
 
 <h2>Printing from the Designer</h2>
 <p>Choose your printer and media in <a href="print-center.html">Print Center</a>, then press <strong>Print</strong> in the toolbar. The design is drawn at the printer's resolution (203, 300, or 600 DPI) and sent as a one-page PDF. If a label contains something that cannot be drawn, such as a barcode value that is not valid, printing stops with a message that names the problem. Designs you print are listed under <em>Recent prints</em> in Print Center so you can reopen them later.</p>

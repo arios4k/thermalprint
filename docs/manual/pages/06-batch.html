@@ -26,7 +26,7 @@ summary: Merge a spreadsheet into a design and print one label per row, with a p
 <ul>
   <li>Column names are <strong>not case-sensitive</strong>: <code>${sku}</code> matches a column called <code>SKU</code>.</li>
   <li>Use as many placeholders as you like, in any text, barcode, or QR object. The same column can appear more than once.</li>
-  <li><code>${date}</code> and <code>${serial}</code> keep their usual meaning. In a batch, <code>${serial}</code> starts at the design's serial number and goes up by one per row.</li>
+  <li><code>${date}</code> and <code>${serial}</code> keep their usual meaning, including the formatted versions <code>${date:%d/%m/%Y}</code> and <code>${serial:4}</code>, which are never mistaken for column names. In a batch, <code>${serial}</code> starts at the design's serial number and goes up by one per row.</li>
 </ul>
 
 <h2>Step 2: the CSV file</h2>

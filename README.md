@@ -29,7 +29,7 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 
 ## A workspace for everyday labels
 
-- **Create your own.** Start with a template and add text, addresses, logos, shapes, real barcodes, and QR codes. Position objects precisely, align with grid snapping, and save reusable designs.
+- **Create your own.** Start with a template and add text, addresses, logos, shapes, real barcodes, and QR codes. Position objects precisely with a custom grid, smart guides, arrow-key nudging, and align, distribute, flip, and lock tools. Wrap or shrink text to fit its box, dither photos for thermal printing, set QR error correction and barcode text, format dates and zero-padded serials such as `${serial:4}`, see the printer's unprintable border, and save your own templates.
 - **Prepare existing labels.** Import PDFs or images, crop instructions and whitespace, review the result, and arrange several labels into a print queue.
 - **Get the size right.** Start at **4 × 6 inches**, choose another preset or enter custom dimensions. Descriptive printer media names and one-click size matching help resolve mismatches.
 - **Print or export.** Submit to a configured CUPS printer, save a dimensioned PDF or PNG, or export a design as SVG or raster ZPL.
@@ -179,7 +179,7 @@ Select an object and drag its round handle to rotate freely, including fractiona
 
 Use the sidebar icon to collapse navigation. In **Label Designer**, **Focus** hides navigation and properties, **View** controls the grid and properties panel, and **Export** groups PDF, PNG, SVG, and ZPL output. The **Object** picker in Properties lets you select an element using the keyboard.
 
-Useful shortcuts: **Ctrl+O** opens labels, **Ctrl+P** prints, and the designer supports **Ctrl+S**, **Ctrl+Z/Y**, **Ctrl+C/V**, and **Ctrl+D**.
+Useful shortcuts: **Ctrl+O** opens labels, **Ctrl+P** prints, and the designer supports **Ctrl+S**, **Ctrl+Z/Y**, **Ctrl+C/V**, **Ctrl+D**, and the arrow keys to nudge the selection (**Shift** for 1 mm).
 
 [Detailed usage guide](docs/USAGE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
 
