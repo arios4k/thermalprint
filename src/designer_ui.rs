@@ -1,3 +1,4 @@
+use crate::symbols::Symbol;
 use crate::{
     design::{self, BarcodeKind, DesignObject, Element, LabelDocument, ShapeKind, TextAlign},
     design_render, export,
@@ -209,6 +210,10 @@ pub struct Designer {
     range: Option<RangeState>,
     qr_form: QrForm,
     sscc_form: SsccForm,
+    logos: Vec<crate::symbols::Logo>,
+    addresses: Vec<crate::address_book::Entry>,
+    symbol_textures: Vec<(crate::symbols::Symbol, egui::TextureHandle)>,
+    logo_textures: std::collections::HashMap<PathBuf, egui::TextureHandle>,
     /// Crash recovery: a design left over from an unexpected exit, offered at startup.
     recovered: Option<LabelDocument>,
     recovery_dir: Option<PathBuf>,
@@ -259,6 +264,12 @@ impl Designer {
             range: None,
             qr_form: QrForm::default(),
             sscc_form: SsccForm::default(),
+            logos: crate::symbols::logos_dir()
+                .map(|dir| crate::symbols::list_logos_in(&dir))
+                .unwrap_or_default(),
+            addresses: crate::address_book::load(),
+            symbol_textures: Vec::new(),
+            logo_textures: Default::default(),
             recovered: None,
             recovery_dir: None,
             recovery_written: None,
@@ -1585,6 +1596,225 @@ impl Designer {
         self.shortcut(&ctx);
         self.start_render(settings.dpi);
     }
+    /// The address book menu: pick an address to add it as a text block.
+    fn address_menu(&mut self, ui: &mut egui::Ui) {
+        ui.label(crate::i18n::tr("Address book"));
+        if self.addresses.is_empty() {
+            ui.label(
+                RichText::new(crate::i18n::tr(
+                    "Nothing saved yet. Select a text object and choose Save to address book.",
+                ))
+                .small()
+                .weak(),
+            );
+        }
+        let mut add: Option<String> = None;
+        let mut remove: Option<String> = None;
+        for entry in &self.addresses {
+            ui.horizontal(|ui| {
+                if ui
+                    .button(&entry.name)
+                    .on_hover_text(&entry.address)
+                    .clicked()
+                {
+                    add = Some(entry.address.clone());
+                }
+                if ui
+                    .small_button("✕")
+                    .on_hover_text(crate::i18n::tr("Remove this address"))
+                    .clicked()
+                {
+                    remove = Some(entry.name.clone());
+                }
+            });
+        }
+        if let Some(address) = add {
+            let lines = address.lines().count().max(1) as f32;
+            self.add(
+                Element::Text {
+                    text: address,
+                    font_pt: 12.,
+                    bold: false,
+                    align: TextAlign::Left,
+                },
+                60.,
+                (lines * 6.).clamp(8., 80.),
+            );
+            ui.close();
+        }
+        if let Some(name) = remove {
+            match crate::address_book::remove(&name) {
+                Ok(list) => {
+                    self.addresses = list;
+                    self.status = "Address removed".into();
+                }
+                Err(error) => {
+                    self.status = format!("{error:#}");
+                    self.error = true;
+                }
+            }
+        }
+    }
+    fn save_address(&mut self, text: &str) {
+        let name = text.lines().next().unwrap_or("").to_string();
+        match crate::address_book::add(&name, text) {
+            Ok(list) => {
+                self.addresses = list;
+                self.status = format!("Saved {name} to the address book");
+                self.error = false;
+            }
+            Err(error) => {
+                self.status = format!("Could not save the address: {error:#}");
+                self.error = true;
+            }
+        }
+    }
+    /// The symbols and saved logos menu: pick one to add it to the label.
+    fn symbols_menu(&mut self, ui: &mut egui::Ui) {
+        use crate::symbols;
+        if self.symbol_textures.is_empty() {
+            for symbol in symbols::ALL {
+                let image = symbols::render(symbol, 96);
+                let texture = ui.ctx().load_texture(
+                    format!("symbol-{}", symbol.name()),
+                    egui::ColorImage::from_rgba_unmultiplied([96, 96], image.as_raw()),
+                    egui::TextureOptions::LINEAR,
+                );
+                self.symbol_textures.push((symbol, texture));
+            }
+        }
+        ui.label(crate::i18n::tr("Symbols"));
+        let mut chosen: Option<Symbol> = None;
+        ui.horizontal_wrapped(|ui| {
+            ui.set_max_width(260.);
+            for (symbol, texture) in &self.symbol_textures {
+                let name = crate::i18n::tr(symbol.name());
+                let response = ui.add(egui::Button::image(
+                    egui::Image::new(texture).fit_to_exact_size(Vec2::splat(44.)),
+                ));
+                response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, name));
+                if response.on_hover_text(name).clicked() {
+                    chosen = Some(*symbol);
+                }
+            }
+        });
+        if let Some(symbol) = chosen {
+            let image = symbols::render(symbol, 400);
+            if let Ok(png) = symbols::png_bytes(&image) {
+                self.add(
+                    Element::Image {
+                        data_base64: base64::engine::general_purpose::STANDARD.encode(png),
+                    },
+                    25.,
+                    25.,
+                );
+            }
+            ui.close();
+        }
+        if !self.logos.is_empty() {
+            ui.separator();
+            ui.label(crate::i18n::tr("Your logos"));
+        }
+        let mut add_logo: Option<PathBuf> = None;
+        let mut remove_logo: Option<PathBuf> = None;
+        for logo in self.logos.clone() {
+            let texture = self
+                .logo_textures
+                .entry(logo.path.clone())
+                .or_insert_with(|| {
+                    let color = image::open(&logo.path)
+                        .map(|img| image::imageops::thumbnail(&img.to_rgba8(), 64, 64))
+                        .map(|thumb| {
+                            egui::ColorImage::from_rgba_unmultiplied(
+                                [thumb.width() as usize, thumb.height() as usize],
+                                thumb.as_raw(),
+                            )
+                        })
+                        .unwrap_or_else(|_| egui::ColorImage::example());
+                    ui.ctx()
+                        .load_texture("logo-thumb", color, egui::TextureOptions::LINEAR)
+                })
+                .clone();
+            ui.horizontal(|ui| {
+                let response = ui.add(egui::Button::image_and_text(
+                    egui::Image::new(&texture).fit_to_exact_size(Vec2::splat(28.)),
+                    &logo.name,
+                ));
+                if response.clicked() {
+                    add_logo = Some(logo.path.clone());
+                }
+                if ui
+                    .small_button("✕")
+                    .on_hover_text(crate::i18n::tr("Remove this logo"))
+                    .clicked()
+                {
+                    remove_logo = Some(logo.path.clone());
+                }
+            });
+        }
+        if let Some(path) = add_logo {
+            match std::fs::read(&path) {
+                Ok(bytes) => {
+                    let (w, h) = image::load_from_memory(&bytes)
+                        .map(|im| (im.width() as f32, im.height() as f32))
+                        .unwrap_or((1., 1.));
+                    let scale = 30. / w.max(h).max(1.);
+                    self.add(
+                        Element::Image {
+                            data_base64: base64::engine::general_purpose::STANDARD.encode(bytes),
+                        },
+                        (w * scale).max(3.),
+                        (h * scale).max(3.),
+                    );
+                    ui.close();
+                }
+                Err(error) => {
+                    self.status = format!("Could not read the logo: {error}");
+                    self.error = true;
+                }
+            }
+        }
+        if let Some(path) = remove_logo
+            && let Some(dir) = symbols::logos_dir()
+        {
+            match symbols::remove_logo_in(&dir, &path) {
+                Ok(()) => self.status = "Logo removed".into(),
+                Err(error) => {
+                    self.status = format!("{error:#}");
+                    self.error = true;
+                }
+            }
+            self.refresh_logos();
+        }
+    }
+    fn refresh_logos(&mut self) {
+        self.logos = crate::symbols::logos_dir()
+            .map(|dir| crate::symbols::list_logos_in(&dir))
+            .unwrap_or_default();
+        self.logo_textures.clear();
+    }
+    fn save_logo(&mut self, data_base64: &str) {
+        let result = base64::engine::general_purpose::STANDARD
+            .decode(data_base64)
+            .map_err(anyhow::Error::from)
+            .and_then(|bytes| {
+                let dir = crate::symbols::logos_dir()
+                    .ok_or_else(|| anyhow::anyhow!("No settings folder is available"))?;
+                let name = format!("Logo {}", crate::symbols::list_logos_in(&dir).len() + 1);
+                crate::symbols::save_logo_in(&dir, &name, &bytes)
+            });
+        match result {
+            Ok(_) => {
+                self.status = "Saved to your logos · find it under Symbols and logos".into();
+                self.error = false;
+            }
+            Err(error) => {
+                self.status = format!("Could not save the logo: {error:#}");
+                self.error = true;
+            }
+        }
+        self.refresh_logos();
+    }
     fn elements(&mut self, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
             ui.add_space(6.);
@@ -1677,6 +1907,10 @@ impl Designer {
                 }
             }
             ui.separator();
+            let book = element_tool(ui, "Address book");
+            egui::Popup::menu(&book).show(|ui| self.address_menu(ui));
+            let symbols = element_tool(ui, "Symbols and logos");
+            egui::Popup::menu(&symbols).show(|ui| self.symbols_menu(ui));
             let templates = element_tool(ui, "Choose a label template");
             egui::Popup::menu(&templates).show(|ui| {
                 ui.label(crate::i18n::tr("Templates"));
@@ -1940,6 +2174,8 @@ impl Designer {
         ui.heading(format!("{} #{}", o.label(), id));
         let locked = o.locked;
         let mut center = (false, false);
+        let mut save_logo: Option<String> = None;
+        let mut save_address: Option<String> = None;
         ui.add_enabled_ui(!locked, |ui| {
             ui.horizontal(|ui| {
                 ui.label("X");
@@ -2056,6 +2292,18 @@ impl Designer {
                 bold,
                 align,
             } => {
+                if icon_action(
+                    ui,
+                    "Address book",
+                    "Save to address book",
+                    "Keep this text, named after its first line, in your address book",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    save_address = Some(text.clone());
+                }
                 ui.label(crate::i18n::tr("Text · ${date} and ${serial} are dynamic"));
                 ui.add(egui::TextEdit::multiline(text).desired_rows(6))
                     .accessible_name(crate::i18n::tr("Object text"));
@@ -2222,10 +2470,22 @@ impl Designer {
                 .accessible_name(crate::i18n::tr("Shape stroke width in millimeters"));
                 ui.checkbox(filled, crate::i18n::tr("Filled"));
             }
-            Element::Image { .. } => {
+            Element::Image { data_base64 } => {
                 ui.label(crate::i18n::tr(
                     "Embedded image. Resize with W/H or the canvas handle.",
                 ));
+                if icon_action(
+                    ui,
+                    "Save document",
+                    "Save as logo",
+                    "Keep this image under Symbols and logos so you can add it to any label",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    save_logo = Some(data_base64.clone());
+                }
                 egui::ComboBox::from_id_salt("image-mode")
                     .selected_text(image_mode_name(o.options.image_mode))
                     .show_ui(ui, |ui| {
@@ -2290,6 +2550,12 @@ impl Designer {
                     };
                 }
             }
+        }
+        if let Some(text) = save_address {
+            self.save_address(&text);
+        }
+        if let Some(data) = save_logo {
+            self.save_logo(&data);
         }
         if center.0 {
             self.arrange(
@@ -3465,6 +3731,19 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
             path(&[(2., 12.), (22., 12.)]);
             path(&[(6., 9.), (18., 9.), (12., 3.), (6., 9.)]);
             path(&[(6., 15.), (18., 15.), (12., 21.), (6., 15.)]);
+        }
+        "Address book" => {
+            outline(5., 3., 15., 18., 2.);
+            path(&[(3., 7.), (7., 7.)]);
+            path(&[(3., 12.), (7., 12.)]);
+            path(&[(3., 17.), (7., 17.)]);
+            painter.circle_stroke(point(13., 10.), 2.5, stroke);
+            path(&[(9., 17.), (11., 14.), (15., 14.), (17., 17.)]);
+        }
+        "Symbols and logos" => {
+            path(&[(12., 3.), (22., 20.), (2., 20.), (12., 3.)]);
+            path(&[(12., 9.), (12., 14.)]);
+            path(&[(12., 17.), (12., 17.)]);
         }
         "Apply" => {
             path(&[(4., 12.), (9., 17.), (20., 6.)]);
