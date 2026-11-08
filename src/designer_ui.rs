@@ -52,6 +52,123 @@ struct RangeState {
     count: u32,
 }
 
+/// The values typed into the QR content builder; they are not saved with the design.
+#[derive(Clone, Debug, Default)]
+struct QrForm {
+    kind: usize,
+    website: String,
+    ssid: String,
+    password: String,
+    security: crate::qr_builder::WifiSecurity,
+    hidden: bool,
+    contact: crate::qr_builder::Contact,
+    mail_to: String,
+    mail_subject: String,
+    mail_body: String,
+    phone: String,
+    error: Option<String>,
+}
+
+const QR_KINDS: [&str; 5] = ["Website", "Wi-Fi", "Contact card", "Email", "Phone number"];
+
+/// Fill in the QR content from a form. Returns true when the content was replaced.
+fn qr_builder_ui(ui: &mut egui::Ui, form: &mut QrForm, data: &mut String) -> bool {
+    use crate::qr_builder::{QrContent, WifiSecurity};
+    let mut applied = false;
+    egui::CollapsingHeader::new(crate::i18n::tr("Build the content"))
+        .id_salt("qr-builder")
+        .show(ui, |ui| {
+            egui::ComboBox::from_id_salt("qr-builder-kind")
+                .selected_text(crate::i18n::tr(QR_KINDS[form.kind.min(4)]))
+                .show_ui(ui, |ui| {
+                    for (i, name) in QR_KINDS.iter().enumerate() {
+                        ui.selectable_value(&mut form.kind, i, crate::i18n::tr(name));
+                    }
+                })
+                .response
+                .accessible_name(crate::i18n::tr("Kind of QR content"));
+            let line = |ui: &mut egui::Ui, label: &str, text: &mut String| {
+                ui.label(crate::i18n::tr(label));
+                ui.add(egui::TextEdit::singleline(text))
+                    .accessible_name(crate::i18n::tr(label));
+            };
+            match form.kind {
+                0 => line(ui, "Web address", &mut form.website),
+                1 => {
+                    line(ui, "Network name", &mut form.ssid);
+                    line(ui, "Password", &mut form.password);
+                    ui.horizontal(|ui| {
+                        for (security, name) in [
+                            (WifiSecurity::Wpa, "WPA / WPA2"),
+                            (WifiSecurity::Wep, "WEP"),
+                            (WifiSecurity::Open, "No password"),
+                        ] {
+                            ui.selectable_value(
+                                &mut form.security,
+                                security,
+                                crate::i18n::tr(name),
+                            );
+                        }
+                    });
+                    ui.checkbox(&mut form.hidden, crate::i18n::tr("Hidden network"));
+                }
+                2 => {
+                    line(ui, "Name", &mut form.contact.name);
+                    line(ui, "Organization", &mut form.contact.organization);
+                    line(ui, "Phone", &mut form.contact.phone);
+                    line(ui, "Email address", &mut form.contact.email);
+                    line(ui, "Website", &mut form.contact.website);
+                    line(ui, "Address", &mut form.contact.address);
+                }
+                3 => {
+                    line(ui, "Email address", &mut form.mail_to);
+                    line(ui, "Subject", &mut form.mail_subject);
+                    line(ui, "Message", &mut form.mail_body);
+                }
+                _ => line(ui, "Phone", &mut form.phone),
+            }
+            if icon_action(
+                ui,
+                "Apply",
+                "Use this content",
+                "Replace the QR content with what you entered",
+                true,
+                false,
+            )
+            .clicked()
+            {
+                let content = match form.kind {
+                    0 => QrContent::Website(form.website.clone()),
+                    1 => QrContent::Wifi {
+                        ssid: form.ssid.clone(),
+                        password: form.password.clone(),
+                        security: form.security,
+                        hidden: form.hidden,
+                    },
+                    2 => QrContent::Contact(form.contact.clone()),
+                    3 => QrContent::Email {
+                        to: form.mail_to.clone(),
+                        subject: form.mail_subject.clone(),
+                        body: form.mail_body.clone(),
+                    },
+                    _ => QrContent::Phone(form.phone.clone()),
+                };
+                match content.payload() {
+                    Ok(text) => {
+                        *data = text;
+                        form.error = None;
+                        applied = true;
+                    }
+                    Err(error) => form.error = Some(format!("{error:#}")),
+                }
+            }
+            if let Some(error) = &form.error {
+                ui.colored_label(Color32::from_rgb(200, 60, 60), error);
+            }
+        });
+    applied
+}
+
 pub struct Designer {
     pub doc: LabelDocument,
     pub path: Option<PathBuf>,
@@ -90,6 +207,7 @@ pub struct Designer {
     job: Option<mpsc::Receiver<anyhow::Result<String>>>,
     batch: Option<BatchState>,
     range: Option<RangeState>,
+    qr_form: QrForm,
     /// Crash recovery: a design left over from an unexpected exit, offered at startup.
     recovered: Option<LabelDocument>,
     recovery_dir: Option<PathBuf>,
@@ -138,6 +256,7 @@ impl Designer {
             job: None,
             batch: None,
             range: None,
+            qr_form: QrForm::default(),
             recovered: None,
             recovery_dir: None,
             recovery_written: None,
@@ -2044,6 +2163,7 @@ impl Designer {
                     .on_hover_text(crate::help::explanation("QR"));
                 ui.add(egui::TextEdit::multiline(data).desired_rows(4))
                     .accessible_name(crate::i18n::tr("QR code content"));
+                qr_builder_ui(ui, &mut self.qr_form, data);
                 egui::ComboBox::from_id_salt("qr-level")
                     .selected_text(qr_level_name(o.options.qr_level))
                     .show_ui(ui, |ui| {
@@ -3249,6 +3369,9 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
             path(&[(2., 12.), (22., 12.)]);
             path(&[(6., 9.), (18., 9.), (12., 3.), (6., 9.)]);
             path(&[(6., 15.), (18., 15.), (12., 21.), (6., 15.)]);
+        }
+        "Apply" => {
+            path(&[(4., 12.), (9., 17.), (20., 6.)]);
         }
         "Choose a label template" => {
             outline(3., 3., 18., 18., 3.);
