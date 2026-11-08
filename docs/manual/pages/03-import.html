@@ -1,94 +1,89 @@
 <!--
 title: Import and Convert
-group: Using ThermalPrint
+group: The app
 summary: Open PDF and image labels, crop away instructions, check the result, and print one or many in order.
 -->
-<p><span class="ui">Import &amp; Convert</span> turns a downloaded label into something your thermal printer can print at the right size. The label file you open is never changed; ThermalPrint works on a copy in memory.</p>
+<p><strong>Import &amp; Convert</strong> turns a downloaded label into something your thermal printer can print at the right size. The label file you open is never changed; ThermalPrint works on a copy in memory.</p>
 
-{{figure:import-light-annotated|Import and Convert with numbered callouts on the Add labels button, watch folder, print queue, extract step, preview tabs, and preview|The Import &amp; Convert screen. (1) Add labels, (2) Watch a folder, (3) print queue, (4) the three steps, (5) preview tabs, (6) preview.}}
+{{figure:import-annotated|Import and Convert with numbered callouts on the Add labels button, watch folder, print queue, extract step, preview tabs, and preview|The Import &amp; Convert screen. (1) Add labels, (2) Watch a folder, (3) print queue, (4) the three steps, (5) preview tabs, (6) preview.}}
 
 <h2>Adding labels</h2>
 <p>You can add labels three ways:</p>
 <ul>
-  <li>Press <span class="ui">Add labels…</span> or <kbd>Ctrl</kbd>+<kbd>O</kbd> and choose one or more files.</li>
+  <li>Press <strong>Add labels…</strong> or <kbd>Ctrl</kbd>+<kbd>O</kbd> and choose one or more files.</li>
   <li>Drag files from your file manager onto the window.</li>
   <li>Set up a <a href="automation.html#watching-a-folder">watch folder</a> so new downloads appear by themselves.</li>
 </ul>
 <p><strong>Supported files:</strong> PDF, PNG, JPEG, TIFF, BMP, and WebP. Each page of a multi-page PDF becomes its own entry in the queue. Files can be up to 256 MB and 45 megapixels. If a PDF is encrypted or damaged, export it again from the place you got it.</p>
 
 <h2>The print queue</h2>
-<p>Everything you add joins the <strong>print queue</strong>. The queue shows <em>Label 1 of 3</em> with previous and next buttons, and a <span class="ui">Queued labels</span> list.</p>
+<p>Everything you add joins the <strong>print queue</strong>. The queue shows <em>Label 1 of 3</em> with previous and next buttons, and a <strong>Queued labels</strong> list.</p>
 <table>
   <tr><th>Control</th><th>What it does</th></tr>
   <tr><td>Previous / next</td><td>Move between labels in the queue.</td></tr>
   <tr><td>Move up / move down</td><td>Change the printing order.</td></tr>
   <tr><td>Remove (trash)</td><td>Take the selected label out of the queue. The file itself is not deleted.</td></tr>
-  <tr><td><span class="ui">Print all N labels in order</span></td><td>Send every label to the printer, one after another, in queue order. See <a href="#printing-several-labels">below</a>.</td></tr>
-  <tr><td><span class="ui">Page</span> box</td><td>For a multi-page PDF, jump to another page.</td></tr>
+  <tr><td><strong>Print all N labels in order</strong></td><td>Send every label to the printer, one after another, in queue order. See <a href="#printing-several-labels">below</a>.</td></tr>
+  <tr><td><strong>Page</strong> box</td><td>For a multi-page PDF, jump to another page.</td></tr>
 </table>
 <p>Each label remembers its own crop, extraction mode, and review state. The queue lives in memory for the current session; it is not restored when you quit. Recent <em>file names</em> are remembered, so you can reopen files from Home.</p>
 
 <h2>Step 01: Extract</h2>
-<p>Most carrier PDFs have a label plus instructions, a receipt, or a lot of empty space. <span class="ui">Extract</span> chooses which part to print.</p>
+<p>Most carrier PDFs have a label plus instructions, a receipt, or a lot of empty space. <strong>Extract</strong> chooses which part to print.</p>
 <h3>Automatic</h3>
 <p>ThermalPrint looks for printed content and proposes a crop with a small safety border. When one region looks like a label and another looks like an instruction block, it keeps the label and drops the instructions. If several regions look equally likely, it keeps the whole page until you choose. A <strong>Queue all N detected regions</strong> button turns each region into its own queue entry, useful for a sheet that holds several labels. Automatic is layout analysis, not a carrier-specific recognizer: always review it.</p>
 <h3>Manual</h3>
-<p>Switch to <span class="ui">Original / crop</span> in the preview. <strong>Drag</strong> on the page to draw a crop, <strong>drag inside</strong> it to move it, and <strong>drag a corner</strong> to resize. The crop is described on the original page, before any rotation. <span class="ui">Reset to entire page</span> starts over.</p>
+<p>Switch to <strong>Original / crop</strong> in the preview. <strong>Drag</strong> on the page to draw a crop, <strong>drag inside</strong> it to move it, and <strong>drag a corner</strong> to resize. The crop is described on the original page, before any rotation. <strong>Reset to entire page</strong> starts over.</p>
 <h3>Full page</h3>
 <p>Prints the whole page. Use it when the file is already a label or when the edges are unclear.</p>
 <h3>Reviewing the crop</h3>
-<p>When a crop leaves something out, ThermalPrint asks you to confirm it before you can print. Check the address, tracking number, carrier marks, and the empty margin (the <em>quiet zone</em>) around each barcode, then tick <span class="ui">I checked the crop and barcode edges</span>. <span class="ui">Print all</span> needs every queue entry to be reviewed.</p>
+<p>When a crop leaves something out, ThermalPrint asks you to confirm it before you can print. Check the address, tracking number, carrier marks, and the empty margin (the <em>quiet zone</em>) around each barcode, then tick <strong>I checked the crop and barcode edges</strong>. <strong>Print all</strong> needs every queue entry to be reviewed.</p>
 
 <h2>Step 02: Paper and layout</h2>
 <table>
   <tr><th>Setting</th><th>What it does</th></tr>
   <tr><td>Size presets</td><td><strong>4 × 6 in</strong>, <strong>4 × 4 in</strong>, <strong>2 × 1 in</strong>, and <strong>100 × 150 mm</strong>. 4 × 6 inches is the standard shipping label.</td></tr>
-  <tr><td><span class="ui">W</span> and <span class="ui">H</span></td><td>A custom width and height in millimeters (10 to 500).</td></tr>
-  <tr><td><span class="ui">Swap portrait / landscape</span></td><td>Swaps width and height.</td></tr>
-  <tr><td><span class="ui">Rotate</span></td><td>Turns the label 0°, 90°, 180°, or 270°. Use it when your printer feeds labels sideways.</td></tr>
-  <tr><td><span class="ui">Fit within paper</span></td><td>Scales the crop to fill the printable area while keeping its proportions. The usual choice.</td></tr>
-  <tr><td><span class="ui">Actual size</span></td><td>Uses the source's real physical size. Images without a reliable size are treated as 300 DPI.</td></tr>
-  <tr><td><span class="ui">Custom scale</span></td><td>A percentage from 10 % to 400 % of the actual size.</td></tr>
-  <tr><td><span class="ui">Margin</span></td><td>Empty space around the label, 0 to 20 mm.</td></tr>
-  <tr><td><span class="ui">Black-and-white threshold</span></td><td>Turns every pixel fully black or fully white. Off by default because it can damage thin barcode bars. Turn it on only if a gray label prints faintly, and test the barcode.</td></tr>
+  <tr><td><strong>W</strong> and <strong>H</strong></td><td>A custom width and height in millimeters (10 to 500).</td></tr>
+  <tr><td><strong>Swap portrait / landscape</strong></td><td>Swaps width and height.</td></tr>
+  <tr><td><strong>Rotate</strong></td><td>Turns the label 0°, 90°, 180°, or 270°. Use it when your printer feeds labels sideways.</td></tr>
+  <tr><td><strong>Fit within paper</strong></td><td>Scales the crop to fill the printable area while keeping its proportions. The usual choice.</td></tr>
+  <tr><td><strong>Actual size</strong></td><td>Uses the source's real physical size. Images without a reliable size are treated as 300 DPI.</td></tr>
+  <tr><td><strong>Custom scale</strong></td><td>A percentage from 10 % to 400 % of the actual size.</td></tr>
+  <tr><td><strong>Margin</strong></td><td>Empty space around the label, 0 to 20 mm.</td></tr>
+  <tr><td><strong>Black-and-white threshold</strong></td><td>Turns every pixel fully black or fully white. Off by default because it can damage thin barcode bars. Turn it on only if a gray label prints faintly, and test the barcode.</td></tr>
 </table>
-<div class="warn"><p><strong>Blocked on purpose.</strong> If the content would be cut off (clipped) at the chosen size, printing and exporting are blocked and a warning explains why. Use <span class="ui">Fit within paper</span>, rotate, reduce the scale, or choose larger paper.</p></div>
+<div class="callout warning"><p><strong>Blocked on purpose.</strong> If the content would be cut off (clipped) at the chosen size, printing and exporting are blocked and a warning explains why. Use <strong>Fit within paper</strong>, rotate, reduce the scale, or choose larger paper.</p></div>
 <p>ThermalPrint also warns when the label is shrunk a lot (small text and barcode bars can become unreadable) or when low-resolution pixels are enlarged. Enlarging cannot restore detail that is not in the file.</p>
 
 <h2>Step 03: Print and export</h2>
 <ol>
   <li>Choose the <strong>printer</strong>. A short hint under it says whether it looks like a label printer. This is a best guess from the name and media, not a guarantee.</li>
   <li>Choose the <strong>media size</strong> the printer advertises, matching the stock you loaded. See <a href="print-center.html#printer-and-media">Print Center</a> for how media works.</li>
-  <li>Optionally open <span class="ui">Advanced driver resolution</span> to pick a resolution your printer offers.</li>
+  <li>Optionally open <strong>Advanced driver resolution</strong> to pick a resolution your printer offers.</li>
   <li>Set the number of <strong>Copies</strong>.</li>
-  <li>Press <span class="ui">Print label</span> (<kbd>Ctrl</kbd>+<kbd>P</kbd>).</li>
+  <li>Press <strong>Print label</strong> (<kbd>Ctrl</kbd>+<kbd>P</kbd>).</li>
 </ol>
-<p>The <span class="ui">PDF</span> and <span class="ui">PNG</span> buttons save the finished label as a file instead; see <a href="export.html">Exporting</a>. <span class="ui">Job status</span> asks the printer system what is waiting.</p>
-<div class="note"><p>The Print button stays disabled until the label has rendered, the crop is reviewed, a printer and matching media are chosen, and nothing is clipped. The status bar and the notice in Print Center say what is still missing.</p></div>
+<p>The <strong>PDF</strong> and <strong>PNG</strong> buttons save the finished label as a file instead; see <a href="export.html">Exporting</a>. <strong>Job status</strong> asks the printer system what is waiting.</p>
+<div class="callout note"><p>The Print button stays disabled until the label has rendered, the crop is reviewed, a printer and matching media are chosen, and nothing is clipped. The status bar and the notice in Print Center say what is still missing.</p></div>
 
 <h2>The preview</h2>
 <p>The right side shows the label two ways. Use the buttons at the top:</p>
 <ul>
-  <li><span class="ui">Original / crop</span> shows the whole source page and your crop, for drawing and adjusting.</li>
-  <li><span class="ui">Thermal label</span> shows the final result at print resolution, exactly as it will be sent.</li>
-  <li>The zoom buttons and <span class="ui">Fit</span> change the preview size.</li>
+  <li><strong>Original / crop</strong> shows the whole source page and your crop, for drawing and adjusting.</li>
+  <li><strong>Thermal label</strong> shows the final result at print resolution, exactly as it will be sent.</li>
+  <li>The zoom buttons and <strong>Fit</strong> change the preview size.</li>
 </ul>
 
 <h2 id="printing-several-labels">Printing several labels</h2>
-<p>Add all the files, review each one, then press <span class="ui">Print all N labels in order</span>. The labels are submitted one after another in queue order. The batch <strong>stops at the first problem</strong> (a file that can no longer be read, a layout error, or a printer error) and tells you how many were sent. Paper size, resolution, rotation, margins, scale, copies, printer, and media are shared by the whole batch.</p>
-<div class="note"><p>Submission order is not a promise about physical printing. Use <span class="ui">Job status</span> and look at the printer to confirm what came out.</p></div>
+<p>Add all the files, review each one, then press <strong>Print all N labels in order</strong>. The labels are submitted one after another in queue order. The batch <strong>stops at the first problem</strong> (a file that can no longer be read, a layout error, or a printer error) and tells you how many were sent. Paper size, resolution, rotation, margins, scale, copies, printer, and media are shared by the whole batch.</p>
+<div class="callout note"><p>Submission order is not a promise about physical printing. Use <strong>Job status</strong> and look at the printer to confirm what came out.</p></div>
 <p>If you want to print many <em>different</em> values on <em>one</em> design, such as a list of customers, use <a href="batch.html">Batch printing from CSV</a> instead.</p>
 
 <h2>Tips for good barcodes</h2>
 <ul>
   <li>Leave a clear margin (quiet zone) on both sides of every barcode.</li>
   <li>Keep thresholding off unless you need it.</li>
-  <li>Prefer <span class="ui">Fit within paper</span> on a source that is already label-sized.</li>
+  <li>Prefer <strong>Fit within paper</strong> on a source that is already label-sized.</li>
   <li>Scan a test label with your phone or scanner before printing a roll. ThermalPrint does not read imported barcodes or measure print quality.</li>
 </ul>
 
-<h2>Light and dark themes</h2>
-<div class="pair">
-{{figure:import-light|Import and Convert in the light theme|Light theme.}}
-{{figure:import-dark|Import and Convert in the dark theme|Dark theme.}}
-</div>

@@ -1,7 +1,7 @@
 <!--
 title: Troubleshooting
-group: Help
-summary: Fixes for printers that are not listed, labels that print wrong, extra blank labels, Snap permissions, and more.
+group: Reference
+summary: Fixes for printers that are not listed, labels that print wrong, extra blank labels, and more.
 -->
 <p>Find your symptom in the table, or jump to a detailed section below. If nothing here helps, <a href="https://github.com/arios4k/thermalprint/issues">open an issue</a> and include your ThermalPrint version (click it in <em>About</em> to copy it), your package type, and your printer model. Leave out personal addresses and tracking numbers.</p>
 
@@ -26,7 +26,7 @@ summary: Fixes for printers that are not listed, labels that print wrong, extra 
 <h2 id="no-printers-are-listed">No printers are listed</h2>
 <ol>
   <li>Make sure the printer is on and connected, and that it appears in your desktop's printer settings.</li>
-  <li>In a terminal, run <code>lpstat -p</code>. If it lists your printer, press <span class="ui">Refresh printers</span> in ThermalPrint.</li>
+  <li>In a terminal, run <code>lpstat -p</code>. If it lists your printer, press <strong>Refresh printers</strong> in ThermalPrint.</li>
   <li>If <code>lpstat</code> says it cannot connect, the CUPS service is not running. Start it with <code>sudo systemctl enable --now cups</code>.</li>
   <li><strong>Snap:</strong> check <code>snap connections thermalprint</code> and see <a href="snap.html#if-printing-is-not-connected">If printing is not connected</a>.</li>
 </ol>
@@ -60,7 +60,7 @@ summary: Fixes for printers that are not listed, labels that print wrong, extra 
 </ul>
 
 <h2>Content looks blurry or jagged</h2>
-<p>Set <span class="ui">Rendering DPI</span> to the printer's real resolution (usually 203 or 300). If you enlarged a small low-resolution image, ThermalPrint warns that detail cannot be recovered; use a bigger source.</p>
+<p>Set <strong>Rendering DPI</strong> to the printer's real resolution (usually 203 or 300). If you enlarged a small low-resolution image, ThermalPrint warns that detail cannot be recovered; use a bigger source.</p>
 
 <h2>Messages you may see</h2>
 <table>

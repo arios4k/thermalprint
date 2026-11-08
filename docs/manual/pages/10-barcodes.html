@@ -1,11 +1,11 @@
 <!--
 title: Barcode reference
 group: Reference
-summary: The nine barcode types plus QR codes: what each accepts, how to choose, and how to make them scan.
+summary: The nine barcode types plus QR codes: what each accepts and how to make them scan.
 -->
 <p>ThermalPrint draws real barcodes, not pictures of them. Pick the type your scanner, shop, or carrier expects. If you are not sure, <strong>Code 128</strong> is the safest general-purpose choice.</p>
 
-{{figure:barcode-types|A sheet showing a sample of each barcode type: Code 128, Code 39, Code 93, EAN-13, EAN-8, UPC-A, ITF, Codabar, and Data Matrix|One sample of each type, drawn by ThermalPrint at 300 DPI.}}
+{{image:barcode-types|A sheet showing a sample of each barcode type: Code 128, Code 39, Code 93, EAN-13, EAN-8, UPC-A, ITF, Codabar, and Data Matrix|One sample of each type, drawn by ThermalPrint at 300 DPI.}}
 
 <h2>Choosing a type</h2>
 <table>
@@ -21,7 +21,7 @@ summary: The nine barcode types plus QR codes: what each accepts, how to choose,
   <tr><td><strong>Data Matrix</strong></td><td>Any text.</td><td>Very small parts and labels; a square 2D symbol.</td></tr>
   <tr><td><strong>QR code</strong></td><td>Any text, up to 2,048 characters.</td><td>Web addresses, contact details, longer data.</td></tr>
 </table>
-<div class="note"><p>Some types check themselves. If you give an EAN-13 or EAN-8 its check digit and it is wrong, ThermalPrint refuses it instead of printing a barcode that would not scan. Give 12 (or 7) digits and the correct check digit is added.</p></div>
+<div class="callout note"><p>Some types check themselves. If you give an EAN-13 or EAN-8 its check digit and it is wrong, ThermalPrint refuses it instead of printing a barcode that would not scan. Give 12 (or 7) digits and the correct check digit is added.</p></div>
 
 <h2>Error messages and what they mean</h2>
 <table>

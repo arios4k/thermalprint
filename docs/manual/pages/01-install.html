@@ -1,7 +1,7 @@
 <!--
-title: Installing ThermalPrint
+title: Getting started
 group: Start here
-summary: Install from APT, Fedora Copr, the Snap Store, or source, and set up your printer.
+summary: Install ThermalPrint, set up your printer, and print your first label.
 -->
 <p>ThermalPrint is available for Debian and Ubuntu (APT), Fedora (Copr), as a Snap, and from source. All packages include the app, a desktop launcher, icons, the CUPS client tools, and Poppler PDF utilities. Updates arrive through your normal update tool.</p>
 
@@ -42,15 +42,37 @@ cargo run --release --locked</code></pre>
 <p>PDFium is optional. To use your own copy, set <code>THERMALPRINT_PDFIUM_DIR</code> to the folder that holds <code>libpdfium.so</code>. Without it, ThermalPrint renders PDFs with Poppler's <code>pdfinfo</code> and <code>pdftoppm</code>, which the packages install for you.</p>
 
 <h2>First launch</h2>
-<ol class="steps">
+<ol>
   <li><strong>Open ThermalPrint</strong> from your applications menu (or run <code>thermalprint</code> in a terminal).</li>
-  <li><strong>Open Print Center</strong> and pick your printer. If the list is empty, press <span class="ui">Refresh printers</span>, then see <a href="troubleshooting.html">Troubleshooting</a>.</li>
-  <li><strong>Choose the media</strong> that matches the labels you loaded, for example <span class="ui">4 × 6 in</span>.</li>
+  <li><strong>Open Print Center</strong> and pick your printer. If the list is empty, press <strong>Refresh printers</strong>, then see <a href="troubleshooting.html">Troubleshooting</a>.</li>
+  <li><strong>Choose the media</strong> that matches the labels you loaded, for example <strong>4 × 6 in</strong>.</li>
   <li><strong>Print the alignment test</strong> if you like (<a href="print-center.html#alignment-and-printer-profiles">details</a>).</li>
 </ol>
 <p>ThermalPrint remembers your printer, media, and other choices, separately for each printer.</p>
 
-<h2>Opening saved designs by double-click</h2>
+<h2 id="your-first-label">Your first label</h2>
+<p>There are two common ways to begin. Pick the one that matches what you have in front of you.</p>
+
+<h3>A. You have a shipping label file</h3>
+<ol>
+  <li><strong>Open the label.</strong> Drag the PDF or image into the window, press <kbd>Ctrl</kbd>+<kbd>O</kbd>, or choose <strong>Add labels…</strong> in <strong>Import &amp; Convert</strong>.</li>
+  <li><strong>Check the crop.</strong> ThermalPrint proposes the label area. Look at the <strong>Thermal label</strong> preview, and tick <strong>I checked the crop and barcode edges</strong> when it looks right.</li>
+  <li><strong>Pick the paper.</strong> Choose <strong>4 × 6 in</strong> (or your stock size), your printer, and the matching media.</li>
+  <li><strong>Print.</strong> Press <strong>Print label</strong> or <kbd>Ctrl</kbd>+<kbd>P</kbd>.</li>
+</ol>
+<p>The full walk-through is in <a href="import.html">Import and Convert</a>.</p>
+
+<h3>B. You want to make a label</h3>
+<ol>
+  <li><strong>Open the Label Designer</strong> and choose a template on the Home screen, or start with a blank label.</li>
+  <li><strong>Edit the objects.</strong> Click text to change it, drag things where you want them, and use the panel on the right for exact sizes.</li>
+  <li><strong>Choose your printer</strong> in <strong>Print Center</strong> so the label size matches your stock.</li>
+  <li><strong>Press Print.</strong> Save the design (<kbd>Ctrl</kbd>+<kbd>S</kbd>) if you will use it again.</li>
+</ol>
+<p>See <a href="designer.html">Label Designer</a> and <a href="objects.html">Objects</a> for everything you can add.</p>
+<div class="callout tip"><p><strong>Print a test label first.</strong> A successful submission means the printer system accepted the job. It does not prove that a barcode scans. Always check the first physical label before printing a roll.</p></div>
+
+<h2 id="opening-saved-designs-by-double-click">Opening saved designs by double-click</h2>
 <p>The Debian and Fedora packages register <code>.thermalprint</code> files as ThermalPrint label designs, so double-clicking one opens it straight in the Label Designer. PDFs and images open in Import &amp; Convert. Snap users can enable this with a one-time command; see <a href="snap.html#saved-designs-and-double-click-opening">Using the Snap</a>.</p>
 
 <h2>Uninstalling</h2>

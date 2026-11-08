@@ -1,6 +1,6 @@
 <!--
 title: Exporting
-group: Using ThermalPrint
+group: The app
 summary: Save a finished label as PDF, PNG, SVG, or ZPL, and print raw ZPL to a compatible printer.
 -->
 <p>Instead of printing, you can save a finished label as a file to inspect, archive, email, or print later. Exports come from the same full-resolution pipeline as printing, not from a screenshot of the preview, and the original file is never modified.</p>
@@ -8,8 +8,8 @@ summary: Save a finished label as PDF, PNG, SVG, or ZPL, and print raw ZPL to a 
 <h2>Where to export</h2>
 <table>
   <tr><th>Area</th><th>How</th><th>Formats</th></tr>
-  <tr><td>Import &amp; Convert</td><td><span class="ui">PDF</span> and <span class="ui">PNG</span> buttons in step 03.</td><td>PDF, PNG</td></tr>
-  <tr><td>Label Designer</td><td><span class="ui">Export</span> menu in the toolbar.</td><td>PDF, PNG, SVG, ZPL</td></tr>
+  <tr><td>Import &amp; Convert</td><td><strong>PDF</strong> and <strong>PNG</strong> buttons in step 03.</td><td>PDF, PNG</td></tr>
+  <tr><td>Label Designer</td><td><strong>Export</strong> menu in the toolbar.</td><td>PDF, PNG, SVG, ZPL</td></tr>
 </table>
 <p>Exporting works <em>without a printer</em>. A file chooser asks where to save, and the file is written safely: it is created under a temporary name and moved into place only when complete, so a failed export never leaves a half-written file.</p>
 
@@ -21,14 +21,14 @@ summary: Save a finished label as PDF, PNG, SVG, or ZPL, and print raw ZPL to a 
   <tr><td><strong>SVG</strong> (designs)</td><td>An SVG document with the label embedded as a raster picture. It keeps the physical size, but it is not editable vector artwork.</td><td>Placing a label in a page-layout program at the right size.</td></tr>
   <tr><td><strong>ZPL</strong> (designs)</td><td>A text file of ZPL II commands that draws the label as a bitmap.</td><td>Zebra-compatible printers that you feed ZPL directly.</td></tr>
 </table>
-<div class="note"><p>Because exports are bitmaps, text in a PDF or SVG cannot be selected or searched. Keep the <code>.thermalprint</code> file if you want to edit the label later.</p></div>
+<div class="callout note"><p>Because exports are bitmaps, text in a PDF or SVG cannot be selected or searched. Keep the <code>.thermalprint</code> file if you want to edit the label later.</p></div>
 
 <h2 id="printing-raw-zpl">Printing raw ZPL</h2>
 <p>Most printers are used through their normal driver, and ThermalPrint sends them a PDF. Some Zebra-compatible printers accept ZPL directly through a <strong>raw queue</strong>, which skips the driver.</p>
-<ol class="steps">
+<ol>
   <li><strong>Create a raw queue</strong> for the printer in your system's printer setup (a queue that passes data straight through). A normal PDF queue will not work for raw ZPL.</li>
-  <li>In the Label Designer, open <span class="ui">Export</span> and tick <span class="ui">Print using raw ZPL</span>.</li>
-  <li>Choose that raw queue in Print Center and press <span class="ui">Print</span>.</li>
+  <li>In the Label Designer, open <strong>Export</strong> and tick <strong>Print using raw ZPL</strong>.</li>
+  <li>Choose that raw queue in Print Center and press <strong>Print</strong>.</li>
 </ol>
 <ul>
   <li>The status bar reminds you: <em>Raw ZPL: verify printer compatibility and loaded label size.</em></li>
@@ -36,7 +36,7 @@ summary: Save a finished label as PDF, PNG, SVG, or ZPL, and print raw ZPL to a 
   <li>The alignment offset does not apply to raw ZPL; adjust position in the design instead.</li>
   <li>Batch printing can use raw ZPL too.</li>
 </ul>
-<div class="warn"><p>Sending ZPL to a printer that does not understand it can print pages of garbled characters. Only use raw ZPL with a printer you know supports it.</p></div>
+<div class="callout warning"><p>Sending ZPL to a printer that does not understand it can print pages of garbled characters. Only use raw ZPL with a printer you know supports it.</p></div>
 
 <h2>Limits</h2>
 <ul>
