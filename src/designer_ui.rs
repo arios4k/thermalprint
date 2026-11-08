@@ -129,6 +129,14 @@ impl Designer {
             self.selected = vec![id];
         }
     }
+    /// Select several objects at once (documentation screenshots only).
+    pub(crate) fn select_objects(&mut self, ids: &[u64]) {
+        self.selected = ids
+            .iter()
+            .copied()
+            .filter(|id| self.doc.objects.iter().any(|o| o.id == *id))
+            .collect();
+    }
     pub(crate) fn rotate_selected_to(&mut self, degrees: f32) {
         if self.selected.len() != 1 || !degrees.is_finite() {
             return;
@@ -1596,22 +1604,20 @@ impl Designer {
                     o.rotate_to(angle);
                 }
             });
+            if ui
+                .button(crate::i18n::tr("Rotate 90°"))
+                .on_hover_text(crate::i18n::tr("Turn the object a quarter turn clockwise"))
+                .clicked()
+            {
+                let angle = o.rotation + 90.;
+                o.rotate_to(angle);
+            }
+            ui.checkbox(&mut o.flip_x, crate::i18n::tr("Flip horizontally"));
+            ui.checkbox(&mut o.flip_y, crate::i18n::tr("Flip vertically"));
+            ui.label(crate::i18n::tr("Center on label"));
             ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button(crate::i18n::tr("Rotate 90°"))
-                    .on_hover_text(crate::i18n::tr("Turn the object a quarter turn clockwise"))
-                    .clicked()
-                {
-                    let angle = o.rotation + 90.;
-                    o.rotate_to(angle);
-                }
-                ui.checkbox(&mut o.flip_x, crate::i18n::tr("Flip horizontally"));
-                ui.checkbox(&mut o.flip_y, crate::i18n::tr("Flip vertically"));
-            });
-            ui.horizontal_wrapped(|ui| {
-                ui.label(crate::i18n::tr("Center on label"));
-                center.0 = ui.small_button(crate::i18n::tr("Horizontally")).clicked();
-                center.1 = ui.small_button(crate::i18n::tr("Vertically")).clicked();
+                center.0 = ui.button(crate::i18n::tr("Horizontally")).clicked();
+                center.1 = ui.button(crate::i18n::tr("Vertically")).clicked();
             });
         });
         ui.checkbox(&mut o.locked, crate::i18n::tr("Lock position and size"))
