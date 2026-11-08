@@ -208,6 +208,7 @@ pub struct Designer {
     batch: Option<BatchState>,
     range: Option<RangeState>,
     qr_form: QrForm,
+    sscc_form: SsccForm,
     /// Crash recovery: a design left over from an unexpected exit, offered at startup.
     recovered: Option<LabelDocument>,
     recovery_dir: Option<PathBuf>,
@@ -257,6 +258,7 @@ impl Designer {
             batch: None,
             range: None,
             qr_form: QrForm::default(),
+            sscc_form: SsccForm::default(),
             recovered: None,
             recovery_dir: None,
             recovery_written: None,
@@ -2115,6 +2117,8 @@ impl Designer {
                             BarcodeKind::Itf,
                             BarcodeKind::Codabar,
                             BarcodeKind::DataMatrix,
+                            BarcodeKind::Gs1128,
+                            BarcodeKind::Gs1DataMatrix,
                         ] {
                             ui.selectable_value(kind, k, barcode_name(k))
                                 .on_hover_text(barcode_hint(k));
@@ -2156,6 +2160,9 @@ impl Designer {
                 }
                 if let Some(hint) = check_digit_hint(*kind, data) {
                     ui.label(RichText::new(hint).small().weak());
+                }
+                if matches!(kind, BarcodeKind::Gs1128 | BarcodeKind::Gs1DataMatrix) {
+                    gs1_helper(ui, *kind, data, &mut self.sscc_form);
                 }
             }
             Element::Qr { data } => {
@@ -2834,6 +2841,87 @@ fn image_mode_hint(mode: design::ImageMode) -> &'static str {
     }
 }
 /// What to tell the user about the check digit of an EAN or UPC value.
+/// The SSCC helper's inputs; they are not saved with the design.
+#[derive(Clone, Debug, Default)]
+struct SsccForm {
+    extension: u8,
+    prefix: String,
+    serial: String,
+    error: Option<String>,
+}
+
+/// Feedback on GS1 data, and a helper that builds an SSCC (pallet or parcel number).
+fn gs1_helper(ui: &mut egui::Ui, kind: BarcodeKind, data: &mut String, form: &mut SsccForm) {
+    if !data.contains("${") {
+        let parsed = crate::gs1::parse(data).and_then(|fields| {
+            if kind == BarcodeKind::Gs1DataMatrix {
+                crate::gs1::data_matrix_payload(&fields)?;
+            }
+            Ok(fields)
+        });
+        match parsed {
+            Ok(fields) => {
+                ui.label(
+                    RichText::new(format!(
+                        "{} {}",
+                        crate::i18n::tr("Prints as"),
+                        crate::gs1::human(&fields)
+                    ))
+                    .small()
+                    .weak(),
+                );
+            }
+            Err(error) if !data.trim().is_empty() => {
+                ui.colored_label(Color32::from_rgb(200, 60, 60), format!("{error:#}"));
+            }
+            Err(_) => {}
+        }
+    }
+    egui::CollapsingHeader::new(crate::i18n::tr("SSCC helper"))
+        .id_salt("sscc-helper")
+        .show(ui, |ui| {
+            ui.label(
+                RichText::new(crate::i18n::tr(
+                    "An SSCC numbers one pallet or parcel: extension digit, your GS1 company prefix, and a serial reference. The check digit is added for you.",
+                ))
+                .small()
+                .weak(),
+            );
+            ui.horizontal(|ui| {
+                ui.label(crate::i18n::tr("Extension digit"));
+                ui.add(egui::DragValue::new(&mut form.extension).range(0..=9))
+                    .accessible_name(crate::i18n::tr("Extension digit"));
+            });
+            ui.label(crate::i18n::tr("Company prefix"));
+            ui.add(egui::TextEdit::singleline(&mut form.prefix))
+                .accessible_name(crate::i18n::tr("Company prefix"));
+            ui.label(crate::i18n::tr("Serial reference"));
+            ui.add(egui::TextEdit::singleline(&mut form.serial))
+                .accessible_name(crate::i18n::tr("Serial reference"));
+            if icon_action(
+                ui,
+                "Apply",
+                "Use this SSCC",
+                "Replace the barcode content with (00) and the SSCC",
+                true,
+                false,
+            )
+            .clicked()
+            {
+                match crate::gs1::sscc(form.extension, form.prefix.trim(), form.serial.trim()) {
+                    Ok(number) => {
+                        *data = format!("(00){number}");
+                        form.error = None;
+                    }
+                    Err(error) => form.error = Some(format!("{error:#}")),
+                }
+            }
+            if let Some(error) = &form.error {
+                ui.colored_label(Color32::from_rgb(200, 60, 60), error);
+            }
+        });
+}
+
 fn check_digit_hint(kind: BarcodeKind, data: &str) -> Option<String> {
     let body = match kind {
         BarcodeKind::Ean13 => 12,
@@ -2922,6 +3010,8 @@ fn barcode_name(kind: BarcodeKind) -> &'static str {
         BarcodeKind::Itf => "ITF (Interleaved 2 of 5)",
         BarcodeKind::Codabar => "Codabar",
         BarcodeKind::DataMatrix => "Data Matrix",
+        BarcodeKind::Gs1128 => "GS1-128",
+        BarcodeKind::Gs1DataMatrix => "GS1 Data Matrix",
     }
 }
 
@@ -2943,6 +3033,12 @@ fn barcode_hint(kind: BarcodeKind) -> &'static str {
         }
         BarcodeKind::DataMatrix => {
             "A small square 2D symbol for tiny parts and labels. Keep the object roughly square."
+        }
+        BarcodeKind::Gs1128 => {
+            "The logistics barcode for pallets and cartons. Type GS1 data such as (01)09506000134352(10)LOT7."
+        }
+        BarcodeKind::Gs1DataMatrix => {
+            "A small square symbol for GS1 data such as (01)09506000134352(10)LOT7. Put a batch or serial last."
         }
     }
 }

@@ -361,16 +361,28 @@ fn encoded(kind: BarcodeKind, data: &str) -> Result<Vec<u8>> {
         BarcodeKind::Code93 => Ok(Code93::new(data)
             .map_err(|e| anyhow::anyhow!("Code 93: {e:?}"))?
             .encode()),
-        BarcodeKind::DataMatrix => bail!("Data Matrix is a 2D symbol"),
+        BarcodeKind::Gs1128 => {
+            let fields = crate::gs1::parse(data)?;
+            Ok(Code128::new(crate::gs1::code128_symbol(&fields)?)
+                .map_err(|e| anyhow::anyhow!("GS1-128: {e:?}"))?
+                .encode())
+        }
+        BarcodeKind::DataMatrix | BarcodeKind::Gs1DataMatrix => {
+            bail!("Data Matrix is a 2D symbol")
+        }
     }
 }
-fn draw_data_matrix(im: &mut RgbaImage, data: &str) -> Result<()> {
+fn draw_data_matrix(im: &mut RgbaImage, data: &str, gs1: bool) -> Result<()> {
     // Label objects are boxes, so only square symbols are used; the default list
     // would pick a thin rectangle for short text.
-    let code = datamatrix::DataMatrix::encode_str(
-        data,
-        datamatrix::SymbolList::default().enforce_square(),
-    )
+    let squares = datamatrix::SymbolList::default().enforce_square();
+    let code = if gs1 {
+        let fields = crate::gs1::parse(data)?;
+        let payload = crate::gs1::data_matrix_payload(&fields)?;
+        datamatrix::DataMatrix::encode_gs1(payload.as_bytes(), squares)
+    } else {
+        datamatrix::DataMatrix::encode_str(data, squares)
+    }
     .map_err(|e| anyhow::anyhow!("Data Matrix data cannot be encoded: {e:?}"))?;
     let bitmap = code.bitmap();
     // Two quiet-zone modules on every side keep the symbol scannable.
@@ -420,6 +432,11 @@ pub fn check_digit(kind: BarcodeKind, data: &str) -> Option<char> {
 }
 /// The value as printed under the bars: retail codes show their check digit.
 fn readable_value(kind: BarcodeKind, data: &str) -> String {
+    if kind == BarcodeKind::Gs1128
+        && let Ok(fields) = crate::gs1::parse(data)
+    {
+        return crate::gs1::human(&fields);
+    }
     let body_len = match kind {
         BarcodeKind::Ean13 => 12,
         BarcodeKind::Ean8 => 7,
@@ -441,11 +458,11 @@ fn draw_barcode(
     options: &ObjectOptions,
 ) -> Result<()> {
     let data = expand(data, serial);
-    if kind == BarcodeKind::DataMatrix {
+    if matches!(kind, BarcodeKind::DataMatrix | BarcodeKind::Gs1DataMatrix) {
         if data.is_empty() {
             bail!("Barcode data is empty");
         }
-        return draw_data_matrix(im, &data);
+        return draw_data_matrix(im, &data, kind == BarcodeKind::Gs1DataMatrix);
     }
     let bits = encoded(kind, &data)?;
     let module = (im.width() / (bits.len() as u32 + 20)).min(12);
@@ -917,6 +934,29 @@ mod barcode_kind_tests {
     }
     fn has_ink(im: &RgbaImage) -> bool {
         im.pixels().any(|p| p.0[3] > 0)
+    }
+
+    #[test]
+    fn gs1_barcodes_draw_valid_data_and_refuse_bad_data() {
+        let linear = draws(BarcodeKind::Gs1128, "(01)0950600013435(10)LOT7").unwrap();
+        assert!(has_ink(&linear));
+        // Serial numbers can still be filled in.
+        assert!(draws(BarcodeKind::Gs1128, "(00)10614141123456789${serial}").is_err());
+        assert!(draws(BarcodeKind::Gs1128, "(21)${serial}").is_ok());
+        let square = draws(BarcodeKind::Gs1DataMatrix, "(01)95012345678903(10)LOT7").unwrap();
+        assert!(has_ink(&square));
+        for (kind, bad) in [
+            (BarcodeKind::Gs1128, "09506000134352"),
+            (BarcodeKind::Gs1128, "(01)09506000134353"),
+            (BarcodeKind::Gs1DataMatrix, "(10)LOT7(01)95012345678903"),
+            (BarcodeKind::Gs1DataMatrix, ""),
+        ] {
+            assert!(draws(kind, bad).is_err(), "{bad:?}");
+        }
+        assert_eq!(
+            readable_value(BarcodeKind::Gs1128, "(01)0950600013435(10)LOT7"),
+            "(01)09506000134352(10)LOT7"
+        );
     }
 
     #[test]

@@ -29,6 +29,10 @@ pub enum BarcodeKind {
     Code93,
     /// A compact square 2D symbol (ECC 200) for small parts and labels.
     DataMatrix,
+    /// GS1-128: a Code 128 barcode of GS1 element strings such as `(01)…(10)…`.
+    Gs1128,
+    /// A Data Matrix that carries GS1 element strings.
+    Gs1DataMatrix,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ShapeKind {
