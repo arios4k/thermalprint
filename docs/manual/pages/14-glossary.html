@@ -51,5 +51,17 @@ summary: Plain-language explanations of the printing and barcode terms, and comm
 <p>The preview shows exactly what is sent. Differences come from the printer: its calibration, darkness, margins, or the loaded roll. Use the <a href="print-center.html#alignment-and-printer-profiles">alignment test</a> and print one label before a roll.</p>
 <h3>Is it free?</h3>
 <p>Yes. ThermalPrint is open source under the MIT license, created by Alexis Rios-Negron. If it is useful to you, you can <a href="https://paypal.me/AlexisRios">support its development</a>, star it on <a href="https://github.com/arios4k/thermalprint">GitHub</a>, or report a bug.</p>
+<h3>Can I make a label as long as its content?</h3>
+<p>Yes: tick <strong>Auto-length (continuous roll)</strong> in Label setup. See <a href="designer.html#labels-with-no-fixed-length">Labels with no fixed length</a>.</p>
+<h3>How do I print 100 numbered labels?</h3>
+<p>Put <code>${serial:4}</code> in a text or barcode object, then use <strong>File → Print a number range…</strong>. See <a href="designer.html#numbered-runs-and-sheets">Numbered runs and sheets</a>.</p>
+<h3>How do I put several labels on one A4 sheet?</h3>
+<p>Use <strong>File → Print on a sheet…</strong>, choose A4 or Letter, and press <strong>Fit as many as possible</strong>. You can print it or save it as a PDF.</p>
+<h3>Can it make GS1 or pallet (SSCC) labels?</h3>
+<p>Yes, with the GS1-128 and GS1 Data Matrix barcode types and the SSCC helper. See <a href="barcodes.html#gs1-barcodes">GS1 barcodes</a>.</p>
+<h3>Where are my templates, logos, fonts, and addresses kept?</h3>
+<p>In ThermalPrint's settings folder; see <a href="settings.html#where-your-data-lives">Where your data lives</a>. Copy those folders to move them to another computer.</p>
+<h3>Can ThermalPrint check that a barcode scans?</h3>
+<p>No. It checks that the value is valid for the type and that the bars are wide enough to print, but it does not read the barcode back. Scan the first physical label.</p>
 <h3>How do I change the language?</h3>
 <p>ThermalPrint follows your system language (Spanish, German, or French; otherwise English). Change your system language and restart the app.</p>

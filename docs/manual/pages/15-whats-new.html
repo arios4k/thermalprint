@@ -1,0 +1,55 @@
+<!--
+title: What's new
+group: Reference
+summary: The tools added in versions 0.6.0 and 0.6.1, how each one works, and where to read more.
+-->
+<p>This page lists what changed recently and links to the full explanation of each tool. Your version is shown in <strong>☰ → About ThermalPrint</strong>.</p>
+
+<h2 id="version-0-6-1">Version 0.6.1</h2>
+<ul>
+  <li><strong>Delete buttons.</strong> The delete buttons in the address book, logo, and template lists are now trash icons. Every icon button also has an accessible name for screen readers.</li>
+  <li><strong>Symbols in dark mode.</strong> Symbol and logo previews sit on white so they are visible in the dark theme.</li>
+  <li><strong>File icon.</strong> Saved <code>.thermalprint</code> files show the ThermalPrint icon in file managers. Snap users run the <a href="snap.html#saved-designs-and-double-click-opening">register helper</a> once more after updating.</li>
+</ul>
+
+<h2 id="version-0-6-0">Version 0.6.0</h2>
+<h3>Arranging and checking a design</h3>
+<table>
+  <tr><th>Tool</th><th>How it works</th><th>Read more</th></tr>
+  <tr><td>Align, distribute, center</td><td>Select several objects with <kbd>Shift</kbd>+click and use the icon buttons in the properties panel. Distribute makes gaps equal between three or more; the outer two stay put.</td><td><a href="designer.html#the-properties-panel">Properties panel</a></td></tr>
+  <tr><td>Rotate 90°, flip, lock</td><td>Buttons on a single object. A flip mirrors the object before it is rotated. A locked object cannot be moved, resized, rotated, nudged, or deleted from the canvas.</td><td><a href="objects.html">Objects</a></td></tr>
+  <tr><td>Arrow-key nudging</td><td>Arrow keys move the selection 0.1 mm; <kbd>Shift</kbd>+arrow moves it 1 mm.</td><td><a href="workspace.html#keyboard-shortcuts">Shortcuts</a></td></tr>
+  <tr><td>Smart guides and grid size</td><td>While you drag, the object snaps to the edges and centers of other objects and the label; magenta lines show the match. The grid spacing is set in Label setup.</td><td><a href="designer.html#working-on-the-canvas">Working on the canvas</a></td></tr>
+  <tr><td>Printable area</td><td>The printer's unprintable border, read from its driver, is shaded amber, and objects that reach into it are named in the status bar.</td><td><a href="designer.html#the-printable-area">The printable area</a></td></tr>
+</table>
+
+<h3>Text, images, and codes</h3>
+<table>
+  <tr><th>Tool</th><th>How it works</th><th>Read more</th></tr>
+  <tr><td>Wrap, shrink to fit, line spacing, italic, inverse</td><td>Text settings: wrapping breaks lines at spaces; shrink makes the text smaller until it fits the box; inverse draws white letters on a black box.</td><td><a href="objects.html#text">Text</a></td></tr>
+  <tr><td>Your own fonts</td><td>The <strong>T</strong> button beside the font list copies a <code>.ttf</code> or <code>.otf</code> file into ThermalPrint. A design stores the font's name only.</td><td><a href="objects.html#text">Text</a></td></tr>
+  <tr><td>Image modes</td><td>Original, black and white around a cut-off, or dithered (error diffusion keeps photo shading). Contrast and invert apply first.</td><td><a href="objects.html#images-and-logos">Images and logos</a></td></tr>
+  <tr><td>Barcode text and check digits</td><td>Choose the readable text size or put it above the bars. For EAN-13, EAN-8, and UPC-A, enter the digits without the last one and the check digit is added.</td><td><a href="objects.html#barcodes">Barcodes</a></td></tr>
+  <tr><td>QR error correction and content builder</td><td>Pick Low, Medium, Quartile, or High, and fill in a form for a website, Wi-Fi, contact card, email, or phone number.</td><td><a href="objects.html#qr-codes">QR codes</a></td></tr>
+  <tr><td>GS1-128, GS1 Data Matrix, SSCC helper</td><td>Type GS1 data such as <code>(01)09506000134352(10)LOT7</code>. Each identifier is checked and a missing check digit is added.</td><td><a href="barcodes.html#gs1-barcodes">GS1 barcodes</a></td></tr>
+  <tr><td>Date formats and padded serials</td><td><code>${date:%d/%m/%Y}</code> and <code>${serial:4}</code> (for example <code>0007</code>).</td><td><a href="objects.html#dynamic-text-date-and-serial-number">Dynamic text</a></td></tr>
+</table>
+
+<h3>Printing</h3>
+<table>
+  <tr><th>Tool</th><th>How it works</th><th>Read more</th></tr>
+  <tr><td>Number range</td><td><strong>File → Print a number range…</strong>: first number, step, and count. All labels are drawn first, so nothing prints if one is bad.</td><td><a href="designer.html#numbered-runs-and-sheets">Numbered runs and sheets</a></td></tr>
+  <tr><td>Labels on a sheet</td><td><strong>File → Print on a sheet…</strong>: a grid of labels on A4 or Letter, to print or save as PDF.</td><td><a href="designer.html#numbered-runs-and-sheets">Numbered runs and sheets</a></td></tr>
+  <tr><td>Auto-length labels</td><td>For continuous rolls: the printed length follows the lowest object plus a bottom margin.</td><td><a href="designer.html#labels-with-no-fixed-length">Labels with no fixed length</a></td></tr>
+</table>
+
+<h3>Reusing your work</h3>
+<table>
+  <tr><th>Tool</th><th>How it works</th><th>Read more</th></tr>
+  <tr><td>Save as template, template gallery</td><td><strong>File → Save as template…</strong> stores a design; the gallery shows built-in and saved templates as previews.</td><td><a href="designer.html#the-template-gallery">Template gallery</a></td></tr>
+  <tr><td>Symbols and saved logos</td><td>Ready-made shipping symbols, and images you keep with <strong>Save as logo</strong>.</td><td><a href="objects.html#symbols-and-logos">Symbols and logos</a></td></tr>
+  <tr><td>Address book</td><td>Save a text object under its first line, then add it to any label from the palette.</td><td><a href="objects.html#address-book">Address book</a></td></tr>
+  <tr><td>Recovery copy</td><td>Unsaved changes are kept and offered back after an unexpected exit.</td><td><a href="designer.html#if-the-app-closes-unexpectedly">If the app closes unexpectedly</a></td></tr>
+</table>
+
+<div class="callout note"><p>Two ideas that are not in the app yet: reading a barcode back to test it, and turning an imported PDF label into an editable design. ThermalPrint prints what you design and what you import, but it does not scan barcodes and it keeps imported labels as pictures.</p></div>

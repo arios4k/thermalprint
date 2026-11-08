@@ -20,7 +20,9 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
   <tr><th>Field</th><th>Meaning</th></tr>
   <tr><td><strong>Label name</strong></td><td>The title of the design. It is used when you save and in your recent prints.</td></tr>
   <tr><td><strong>Width</strong> and <strong>Height</strong></td><td>The label size in millimeters.</td></tr>
-  <tr><td><strong>Serial variable</strong></td><td>The starting number for <code>${serial}</code>. See <a href="objects.html#dynamic-text-date-and-serial-number">Dynamic text</a>.</td></tr>
+  <tr><td><strong>Serial variable</strong></td><td>The starting number for <code>${serial}</code>. See <a href="objects.html#dynamic-text-date-and-serial-number">Dynamic text</a>. The number range and sheet windows start from it.</td></tr>
+  <tr><td><strong>Auto-length (continuous roll)</strong></td><td>Print only as long as the content needs. See <a href="designer.html#labels-with-no-fixed-length">Labels with no fixed length</a>. When it is on, <strong>Bottom margin</strong> and a <strong>Printed length</strong> readout appear.</td></tr>
+  <tr><td><strong>Grid size</strong></td><td>The spacing of the guide grid in millimeters (0.5 to 50; 5 to start).</td></tr>
 </table>
 <p>If the label size does not match the media of the selected printer, the status area under the canvas says so and offers <strong>Match label to printer media</strong>. That button resizes the canvas to the printer's stock without moving or resizing your objects, and <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it. If a smaller label is intentional, choose matching media in <a href="print-center.html">Print Center</a> instead.</p>
 
@@ -101,13 +103,13 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <h2>Your own templates</h2>
 <p>When you reuse a design, choose <strong>File → Save as template…</strong>. The design is stored in a <code>templates</code> folder inside ThermalPrint's settings folder, named after the label, and appears under <em>Your templates</em> in the template menu next to the built-in ones. Choosing one opens an unsaved copy, so the template itself never changes. Saving a template under a name you already used replaces it, and the trash button beside a template removes it. You can keep up to 100.</p>
 
-<h2>Labels with no fixed length</h2>
+<h2 id="labels-with-no-fixed-length">Labels with no fixed length</h2>
 <p>On a continuous roll the label should be as long as its content. In <strong>Label setup</strong> tick <strong>Auto-length (continuous roll)</strong>: the printed length becomes the lowest edge of any object plus the <strong>Bottom margin</strong> (2 mm to start), and the status bar and <em>Printed length</em> show the result. Use it with <em>Custom</em> media in <a href="print-center.html">Print Center</a>. The canvas keeps the height you set for editing.</p>
 
 <h2>Numbered runs and sheets</h2>
 <ul>
   <li><strong>File → Print a number range…</strong> prints labels numbered by <code>${serial}</code>: choose the <em>First number</em>, the <em>Step</em>, and <em>How many labels</em>. Every label is drawn first, so nothing is sent if one has a problem. Use <code>${serial:4}</code> for zero-padded numbers like <code>0007</code>, and type a prefix before it, such as <code>INV-${serial:4}</code>.</li>
-  <li><strong>File → Print on a sheet…</strong> places copies of the label on an A4 or Letter page for an office printer or a sheet of sticky labels. Choose columns, rows, margin, and gap, or press <strong>Fit as many as possible</strong>; a small diagram shows the layout. <code>${serial}</code> counts up from one label to the next. <strong>Save as PDF</strong> always works; <strong>Print sheet</strong> needs a printer that lists the paper. More labels than fit make more pages.</li>
+  <li><strong>File → Print on a sheet…</strong> places copies of the label on an A4 or Letter page for an office printer or a sheet of sticky labels. Choose columns, rows, margin, and gap, or press <strong>Fit as many as possible</strong>; a small diagram shows the layout. <code>${serial}</code> counts up from one label to the next. Pages are drawn at the resolution you choose (300 DPI to start; 203, 300, or 600 are offered), and the whole run is drawn before anything is sent. <strong>Save as PDF</strong> always works (with more than one page, files are numbered <code>-1</code>, <code>-2</code>, and so on); <strong>Print sheet</strong> needs a printer that lists the paper. More labels than fit make more pages.</li>
 </ul>
 {{figure:designer-sheet|The Print on a sheet window with columns, rows, margin, gap, and a diagram of the page|The sheet window. The blue cells are the labels that will print.}}
 {{figure:designer-range|The Print a number range window with first number, step, and count|The number range window.}}
@@ -116,7 +118,7 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <p>While a design has unsaved changes, ThermalPrint keeps a recovery copy a few seconds after each edit. If the app ends unexpectedly, the next start shows <em>Unsaved changes from your last session were found</em> above the toolbar: <strong>Restore</strong> reopens it as an unsaved copy and <strong>Discard</strong> deletes it. Saving, or discarding a change on purpose, removes the copy.</p>
 
 <h2>The printable area</h2>
-<p>Most printers cannot print right to the edge of the media. When the label size matches the media of the selected printer and the printer reports its margins, the canvas shades that border in amber, and the status area names any object that reaches into it, because that part may be cut off. Turn the shading off with <em>View → Show printable area</em>.</p>
+<p>Most printers cannot print right to the edge of the media. ThermalPrint reads each paper size's <em>imageable area</em> from the printer's driver description (its PPD file) and works out the margin on every side. When the label size matches the media of the selected printer and the driver reports a margin, the canvas shades that border in amber, and the status area names any object that reaches into it, because that part may be cut off. Turn the shading off with <em>View → Show printable area</em>.</p>
 {{figure:designer-printable|The Label Designer with the printer's unprintable border shaded and a warning under the canvas about an object that reaches into it|The shaded border is the part the printer cannot print. The warning lists the object that reaches into it.}}
 
 <h2>Printing from the Designer</h2>
