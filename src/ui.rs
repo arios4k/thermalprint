@@ -322,7 +322,10 @@ impl ThermalPrint {
         }
     }
     fn watch_controls(&mut self, ui: &mut egui::Ui) {
-        ui.collapsing(crate::i18n::tr("Watch a folder"), |ui| {
+        let capturing = self.capture.is_some();
+        egui::CollapsingHeader::new(crate::i18n::tr("Watch a folder"))
+            .default_open(capturing)
+            .show(ui, |ui| {
             ui.label(RichText::new(crate::i18n::tr("Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there are ignored.")).small().weak());
             let folder = self.settings.watch_folder.clone();
             ui.horizontal_wrapped(|ui| {

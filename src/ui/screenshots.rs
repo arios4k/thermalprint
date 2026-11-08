@@ -17,9 +17,40 @@ const SCREENS: &[&str] = &[
     "save-changes",
 ];
 
+/// Extra screens for the user manual. They are produced only when named in
+/// `THERMALPRINT_SCREENSHOTS_ONLY` (comma separated), so the README set stays small.
+const MANUAL_SCREENS: &[&str] = &[
+    "designer-text",
+    "import-watch",
+    "print-center-full",
+    "batch",
+    "barcode-types",
+    "alignment-test",
+];
+
+/// The screens to capture: the README set, or the named ones.
+fn scenes() -> Vec<&'static str> {
+    let Ok(only) = std::env::var("THERMALPRINT_SCREENSHOTS_ONLY") else {
+        return SCREENS.to_vec();
+    };
+    let wanted: Vec<&str> = only.split(',').map(str::trim).collect();
+    // "save-changes" leaves a prompt open, so it must come last.
+    let mut names: Vec<&'static str> = SCREENS
+        .iter()
+        .chain(MANUAL_SCREENS)
+        .copied()
+        .filter(|name| *name != "save-changes" && wanted.contains(name))
+        .collect();
+    if wanted.contains(&"save-changes") {
+        names.push("save-changes");
+    }
+    names
+}
+
 pub(super) struct Capture {
     directory: PathBuf,
     style: String,
+    scenes: Vec<&'static str>,
     index: usize,
     prepared: bool,
     requested: bool,
@@ -32,6 +63,7 @@ impl Capture {
         Self {
             directory,
             style,
+            scenes: scenes(),
             index: 0,
             prepared: false,
             requested: false,
@@ -47,42 +79,74 @@ impl Capture {
             self.prepared = false;
             self.requested = false;
         }
-        if self.index == SCREENS.len() {
+        if self.index >= self.scenes.len() {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return;
         }
+        let scene = self.scenes[self.index];
+        // Reference images are drawn directly, not screenshotted.
+        if matches!(scene, "barcode-types" | "alignment-test") {
+            if self.style == "light" {
+                save_reference(scene, &self.directory);
+            }
+            self.index += 1;
+            return;
+        }
         if !self.prepared {
-            app.area = match self.index {
-                1 | 6 | 7 => Area::Designer,
-                2 => Area::Import,
-                3 => Area::PrintCenter,
+            app.area = match scene {
+                "designer" | "rotation" | "save-changes" | "designer-text" | "batch" => {
+                    Area::Designer
+                }
+                "import" | "import-watch" => Area::Import,
+                "print-center" | "print-center-full" => Area::PrintCenter,
                 _ => Area::Home,
             };
-            app.terms_open = self.index == 4;
-            app.about_open = self.index == 5;
-            if self.index == 6
-                && let Some(id) = app
-                    .designer
-                    .doc
-                    .objects
-                    .iter()
-                    .find(|object| matches!(object.element, Element::Qr { .. }))
-                    .map(|object| object.id)
-            {
-                app.designer.select_object(id);
-                app.designer.rotate_selected_to(23.5);
-            }
-            if self.index == 7 {
-                app.designer.request_new();
+            app.terms_open = scene == "printing-terms";
+            app.about_open = scene == "about";
+            match scene {
+                "rotation" => {
+                    if let Some(id) = app
+                        .designer
+                        .doc
+                        .objects
+                        .iter()
+                        .find(|object| matches!(object.element, Element::Qr { .. }))
+                        .map(|object| object.id)
+                    {
+                        app.designer.select_object(id);
+                        app.designer.rotate_selected_to(23.5);
+                    }
+                }
+                "save-changes" => app.designer.request_new(),
+                "designer-text" => {
+                    if let Some(id) = app
+                        .designer
+                        .doc
+                        .objects
+                        .iter()
+                        .find(|object| matches!(&object.element, Element::Text { text, .. } if text.starts_with("Alex")))
+                        .map(|object| object.id)
+                    {
+                        app.designer.select_object(id);
+                    }
+                }
+                "import-watch" => {
+                    app.settings.watch_folder = Some(PathBuf::from("/home/demo/Downloads"));
+                    app.settings.watch_enabled = true;
+                }
+                "print-center-full" => app.history = demo_history(),
+                "batch" => {
+                    app.designer.doc = batch_demo_design();
+                    app.designer.demo_batch(DEMO_CSV.as_bytes());
+                }
+                _ => {}
             }
             self.since = Instant::now();
             self.prepared = true;
         }
         if !self.requested && self.since.elapsed() > Duration::from_millis(1200) && !app.busy {
             std::fs::create_dir_all(&self.directory).expect("create screenshot output directory");
-            let path = self
-                .directory
-                .join(format!("{}-{}.png", SCREENS[self.index], self.style));
+            let path = self.directory.join(format!("{}-{}.png", scene, self.style));
             let saved = self.saved.clone();
             let ctx = ctx.clone();
             ctx.clone().request_screenshot(move |image| {
@@ -253,4 +317,138 @@ pub(super) fn seed(app: &mut ThermalPrint, ctx: &egui::Context) {
         })
         .collect();
     app.status = "Demo workspace · All sample labels are fictional".into();
+}
+
+const DEMO_CSV: &str = "Name,City,SKU\nAda Lovelace,London,SKU-1001\nGrace Hopper,New York,SKU-1002\nAlan Turing,Manchester,SKU-1003\n";
+
+fn batch_demo_design() -> LabelDocument {
+    let mut doc = LabelDocument::blank(101.6, 50.8);
+    doc.title = "Customer label".into();
+    let text = |doc: &mut LabelDocument, content: &str, pt, bold, y, h| {
+        doc.add(
+            Element::Text {
+                text: content.into(),
+                font_pt: pt,
+                bold,
+                align: TextAlign::Left,
+            },
+            5.,
+            y,
+            90.,
+            h,
+        );
+    };
+    text(&mut doc, "Ship to: ${Name}", 16., true, 5., 10.);
+    text(&mut doc, "${City}   #${serial}", 12., false, 17., 8.);
+    doc.add(
+        Element::Barcode {
+            kind: crate::design::BarcodeKind::Code128,
+            data: "${SKU}".into(),
+            show_text: true,
+        },
+        5.,
+        28.,
+        60.,
+        16.,
+    );
+    doc.add(
+        Element::Qr {
+            data: "https://example.com/${SKU}".into(),
+        },
+        72.,
+        26.,
+        20.,
+        20.,
+    );
+    doc
+}
+
+fn demo_history() -> Vec<crate::history::Entry> {
+    use crate::history::{Entry, Kind};
+    let entry = |time: &str, title: &str, copies, kind| Entry {
+        time: time.into(),
+        printer: "Demo thermal printer".into(),
+        title: title.into(),
+        copies,
+        kind,
+        ..Default::default()
+    };
+    vec![
+        entry(
+            "2026-11-07 09:14",
+            "Customer label · batch of 3",
+            1,
+            Kind::Design,
+        ),
+        entry("2026-11-07 09:02", "demo-order-1048.pdf", 1, Kind::Import),
+        entry("2026-11-06 16:40", "Shelf tag", 2, Kind::Design),
+    ]
+}
+
+/// Images that are drawn straight from the renderer: a sheet of every barcode type, and
+/// the alignment test label.
+fn save_reference(scene: &str, directory: &std::path::Path) {
+    std::fs::create_dir_all(directory).expect("create output directory");
+    let image = match scene {
+        "alignment-test" => crate::calibration::alignment_test(101.6, 152.4, 203).image,
+        _ => {
+            crate::design_render::render_label(&barcode_sheet(), 300)
+                .expect("render barcode sheet")
+                .image
+        }
+    };
+    let path = directory.join(format!("{scene}.png"));
+    image.save(&path).expect("save reference image");
+    println!("Saved {}", path.display());
+}
+
+fn barcode_sheet() -> LabelDocument {
+    use crate::design::BarcodeKind::{
+        Codabar, Code39, Code93, Code128, DataMatrix, Ean8, Ean13, Itf, UpcA,
+    };
+    let rows = [
+        (Code128, "Code 128", "SKU-48213"),
+        (Code39, "Code 39", "THERMAL"),
+        (Code93, "Code 93", "TP-93"),
+        (Ean13, "EAN-13", "5901234123457"),
+        (Ean8, "EAN-8", "55123457"),
+        (UpcA, "UPC-A", "036000291452"),
+        (Itf, "ITF (Interleaved 2 of 5)", "12345670"),
+        (Codabar, "Codabar", "A40156B"),
+        (DataMatrix, "Data Matrix", "TP-1048-DEMO"),
+    ];
+    let mut doc = LabelDocument::blank(100., 150.);
+    doc.title = "Barcode types".into();
+    for (index, (kind, name, data)) in rows.into_iter().enumerate() {
+        let y = 4. + index as f32 * 15.5;
+        doc.add(
+            Element::Text {
+                text: name.into(),
+                font_pt: 8.,
+                bold: true,
+                align: TextAlign::Left,
+            },
+            4.,
+            y,
+            60.,
+            5.,
+        );
+        let (x, width, height) = if kind == DataMatrix {
+            (4., 12., 12.)
+        } else {
+            (4., 70., 9.)
+        };
+        doc.add(
+            Element::Barcode {
+                kind,
+                data: data.into(),
+                show_text: false,
+            },
+            x,
+            y + 5.,
+            width,
+            height,
+        );
+    }
+    doc
 }

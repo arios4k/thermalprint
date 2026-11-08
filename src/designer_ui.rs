@@ -277,6 +277,16 @@ impl Designer {
     pub(crate) fn request_template(&mut self, index: usize) {
         self.request_action(PendingAction::Template(index));
     }
+    /// Open the batch window with a sample table (documentation screenshots only).
+    pub(crate) fn demo_batch(&mut self, csv: &[u8]) {
+        self.batch = Some(BatchState {
+            file: "customers.csv".into(),
+            table: crate::batch::parse_table(csv).ok(),
+            error: None,
+            row: 1,
+            preview: None,
+        });
+    }
     pub(crate) fn request_copy(&mut self, doc: LabelDocument) {
         self.request_action(PendingAction::Copy(Box::new(doc)));
     }

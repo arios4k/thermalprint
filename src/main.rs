@@ -24,12 +24,21 @@ fn main() -> eframe::Result {
     } else {
         "org.thermalprint.ThermalPrint".into()
     };
+    // Documentation captures may need a taller window to show a whole screen.
+    let size = std::env::var("THERMALPRINT_SCREENSHOTS_SIZE")
+        .ok()
+        .and_then(|value| {
+            let (w, h) = value.split_once('x')?;
+            Some([w.parse::<f32>().ok()?, h.parse::<f32>().ok()?])
+        })
+        .filter(|[w, h]| (400. ..=3000.).contains(w) && (400. ..=3000.).contains(h))
+        .unwrap_or([1240., 840.]);
     let options = eframe::NativeOptions {
         persist_window: std::env::var_os("THERMALPRINT_SCREENSHOTS").is_none(),
         viewport: eframe::egui::ViewportBuilder::default()
             .with_app_id(app_id)
             .with_decorations(false)
-            .with_inner_size([1240.0, 840.0])
+            .with_inner_size(size)
             .with_min_inner_size([760.0, 560.0])
             .with_icon(icon),
         ..Default::default()
