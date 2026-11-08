@@ -12,6 +12,7 @@ pub mod layout;
 pub mod printing;
 pub mod settings;
 pub mod ui;
+pub mod user_templates;
 pub mod watch;
 pub mod zpl;
 

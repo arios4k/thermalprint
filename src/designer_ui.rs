@@ -61,6 +61,8 @@ pub struct Designer {
     pub smart_guides: bool,
     /// Draw the printer's unprintable border on the canvas when it is known.
     pub show_printable: bool,
+    /// Your own saved templates, shown beside the built-in ones.
+    user_templates: Vec<crate::user_templates::UserTemplate>,
     /// Guide lines to draw during a drag: (is_vertical, position in mm).
     guides: Vec<(bool, f32)>,
     /// The printer's unprintable border as (left, top, right, bottom) in mm for this label.
@@ -104,6 +106,7 @@ impl Designer {
             snap: true,
             smart_guides: true,
             show_printable: true,
+            user_templates: crate::user_templates::list(),
             guides: Vec::new(),
             printable: None,
             raw_zpl: false,
@@ -369,6 +372,39 @@ impl Designer {
     }
     pub(crate) fn request_new(&mut self) {
         self.request_action(PendingAction::New);
+    }
+    fn save_as_template(&mut self) {
+        match crate::user_templates::save(&self.doc) {
+            Ok((_, replaced)) => {
+                self.status = if replaced {
+                    "Template replaced"
+                } else {
+                    "Saved as a template"
+                }
+                .into();
+                self.error = false;
+            }
+            Err(error) => {
+                self.status = format!("Could not save the template: {error:#}");
+                self.error = true;
+            }
+        }
+        self.user_templates = crate::user_templates::list();
+    }
+    fn open_user_template(&mut self, path: &std::path::Path) {
+        match LabelDocument::load(path) {
+            Ok(mut doc) => {
+                doc.title = path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or(doc.title);
+                self.request_action(PendingAction::Copy(Box::new(doc)));
+            }
+            Err(error) => {
+                self.status = format!("Could not open the template: {error:#}");
+                self.error = true;
+            }
+        }
     }
     pub(crate) fn request_template(&mut self, index: usize) {
         self.request_action(PendingAction::Template(index));
@@ -960,6 +996,14 @@ impl Designer {
                         ui.close();
                     }
                     if ui
+                        .button(crate::i18n::tr("Save as template…"))
+                        .on_hover_text(crate::i18n::tr("Keep this design in your Templates menu, named after the label"))
+                        .clicked()
+                    {
+                        self.save_as_template();
+                        ui.close();
+                    }
+                    if ui
                         .button(crate::i18n::tr("Batch print from CSV…"))
                         .on_hover_text(crate::i18n::tr("Print one label per row of a spreadsheet, filling ${column} placeholders"))
                         .clicked()
@@ -1123,6 +1167,27 @@ impl Designer {
                     ui.label(&self.status);
                 }
             });
+            if let Some(margins) = self.printable {
+                let outside = self.doc.objects_in_margins(margins);
+                if !outside.is_empty() {
+                    let names: Vec<String> = self
+                        .doc
+                        .objects
+                        .iter()
+                        .filter(|o| outside.contains(&o.id))
+                        .map(|o| format!("{} #{}", o.label(), o.id))
+                        .collect();
+                    let color = if ui.visuals().dark_mode { Color32::from_rgb(245, 193, 99) } else { Color32::from_rgb(132, 83, 10) };
+                    ui.colored_label(
+                        color,
+                        format!(
+                            "{} {}",
+                            crate::i18n::tr("These objects reach into the printer's unprintable border and may be cut off:"),
+                            names.join(", ")
+                        ),
+                    );
+                }
+            }
             if let Some(printer) = printers.iter().find(|p| p.name == settings.printer) {
                 if self.raw_zpl {
                     ui.label(crate::i18n::tr("Raw ZPL: verify printer compatibility and loaded label size."))
@@ -1266,6 +1331,40 @@ impl Designer {
                         self.request_template(i);
                         ui.close();
                     }
+                }
+                if !self.user_templates.is_empty() {
+                    ui.separator();
+                    ui.label(crate::i18n::tr("Your templates"));
+                }
+                let mut open = None;
+                let mut remove = None;
+                for t in &self.user_templates {
+                    ui.horizontal(|ui| {
+                        if ui.button(&t.name).clicked() {
+                            open = Some(t.path.clone());
+                        }
+                        if ui
+                            .small_button("✕")
+                            .on_hover_text(crate::i18n::tr("Remove this template"))
+                            .clicked()
+                        {
+                            remove = Some(t.path.clone());
+                        }
+                    });
+                }
+                if let Some(path) = open {
+                    self.open_user_template(&path);
+                    ui.close();
+                }
+                if let Some(path) = remove {
+                    match crate::user_templates::remove(&path) {
+                        Ok(()) => self.status = "Template removed".into(),
+                        Err(error) => {
+                            self.status = format!("{error:#}");
+                            self.error = true;
+                        }
+                    }
+                    self.user_templates = crate::user_templates::list();
                 }
             });
         });
