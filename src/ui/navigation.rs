@@ -8,6 +8,7 @@ pub(super) fn item(
     tooltip: &str,
     selected: bool,
 ) -> egui::Response {
+    let (label, tooltip) = (crate::i18n::tr(label), crate::i18n::tr(tooltip));
     let response = ui
         .add_sized(
             [ui.available_width(), 44.],
@@ -67,13 +68,96 @@ pub(super) fn item(
         icon,
     );
     if !label.is_empty() {
-        ui.painter().text(
-            response.rect.left_center() + Vec2::new(42., 0.),
-            egui::Align2::LEFT_CENTER,
-            label,
-            egui::TextStyle::Button.resolve(ui.style()),
+        // Text starts after the icon and must stay inside the row, whatever the language.
+        let available = (response.rect.width() - TEXT_INDENT - TEXT_MARGIN).max(20.);
+        let galley = fit_label(ui, label, available);
+        ui.painter().galley(
+            response.rect.left_center() + Vec2::new(TEXT_INDENT, -galley.size().y / 2.),
+            galley,
             ui.visuals().text_color(),
         );
     }
     response
+}
+
+const TEXT_INDENT: f32 = 42.;
+const TEXT_MARGIN: f32 = 10.;
+const MIN_FONT_SIZE: f32 = 11.;
+
+/// Lay out a one-line label no wider than `max_width`: shrink the font a little first,
+/// then cut the end with "…" so a long translation never spills out of the sidebar.
+pub(super) fn fit_label(
+    ui: &egui::Ui,
+    label: &str,
+    max_width: f32,
+) -> std::sync::Arc<egui::Galley> {
+    let base = egui::TextStyle::Button.resolve(ui.style());
+    let layout = |font: egui::FontId, elide: bool| {
+        let mut job = egui::text::LayoutJob::simple_singleline(
+            label.to_owned(),
+            font,
+            ui.visuals().text_color(),
+        );
+        if elide {
+            job.wrap = egui::text::TextWrapping {
+                max_width,
+                max_rows: 1,
+                break_anywhere: true,
+                overflow_character: Some('…'),
+            };
+        }
+        ui.painter().layout_job(job)
+    };
+    let natural = layout(base.clone(), false);
+    if natural.size().x <= max_width {
+        return natural;
+    }
+    let size = (base.size * max_width / natural.size().x).max(MIN_FONT_SIZE);
+    let shrunk = layout(egui::FontId::new(size, base.family.clone()), false);
+    if shrunk.size().x <= max_width {
+        shrunk
+    } else {
+        layout(egui::FontId::new(size, base.family), true)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn long_labels_shrink_or_elide_to_fit_and_short_ones_are_untouched() {
+        let ctx = egui::Context::default();
+        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            let width = 150.;
+            for label in [
+                "Home",
+                "Concepteur d'étiquettes",
+                "Importieren und Konvertieren",
+                "An extremely long label that cannot possibly fit in the sidebar at any size",
+            ] {
+                let galley = fit_label(ui, label, width);
+                assert!(
+                    galley.size().x <= width + 0.5,
+                    "{label} is {} wide",
+                    galley.size().x
+                );
+            }
+            let natural = fit_label(ui, "Home", width);
+            assert_eq!(
+                natural.job.sections[0].format.font_id.size,
+                egui::TextStyle::Button.resolve(ui.style()).size
+            );
+            let elided = fit_label(
+                ui,
+                "An extremely long label that cannot possibly fit in the sidebar at any size",
+                width,
+            );
+            assert!(
+                elided.elided,
+                "text that cannot fit is cut with an ellipsis"
+            );
+        });
+        output.textures_delta.clear();
+    }
 }

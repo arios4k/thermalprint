@@ -108,8 +108,12 @@ pub fn notice(ui: &mut egui::Ui, title: &str, message: &str, warning: bool) {
         .stroke(egui::Stroke::new(1., color.gamma_multiply(0.5)))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.label(egui::RichText::new(title).strong().color(color));
-            ui.label(message);
+            ui.label(
+                egui::RichText::new(crate::i18n::tr(title))
+                    .strong()
+                    .color(color),
+            );
+            ui.label(crate::i18n::tr(message));
         });
 }
 

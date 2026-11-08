@@ -88,6 +88,11 @@ pub fn set(language: Language) {
     ACTIVE.store(resolve(language, &system_locale()) as u8, Ordering::Relaxed);
 }
 
+/// Used by the screenshot tool to render a specific language.
+pub fn set_resolved(language: Resolved) {
+    ACTIVE.store(language as u8, Ordering::Relaxed);
+}
+
 fn lookup(table: &'static [(&'static str, &'static str)]) -> HashMap<&'static str, &'static str> {
     table.iter().copied().collect()
 }
@@ -636,9 +641,75 @@ const ES: &[(&str, &str)] = &[
     ),
     ("Battery health for GNOME", "Salud de la batería para GNOME"),
     ("Language", "Idioma"),
+    ("Version", "Versión"),
     ("Automatic", "Automático"),
     ("Batch print from CSV", "Imprimir por lotes desde CSV"),
     ("Batch print from CSV…", "Imprimir por lotes desde CSV…"),
+    ("Preparing", "Preparando"),
+    (
+        "Wait for the current operation to finish.",
+        "Espera a que termine la operación actual.",
+    ),
+    ("Add a label", "Añade una etiqueta"),
+    (
+        "Import a PDF or image to start preparing a print.",
+        "Importa un PDF o una imagen para empezar a preparar una impresión.",
+    ),
+    ("Adjust the layout", "Ajusta la disposición"),
+    (
+        "The label would be clipped. Use Fit within paper or change the output dimensions.",
+        "La etiqueta se recortaría. Usa «Ajustar al papel» o cambia las dimensiones de salida.",
+    ),
+    ("Review the crop", "Revisa el recorte"),
+    (
+        "Check the original crop and barcode edges, then confirm the review in Extract.",
+        "Revisa el recorte original y los bordes del código de barras, y confirma la revisión en Extraer.",
+    ),
+    ("Preparing preview", "Preparando la vista previa"),
+    (
+        "The label preview is being generated.",
+        "Se está generando la vista previa de la etiqueta.",
+    ),
+    ("Choose a printer", "Elige una impresora"),
+    (
+        "Select an available printer before printing. You can still export a prepared label.",
+        "Selecciona una impresora disponible antes de imprimir. Aún puedes exportar una etiqueta preparada.",
+    ),
+    ("Choose printer media", "Elige el papel de la impresora"),
+    (
+        "Select a supported media size that matches the loaded labels.",
+        "Selecciona un tamaño de papel compatible que coincida con las etiquetas cargadas.",
+    ),
+    (
+        "Label size differs from printer media",
+        "El tamaño de la etiqueta difiere del papel de la impresora",
+    ),
+    ("Ready to submit", "Listo para enviar"),
+    ("Printer configured", "Impresora configurada"),
+    ("Verify the loaded stock", "Verifica el papel cargado"),
+    (
+        "The driver does not report dimensions for this media. Check that the loaded labels match the output size.",
+        "El controlador no informa de las dimensiones de este papel. Comprueba que las etiquetas cargadas coincidan con el tamaño de salida.",
+    ),
+    (
+        "Crop reviewed and output prepared. Check the loaded stock before printing.",
+        "Recorte revisado y salida preparada. Comprueba el papel cargado antes de imprimir.",
+    ),
+    (
+        "Media matches the output dimensions. Import or design a label to print.",
+        "El papel coincide con las dimensiones de salida. Importa o diseña una etiqueta para imprimir.",
+    ),
+    ("Blank custom", "En blanco"),
+    ("Shipping 4 × 6", "Envío 4 × 6"),
+    ("Return address", "Remitente"),
+    ("Product barcode", "Código de barras de producto"),
+    ("Inventory", "Inventario"),
+    ("QR code", "Código QR"),
+    ("Asset tracking", "Seguimiento de activos"),
+    ("Shelf", "Estantería"),
+    ("Price tag", "Etiqueta de precio"),
+    ("Name label", "Etiqueta de nombre"),
+    ("Fragile", "Frágil"),
 ];
 const DE: &[(&str, &str)] = &[
     ("About ThermalPrint", "Über ThermalPrint"),
@@ -1076,7 +1147,7 @@ const DE: &[(&str, &str)] = &[
     ("Your label workspace", "Ihr Etikettenarbeitsplatz"),
     ("Home", "Start"),
     ("Label Designer", "Etikettendesigner"),
-    ("Import & Convert", "Importieren und Konvertieren"),
+    ("Import & Convert", "Importieren"),
     (
         "Open your workspace and label templates",
         "Arbeitsbereich und Etikettenvorlagen öffnen",
@@ -1136,9 +1207,75 @@ const DE: &[(&str, &str)] = &[
     ),
     ("Battery health for GNOME", "Akkugesundheit für GNOME"),
     ("Language", "Sprache"),
+    ("Version", "Version"),
     ("Automatic", "Automatisch"),
     ("Batch print from CSV", "Stapeldruck aus CSV"),
     ("Batch print from CSV…", "Stapeldruck aus CSV…"),
+    ("Preparing", "Vorbereitung"),
+    (
+        "Wait for the current operation to finish.",
+        "Warten Sie, bis der aktuelle Vorgang abgeschlossen ist.",
+    ),
+    ("Add a label", "Etikett hinzufügen"),
+    (
+        "Import a PDF or image to start preparing a print.",
+        "Importieren Sie ein PDF oder Bild, um einen Druck vorzubereiten.",
+    ),
+    ("Adjust the layout", "Layout anpassen"),
+    (
+        "The label would be clipped. Use Fit within paper or change the output dimensions.",
+        "Das Etikett würde abgeschnitten. Verwenden Sie „In Papier einpassen“ oder ändern Sie die Ausgabemaße.",
+    ),
+    ("Review the crop", "Zuschnitt prüfen"),
+    (
+        "Check the original crop and barcode edges, then confirm the review in Extract.",
+        "Prüfen Sie den ursprünglichen Zuschnitt und die Barcode-Ränder und bestätigen Sie die Prüfung unter „Extrahieren“.",
+    ),
+    ("Preparing preview", "Vorschau wird erstellt"),
+    (
+        "The label preview is being generated.",
+        "Die Etikettenvorschau wird erstellt.",
+    ),
+    ("Choose a printer", "Drucker wählen"),
+    (
+        "Select an available printer before printing. You can still export a prepared label.",
+        "Wählen Sie vor dem Drucken einen verfügbaren Drucker. Ein vorbereitetes Etikett können Sie weiterhin exportieren.",
+    ),
+    ("Choose printer media", "Druckermedium wählen"),
+    (
+        "Select a supported media size that matches the loaded labels.",
+        "Wählen Sie ein unterstütztes Medienformat, das zu den eingelegten Etiketten passt.",
+    ),
+    (
+        "Label size differs from printer media",
+        "Etikettengröße weicht vom Druckermedium ab",
+    ),
+    ("Ready to submit", "Bereit zum Senden"),
+    ("Printer configured", "Drucker konfiguriert"),
+    ("Verify the loaded stock", "Eingelegtes Medium prüfen"),
+    (
+        "The driver does not report dimensions for this media. Check that the loaded labels match the output size.",
+        "Der Treiber meldet keine Maße für dieses Medium. Prüfen Sie, ob die eingelegten Etiketten der Ausgabegröße entsprechen.",
+    ),
+    (
+        "Crop reviewed and output prepared. Check the loaded stock before printing.",
+        "Zuschnitt geprüft und Ausgabe vorbereitet. Prüfen Sie vor dem Drucken das eingelegte Medium.",
+    ),
+    (
+        "Media matches the output dimensions. Import or design a label to print.",
+        "Das Medium entspricht den Ausgabemaßen. Importieren oder gestalten Sie ein Etikett zum Drucken.",
+    ),
+    ("Blank custom", "Leer (benutzerdefiniert)"),
+    ("Shipping 4 × 6", "Versand 4 × 6"),
+    ("Return address", "Absender"),
+    ("Product barcode", "Produkt-Barcode"),
+    ("Inventory", "Inventar"),
+    ("QR code", "QR-Code"),
+    ("Asset tracking", "Anlagenverfolgung"),
+    ("Shelf", "Regal"),
+    ("Price tag", "Preisschild"),
+    ("Name label", "Namensschild"),
+    ("Fragile", "Zerbrechlich"),
 ];
 const FR: &[(&str, &str)] = &[
     ("About ThermalPrint", "À propos de ThermalPrint"),
@@ -1666,9 +1803,75 @@ const FR: &[(&str, &str)] = &[
         "Santé de la batterie pour GNOME",
     ),
     ("Language", "Langue"),
+    ("Version", "Version"),
     ("Automatic", "Automatique"),
     ("Batch print from CSV", "Impression par lot depuis un CSV"),
     ("Batch print from CSV…", "Impression par lot depuis un CSV…"),
+    ("Preparing", "Préparation"),
+    (
+        "Wait for the current operation to finish.",
+        "Attendez la fin de l'opération en cours.",
+    ),
+    ("Add a label", "Ajouter une étiquette"),
+    (
+        "Import a PDF or image to start preparing a print.",
+        "Importez un PDF ou une image pour commencer à préparer une impression.",
+    ),
+    ("Adjust the layout", "Ajuster la mise en page"),
+    (
+        "The label would be clipped. Use Fit within paper or change the output dimensions.",
+        "L'étiquette serait coupée. Utilisez « Adapter au papier » ou modifiez les dimensions de sortie.",
+    ),
+    ("Review the crop", "Vérifier le recadrage"),
+    (
+        "Check the original crop and barcode edges, then confirm the review in Extract.",
+        "Vérifiez le recadrage d'origine et les bords du code-barres, puis confirmez la vérification dans Extraire.",
+    ),
+    ("Preparing preview", "Préparation de l'aperçu"),
+    (
+        "The label preview is being generated.",
+        "L'aperçu de l'étiquette est en cours de génération.",
+    ),
+    ("Choose a printer", "Choisissez une imprimante"),
+    (
+        "Select an available printer before printing. You can still export a prepared label.",
+        "Sélectionnez une imprimante disponible avant d'imprimer. Vous pouvez toujours exporter une étiquette préparée.",
+    ),
+    ("Choose printer media", "Choisissez le support d'impression"),
+    (
+        "Select a supported media size that matches the loaded labels.",
+        "Sélectionnez une taille de support compatible correspondant aux étiquettes chargées.",
+    ),
+    (
+        "Label size differs from printer media",
+        "La taille de l'étiquette diffère du support de l'imprimante",
+    ),
+    ("Ready to submit", "Prêt à envoyer"),
+    ("Printer configured", "Imprimante configurée"),
+    ("Verify the loaded stock", "Vérifiez le support chargé"),
+    (
+        "The driver does not report dimensions for this media. Check that the loaded labels match the output size.",
+        "Le pilote ne signale pas les dimensions de ce support. Vérifiez que les étiquettes chargées correspondent à la taille de sortie.",
+    ),
+    (
+        "Crop reviewed and output prepared. Check the loaded stock before printing.",
+        "Recadrage vérifié et sortie préparée. Vérifiez le support chargé avant d'imprimer.",
+    ),
+    (
+        "Media matches the output dimensions. Import or design a label to print.",
+        "Le support correspond aux dimensions de sortie. Importez ou concevez une étiquette à imprimer.",
+    ),
+    ("Blank custom", "Vierge"),
+    ("Shipping 4 × 6", "Expédition 4 × 6"),
+    ("Return address", "Adresse de retour"),
+    ("Product barcode", "Code-barres produit"),
+    ("Inventory", "Inventaire"),
+    ("QR code", "Code QR"),
+    ("Asset tracking", "Suivi des équipements"),
+    ("Shelf", "Étagère"),
+    ("Price tag", "Étiquette de prix"),
+    ("Name label", "Étiquette de nom"),
+    ("Fragile", "Fragile"),
 ];
 
 #[cfg(test)]
@@ -1762,6 +1965,8 @@ mod tests {
             include_str!("ui/about.rs"),
             include_str!("ui/window_chrome.rs"),
             include_str!("designer_ui.rs"),
+            include_str!("design.rs"),
+            include_str!("help.rs"),
         ]
         .concat();
         let missing: Vec<_> = ES

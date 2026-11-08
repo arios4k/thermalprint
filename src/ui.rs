@@ -203,6 +203,18 @@ impl ThermalPrint {
             capture: None,
         };
         app.sync_watcher();
+        // Documentation screenshots always use English, whatever the system language.
+        if screenshot_directory.is_some() {
+            // THERMALPRINT_SCREENSHOTS_LANGUAGE (es, de, fr) previews a translation.
+            crate::i18n::set_resolved(
+                std::env::var("THERMALPRINT_SCREENSHOTS_LANGUAGE")
+                    .map_or(crate::i18n::Resolved::English, |code| {
+                        crate::i18n::detect(&code)
+                    }),
+            );
+        } else {
+            crate::i18n::set(app.settings.language);
+        }
         if let Some(directory) = screenshot_directory {
             screenshots::seed(&mut app, &cc.egui_ctx);
             app.capture = Some(screenshots::Capture::new(directory, screenshot_style));
@@ -310,11 +322,11 @@ impl ThermalPrint {
         }
     }
     fn watch_controls(&mut self, ui: &mut egui::Ui) {
-        ui.collapsing("Watch a folder", |ui| {
-            ui.label(RichText::new("Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there are ignored.").small().weak());
+        ui.collapsing(crate::i18n::tr("Watch a folder"), |ui| {
+            ui.label(RichText::new(crate::i18n::tr("Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there are ignored.")).small().weak());
             let folder = self.settings.watch_folder.clone();
             ui.horizontal_wrapped(|ui| {
-                if ui.button("Choose folder…").clicked()
+                if ui.button(crate::i18n::tr("Choose folder…")).clicked()
                     && let Some(picked) = rfd::FileDialog::new().pick_folder()
                 {
                     self.settings.watch_folder = Some(picked);
@@ -322,7 +334,7 @@ impl ThermalPrint {
                     self.sync_watcher();
                     self.persist();
                 }
-                if folder.is_some() && ui.button("Clear").clicked() {
+                if folder.is_some() && ui.button(crate::i18n::tr("Clear")).clicked() {
                     self.settings.watch_folder = None;
                     self.settings.watch_enabled = false;
                     self.sync_watcher();
@@ -337,12 +349,12 @@ impl ThermalPrint {
                     }
                 }
                 None => {
-                    ui.label(RichText::new("No folder chosen").small().weak());
+                    ui.label(RichText::new(crate::i18n::tr("No folder chosen")).small().weak());
                 }
             }
             let mut enabled = self.settings.watch_enabled;
             if ui
-                .add_enabled(folder.is_some(), egui::Checkbox::new(&mut enabled, "Watch for new labels"))
+                .add_enabled(folder.is_some(), egui::Checkbox::new(&mut enabled, crate::i18n::tr("Watch for new labels")))
                 .changed()
             {
                 self.settings.watch_enabled = enabled;
@@ -697,8 +709,10 @@ impl ThermalPrint {
     fn home(&mut self, ui: &mut egui::Ui) {
         ui.vertical_centered(|ui| {
             ui.add_space(20.);
-            ui.heading(RichText::new("Your label workspace").size(30.));
-            ui.label("Design a custom label or prepare a downloaded shipping label.");
+            ui.heading(RichText::new(crate::i18n::tr("Your label workspace")).size(30.));
+            ui.label(crate::i18n::tr(
+                "Design a custom label or prepare a downloaded shipping label.",
+            ));
             ui.add_space(20.);
         });
         ui.columns(2, |columns| {
@@ -732,7 +746,7 @@ impl ThermalPrint {
             }
         });
         ui.add_space(18.);
-        ui.heading("Templates");
+        ui.heading(crate::i18n::tr("Templates"));
         ui.horizontal_wrapped(|ui| {
             for (i, t) in design::TEMPLATES.iter().enumerate() {
                 if crate::designer_ui::template_button(ui, t.name)
@@ -745,7 +759,7 @@ impl ThermalPrint {
             }
         });
         ui.add_space(18.);
-        ui.heading("Printer status");
+        ui.heading(crate::i18n::tr("Printer status"));
         if let Some(p) = self
             .printers
             .iter()
@@ -753,10 +767,12 @@ impl ThermalPrint {
         {
             ui.label(format!("{} · {}", p.name, printing::thermal_hint(p)));
         } else {
-            ui.label("No printer selected. Export is available without a printer.");
+            ui.label(crate::i18n::tr(
+                "No printer selected. Export is available without a printer.",
+            ));
         }
         ui.add_space(8.);
-        ui.heading("Recent documents");
+        ui.heading(crate::i18n::tr("Recent documents"));
         for path in self.settings.recent.clone() {
             if ui.link(path.display().to_string()).clicked() {
                 self.area = Area::Import;
@@ -826,9 +842,9 @@ impl ThermalPrint {
                 self.settings.height_mm,
             ) {
                 crate::help::notice(ui, "Label size differs from printer media", &message, true);
-                ui.label(RichText::new("If the loaded paper matches the printer media, match the output below. Otherwise select media that matches the label size you want.").small().weak());
+                ui.label(RichText::new(crate::i18n::tr("If the loaded paper matches the printer media, match the output below. Otherwise select media that matches the label size you want.")).small().weak());
                 if let Some(&(w, h)) = p.media_sizes.get(&self.settings.media)
-                    && ui.button("Match output to printer media").on_hover_text("Update the output width and height to match the selected printer stock").clicked() {
+                    && ui.button(crate::i18n::tr("Match output to printer media")).on_hover_text(crate::i18n::tr("Update the output width and height to match the selected printer stock")).clicked() {
                     self.settings.width_mm = w;
                     self.settings.height_mm = h;
                     self.dirty = self.page.is_some();
@@ -856,8 +872,13 @@ impl ThermalPrint {
         }
     }
     fn print_center(&mut self, ui: &mut egui::Ui) {
-        ui.heading(RichText::new("Print Center").size(28.));
-        ui.label(RichText::new("Set up your printer and check your next print run.").weak());
+        ui.heading(RichText::new(crate::i18n::tr("Print Center")).size(28.));
+        ui.label(
+            RichText::new(crate::i18n::tr(
+                "Set up your printer and check your next print run.",
+            ))
+            .weak(),
+        );
         ui.add_space(14.);
         let old = self.settings.clone();
         if ui.available_width() >= 900. {
@@ -921,7 +942,7 @@ impl ThermalPrint {
         let mut clear = false;
         Self::section_frame(ui).show(ui, |ui| {
             ui.set_width(ui.available_width());
-            Self::center_heading(ui, "Recent prints", "Status");
+            Self::center_heading(ui, crate::i18n::tr("Recent prints"), "Status");
             ui.label(
                 RichText::new(
                     "Open a past label to review it. Nothing prints until you press Print.",
@@ -932,8 +953,8 @@ impl ThermalPrint {
             for (index, entry) in self.history.iter().take(10).enumerate() {
                 ui.horizontal_wrapped(|ui| {
                     if ui
-                        .button("Open")
-                        .on_hover_text("Open this label for review")
+                        .button(crate::i18n::tr("Open"))
+                        .on_hover_text(crate::i18n::tr("Open this label for review"))
                         .clicked()
                     {
                         open = Some(index);
@@ -949,7 +970,7 @@ impl ThermalPrint {
                     );
                 });
             }
-            if ui.small_button("Clear history").clicked() {
+            if ui.small_button(crate::i18n::tr("Clear history")).clicked() {
                 clear = true;
             }
         });
@@ -980,8 +1001,8 @@ impl ThermalPrint {
         let mut chosen_printer = previous_printer.clone();
         Self::section_frame(ui).show(ui, |ui| {
             ui.set_width(ui.available_width());
-            Self::center_heading(ui, "Printer & media", "Print device");
-            ui.label("Printer queue");
+            Self::center_heading(ui, crate::i18n::tr("Printer & media"), "Print device");
+            ui.label(crate::i18n::tr("Printer queue"));
             egui::ComboBox::from_id_salt("center-printer")
                 .selected_text(if chosen_printer.is_empty() {
                     "Choose printer"
@@ -1015,7 +1036,7 @@ impl ThermalPrint {
                 .find(|p| p.name == self.settings.printer)
             {
                 ui.label(printing::thermal_hint(p));
-                ui.label("Printer media size");
+                ui.label(crate::i18n::tr("Printer media size"));
                 egui::ComboBox::from_id_salt("center-media")
                     .selected_text(p.media_label(&self.settings.media))
                     .show_ui(ui, |ui| {
@@ -1030,10 +1051,10 @@ impl ThermalPrint {
                             ui.selectable_value(&mut self.settings.media, m.clone(), p.media_label(m)).on_hover_text(format!("Driver code: {m}"));
                         }
                     });
-                ui.label(RichText::new("Choose the driver media that matches your loaded labels. Custom uses the output dimensions.").small().weak());
+                ui.label(RichText::new(crate::i18n::tr("Choose the driver media that matches your loaded labels. Custom uses the output dimensions.")).small().weak());
                 if !p.resolutions.is_empty() {
-                    ui.collapsing("Advanced driver resolution", |ui| {
-                    ui.label("Printer resolution");
+                    ui.collapsing(crate::i18n::tr("Advanced driver resolution"), |ui| {
+                    ui.label(crate::i18n::tr("Printer resolution"));
                     egui::ComboBox::from_id_salt("center-resolution")
                         .selected_text(if self.settings.resolution.is_empty() {
                             "Driver default"
@@ -1057,11 +1078,11 @@ impl ThermalPrint {
                 self.refresh_printers();
             }
             ui.separator();
-            ui.label(RichText::new("Output settings").strong());
+            ui.label(RichText::new(crate::i18n::tr("Output settings")).strong());
             ui.horizontal(|ui| {
-                ui.label("Copies");
+                ui.label(crate::i18n::tr("Copies"));
                 ui.add(egui::DragValue::new(&mut self.settings.copies).range(1..=999));
-                ui.label("Rendering DPI").on_hover_text(crate::help::explanation("DPI"));
+                ui.label(crate::i18n::tr("Rendering DPI")).on_hover_text(crate::help::explanation("DPI"));
                 egui::ComboBox::from_id_salt("center-dpi")
                     .selected_text(self.settings.dpi.to_string())
                     .show_ui(ui, |ui| {
@@ -1070,7 +1091,7 @@ impl ThermalPrint {
                         }
                     });
             });
-            ui.label("Output label size");
+            ui.label(crate::i18n::tr("Output label size"));
             egui::ComboBox::from_id_salt("center-label-size")
                 .selected_text(format!("{:.1} × {:.1} mm", self.settings.width_mm, self.settings.height_mm))
                 .show_ui(ui, |ui| {
@@ -1085,13 +1106,13 @@ impl ThermalPrint {
                     }
                 });
             ui.horizontal(|ui| {
-                ui.label("Width");
+                ui.label(crate::i18n::tr("Width"));
                 ui.add(
                     egui::DragValue::new(&mut self.settings.width_mm)
                         .range(1.0..=2000.0)
                         .suffix(" mm"),
                 );
-                ui.label("Height");
+                ui.label(crate::i18n::tr("Height"));
                 ui.add(
                     egui::DragValue::new(&mut self.settings.height_mm)
                         .range(1.0..=2000.0)
@@ -1101,32 +1122,32 @@ impl ThermalPrint {
             if crate::designer_ui::icon_action(ui, "Rotate stock", "Swap portrait / landscape", "Swap label width and height", true, false).clicked() {
                 std::mem::swap(&mut self.settings.width_mm, &mut self.settings.height_mm);
             }
-            ui.label(RichText::new("These dimensions control the output and stock preview. Match them to the printer media size above.").small().weak());
+            ui.label(RichText::new(crate::i18n::tr("These dimensions control the output and stock preview. Match them to the printer media size above.")).small().weak());
             ui.separator();
-            ui.label(RichText::new("Alignment").strong());
-            ui.label(RichText::new("Settings above are remembered for each printer. Use the offset if labels print slightly off-center.").small().weak());
+            ui.label(RichText::new(crate::i18n::tr("Alignment")).strong());
+            ui.label(RichText::new(crate::i18n::tr("Settings above are remembered for each printer. Use the offset if labels print slightly off-center.")).small().weak());
             ui.horizontal(|ui| {
-                ui.label("Horizontal");
+                ui.label(crate::i18n::tr("Horizontal"));
                 ui.add(
                     egui::DragValue::new(&mut self.settings.offset_x_mm)
                         .range(-crate::settings::MAX_OFFSET_MM..=crate::settings::MAX_OFFSET_MM)
                         .speed(0.1)
                         .suffix(" mm"),
                 )
-                .accessible_name("Horizontal print offset in millimeters");
-                ui.label("Vertical");
+                .accessible_name(crate::i18n::tr("Horizontal print offset in millimeters"));
+                ui.label(crate::i18n::tr("Vertical"));
                 ui.add(
                     egui::DragValue::new(&mut self.settings.offset_y_mm)
                         .range(-crate::settings::MAX_OFFSET_MM..=crate::settings::MAX_OFFSET_MM)
                         .speed(0.1)
                         .suffix(" mm"),
                 )
-                .accessible_name("Vertical print offset in millimeters");
+                .accessible_name(crate::i18n::tr("Vertical print offset in millimeters"));
             });
             ui.horizontal(|ui| {
                 if ui
-                    .add_enabled(!self.busy && !self.settings.printer.is_empty(), egui::Button::new("Print alignment test"))
-                    .on_hover_text("Prints a ruler label with a 1 mm border so you can measure the offset")
+                    .add_enabled(!self.busy && !self.settings.printer.is_empty(), egui::Button::new(crate::i18n::tr("Print alignment test")))
+                    .on_hover_text(crate::i18n::tr("Prints a ruler label with a 1 mm border so you can measure the offset"))
                     .clicked()
                 {
                     self.print_alignment_test();
@@ -1134,7 +1155,7 @@ impl ThermalPrint {
                 if ui
                     .add_enabled(
                         self.settings.offset_x_mm != 0. || self.settings.offset_y_mm != 0.,
-                        egui::Button::new("Reset offset"),
+                        egui::Button::new(crate::i18n::tr("Reset offset")),
                     )
                     .clicked()
                 {
@@ -1147,7 +1168,7 @@ impl ThermalPrint {
     fn print_overview(&mut self, ui: &mut egui::Ui) {
         Self::section_frame(ui).show(ui, |ui| {
             ui.set_width(ui.available_width());
-            Self::center_heading(ui, "Label stock", "Blank custom");
+            Self::center_heading(ui, crate::i18n::tr("Label stock"), "Blank custom");
             ui.horizontal(|ui| {
                 let (area, _) = ui.allocate_exact_size(Vec2::new(112., 138.), Sense::hover());
                 let size = Vec2::new(
@@ -1182,7 +1203,11 @@ impl ThermalPrint {
                             "copies"
                         }
                     ));
-                    ui.label(RichText::new("Output label proportions").small().weak());
+                    ui.label(
+                        RichText::new(crate::i18n::tr("Output label proportions"))
+                            .small()
+                            .weak(),
+                    );
                     ui.label(format!(
                         "Printer media: {}",
                         match self.settings.media.as_str() {
@@ -1202,8 +1227,8 @@ impl ThermalPrint {
         ui.add_space(12.);
         Self::section_frame(ui).show(ui, |ui| {
             ui.set_width(ui.available_width());
-            Self::center_heading(ui, "Queue & diagnostics", "Choose a label template");
-            ui.horizontal(|ui| { ui.label("Printing service: CUPS"); crate::help::hint(ui, "CUPS"); });
+            Self::center_heading(ui, crate::i18n::tr("Queue & diagnostics"), "Choose a label template");
+            ui.horizontal(|ui| { ui.label(crate::i18n::tr("Printing service: CUPS")); crate::help::hint(ui, "CUPS"); });
             self.print_readiness(ui, false);
             ui.add_space(6.);
             ui.label(format!("{} imported labels queued", self.queue.len()));
@@ -1218,7 +1243,7 @@ impl ThermalPrint {
                     });
                 }
             }
-            ui.label(RichText::new("A successful submission means CUPS accepted the job; check physical output and barcode readability.").small().weak());
+            ui.label(RichText::new(crate::i18n::tr("A successful submission means CUPS accepted the job; check physical output and barcode readability.")).small().weak());
 
         });
     }
@@ -1232,6 +1257,12 @@ impl ThermalPrint {
         icon: &str,
         accent: Color32,
     ) -> egui::Response {
+        let (title, subtitle, description, action) = (
+            crate::i18n::tr(title),
+            crate::i18n::tr(subtitle),
+            crate::i18n::tr(description),
+            crate::i18n::tr(action),
+        );
         let width = ui.available_width();
         Self::section_frame(ui)
             .inner_margin(22)
@@ -1290,13 +1321,17 @@ impl ThermalPrint {
     }
     fn sidebar(&mut self, ui: &mut egui::Ui) {
         ui.label(
-            RichText::new("WORKSPACE")
+            RichText::new(crate::i18n::tr("WORKSPACE"))
                 .size(12.)
                 .strong()
                 .color(Color32::from_rgb(36, 146, 126)),
         );
-        ui.heading(RichText::new("Prepare your label").size(24.));
-        ui.label(RichText::new("OPEN  /  CHECK  /  PRINT").small().weak());
+        ui.heading(RichText::new(crate::i18n::tr("Prepare your label")).size(24.));
+        ui.label(
+            RichText::new(crate::i18n::tr("OPEN  /  CHECK  /  PRINT"))
+                .small()
+                .weak(),
+        );
         ui.add_space(6.);
         if crate::designer_ui::icon_action(
             ui,
@@ -1474,8 +1509,8 @@ impl ThermalPrint {
             if let Some(page)=self.page.clone(){
                 ui.label(RichText::new(page.path.file_name().unwrap_or_default().to_string_lossy()).strong());
                 ui.label(RichText::new(format!("{:.1} × {:.1} mm · {} × {} px",page.width_mm,page.height_mm,page.image.width(),page.image.height())).small().weak());
-                if page.count>1 {let mut index=page.index+1;ui.horizontal(|ui|{ui.label("Page");if ui.add(egui::DragValue::new(&mut index).range(1..=page.count)).changed() && let Some(i)=self.queue.iter().position(|q|q.path==page.path&&q.page==index-1){self.select(i);}ui.label(format!("of {}",page.count));});}
-            }else{ui.label("Drop a downloaded label anywhere.");ui.label(RichText::new("PDF · PNG · JPEG · TIFF · BMP · WebP").small().weak()).on_hover_text(crate::help::tooltip("PDF · PNG · JPEG · TIFF · BMP · WebP"));}
+                if page.count>1 {let mut index=page.index+1;ui.horizontal(|ui|{ui.label(crate::i18n::tr("Page"));if ui.add(egui::DragValue::new(&mut index).range(1..=page.count)).changed() && let Some(i)=self.queue.iter().position(|q|q.path==page.path&&q.page==index-1){self.select(i);}ui.label(format!("of {}",page.count));});}
+            }else{ui.label(crate::i18n::tr("Drop a downloaded label anywhere."));ui.label(RichText::new("PDF · PNG · JPEG · TIFF · BMP · WebP").small().weak()).on_hover_text(crate::help::tooltip("PDF · PNG · JPEG · TIFF · BMP · WebP"));}
             ui.add_space(12.);
             Self::section_frame(ui).show(ui, |ui| { ui.set_width(ui.available_width());
             Self::import_step_heading(ui, "01  EXTRACT", "Crop label");
@@ -1498,10 +1533,10 @@ impl ThermalPrint {
                         self.dirty=true;
                         self.status="Review each detected region before printing all".into();
             }
-            if self.settings.mode==Mode::Manual {ui.label(RichText::new("Drag to draw. Drag inside to move; drag a corner to resize. Crop coordinates refer to the original page.").small());}
+            if self.settings.mode==Mode::Manual {ui.label(RichText::new(crate::i18n::tr("Drag to draw. Drag inside to move; drag a corner to resize. Crop coordinates refer to the original page.")).small());}
             if self.page.is_some()&&self.settings.mode!=Mode::FullPage {
                 if crate::designer_ui::icon_action(ui, "Fit preview", "Reset to entire page", "Reset the crop to use the entire original page", true, false).clicked(){self.crop=Crop::FULL;self.dirty=true;self.reviewed=false;}
-                ui.checkbox(&mut self.reviewed,"I checked the crop and barcode edges");
+                ui.checkbox(&mut self.reviewed,crate::i18n::tr("I checked the crop and barcode edges"));
             }
             });
             ui.add_space(10.);
@@ -1511,36 +1546,36 @@ impl ThermalPrint {
             egui::ComboBox::from_id_salt("paper").selected_text(format!("{:.1} × {:.1} mm",self.settings.width_mm,self.settings.height_mm)).width(ui.available_width()-12.).show_ui(ui,|ui| {
                 for (name,w,h) in [("4 × 6 in",101.6,152.4),("4 × 4 in",101.6,101.6),("2 × 1 in",50.8,25.4),("100 × 150 mm",100.,150.)] {if ui.selectable_label(self.settings.width_mm==w&&self.settings.height_mm==h,name).clicked(){self.settings.width_mm=w;self.settings.height_mm=h;}}
             });
-            ui.horizontal(|ui|{ui.label("W");ui.add(egui::DragValue::new(&mut self.settings.width_mm).range(10.0..=500.0).speed(0.1).suffix(" mm"));ui.label("H");ui.add(egui::DragValue::new(&mut self.settings.height_mm).range(10.0..=500.0).speed(0.1).suffix(" mm"));});
+            ui.horizontal(|ui|{ui.label(crate::i18n::tr("W"));ui.add(egui::DragValue::new(&mut self.settings.width_mm).range(10.0..=500.0).speed(0.1).suffix(" mm"));ui.label(crate::i18n::tr("H"));ui.add(egui::DragValue::new(&mut self.settings.height_mm).range(10.0..=500.0).speed(0.1).suffix(" mm"));});
             if crate::designer_ui::icon_action(ui, "Rotate stock", "Swap portrait / landscape", "Swap label width and height", true, false).clicked(){std::mem::swap(&mut self.settings.width_mm,&mut self.settings.height_mm);}
             egui::CollapsingHeader::new("Advanced layout & resolution").show(ui, |ui| {
-            ui.horizontal(|ui|{ui.label("Rotate");egui::ComboBox::from_id_salt("rotation").selected_text(format!("{}°",self.settings.rotation)).show_ui(ui,|ui|{for r in [0,90,180,270]{ui.selectable_value(&mut self.settings.rotation,r,format!("{r}°"));}});ui.label("Rendering DPI").on_hover_text(crate::help::explanation("DPI"));egui::ComboBox::from_id_salt("dpi").selected_text(self.settings.dpi.to_string()).width(60.).show_ui(ui,|ui|{for dpi in [203,300,600]{ui.selectable_value(&mut self.settings.dpi,dpi,dpi.to_string());}});});
-            egui::ComboBox::from_id_salt("scale").selected_text(match self.settings.scale {Scale::Fit=>"Fit within paper",Scale::Actual=>"Actual size",Scale::Custom=>"Custom scale"}).show_ui(ui,|ui|{ui.selectable_value(&mut self.settings.scale,Scale::Fit,"Fit within paper");ui.selectable_value(&mut self.settings.scale,Scale::Actual,"Actual size");ui.selectable_value(&mut self.settings.scale,Scale::Custom,"Custom scale");});
+            ui.horizontal(|ui|{ui.label(crate::i18n::tr("Rotate"));egui::ComboBox::from_id_salt("rotation").selected_text(format!("{}°",self.settings.rotation)).show_ui(ui,|ui|{for r in [0,90,180,270]{ui.selectable_value(&mut self.settings.rotation,r,format!("{r}°"));}});ui.label(crate::i18n::tr("Rendering DPI")).on_hover_text(crate::help::explanation("DPI"));egui::ComboBox::from_id_salt("dpi").selected_text(self.settings.dpi.to_string()).width(60.).show_ui(ui,|ui|{for dpi in [203,300,600]{ui.selectable_value(&mut self.settings.dpi,dpi,dpi.to_string());}});});
+            egui::ComboBox::from_id_salt("scale").selected_text(match self.settings.scale {Scale::Fit=>"Fit within paper",Scale::Actual=>"Actual size",Scale::Custom=>"Custom scale"}).show_ui(ui,|ui|{ui.selectable_value(&mut self.settings.scale,Scale::Fit,crate::i18n::tr("Fit within paper"));ui.selectable_value(&mut self.settings.scale,Scale::Actual,crate::i18n::tr("Actual size"));ui.selectable_value(&mut self.settings.scale,Scale::Custom,crate::i18n::tr("Custom scale"));});
             if self.settings.scale==Scale::Custom {ui.add(egui::Slider::new(&mut self.settings.scale_percent,10.0..=400.0).suffix("%"));}
             });
             egui::CollapsingHeader::new("Margins & image enhancement").show(ui,|ui|{
                 ui.add(egui::DragValue::new(&mut self.settings.margin_mm).range(0.0..=20.0).speed(0.1).prefix("Margin ").suffix(" mm"));
-                ui.checkbox(&mut self.settings.enhance,"Black-and-white threshold (advanced)");ui.label(RichText::new("Default processing preserves tones. Thresholding can damage fine barcode detail.").small());
+                ui.checkbox(&mut self.settings.enhance,crate::i18n::tr("Black-and-white threshold (advanced)"));ui.label(RichText::new(crate::i18n::tr("Default processing preserves tones. Thresholding can damage fine barcode detail.")).small());
             });
             if before!=serde_json::to_string(&self.settings).unwrap_or_default(){self.dirty=true;}
             });
             ui.add_space(10.);
             Self::section_frame(ui).show(ui, |ui| { ui.set_width(ui.available_width());
             Self::import_step_heading(ui, "03  PRINT & EXPORT", "Print device");
-            ui.horizontal(|ui| { ui.label("Printing service: CUPS"); crate::help::hint(ui, "CUPS"); });
+            ui.horizontal(|ui| { ui.label(crate::i18n::tr("Printing service: CUPS")); crate::help::hint(ui, "CUPS"); });
             let previous=self.settings.printer.clone();
             egui::ComboBox::from_id_salt("printer").selected_text(if previous.is_empty(){"Choose a printer"}else{&previous}).width(ui.available_width()-12.).show_ui(ui,|ui|{for p in &self.printers{ui.selectable_value(&mut self.settings.printer,p.name.clone(),format!("{}{}",p.name,if p.is_default{" (default)"}else{""}));}});
             if previous!=self.settings.printer {self.settings.media.clear();self.settings.resolution.clear();self.select_default_media();}
             if let Some(p)=self.printers.iter().find(|p|p.name==self.settings.printer).cloned(){
                 ui.label(RichText::new(&p.description).small().weak());
                 ui.label(RichText::new(printing::thermal_hint(&p)).small().weak());
-                egui::ComboBox::from_id_salt("media").selected_text(p.media_label(&self.settings.media)).width(ui.available_width()-12.).show_ui(ui,|ui|{if p.custom_media {ui.selectable_value(&mut self.settings.media,"Custom".into(),"Custom — match output dimensions");}for m in &p.media {ui.selectable_value(&mut self.settings.media,m.clone(),p.media_label(m)).on_hover_text(format!("Driver code: {m}"));}});
-                ui.label(RichText::new("Driver media must match the paper dimensions above. Check your printer's unprintable margins.").small());
-                if !p.resolutions.is_empty(){ui.collapsing("Advanced driver resolution", |ui| {egui::ComboBox::from_id_salt("resolution").selected_text(if self.settings.resolution.is_empty(){"Driver default resolution"}else{&self.settings.resolution}).show_ui(ui,|ui|{ui.selectable_value(&mut self.settings.resolution,String::new(),"Driver default resolution");for r in &p.resolutions{ui.selectable_value(&mut self.settings.resolution,r.clone(),r);}});});}
+                egui::ComboBox::from_id_salt("media").selected_text(p.media_label(&self.settings.media)).width(ui.available_width()-12.).show_ui(ui,|ui|{if p.custom_media {ui.selectable_value(&mut self.settings.media,"Custom".into(),crate::i18n::tr("Custom — match output dimensions"));}for m in &p.media {ui.selectable_value(&mut self.settings.media,m.clone(),p.media_label(m)).on_hover_text(format!("Driver code: {m}"));}});
+                ui.label(RichText::new(crate::i18n::tr("Driver media must match the paper dimensions above. Check your printer's unprintable margins.")).small());
+                if !p.resolutions.is_empty(){ui.collapsing(crate::i18n::tr("Advanced driver resolution"), |ui| {egui::ComboBox::from_id_salt("resolution").selected_text(if self.settings.resolution.is_empty(){"Driver default resolution"}else{&self.settings.resolution}).show_ui(ui,|ui|{ui.selectable_value(&mut self.settings.resolution,String::new(),crate::i18n::tr("Driver default resolution"));for r in &p.resolutions{ui.selectable_value(&mut self.settings.resolution,r.clone(),r);}});});}
             }
-            ui.horizontal(|ui|{ui.label("Copies");ui.add(egui::DragValue::new(&mut self.settings.copies).range(1..=999));if crate::designer_ui::icon_action(ui, "Refresh", "", "Refresh available CUPS printers", !self.busy, false).clicked(){self.refresh_printers();}});
+            ui.horizontal(|ui|{ui.label(crate::i18n::tr("Copies"));ui.add(egui::DragValue::new(&mut self.settings.copies).range(1..=999));if crate::designer_ui::icon_action(ui, "Refresh", "", "Refresh available CUPS printers", !self.busy, false).clicked(){self.refresh_printers();}});
             self.print_readiness(ui, true);
-            if ui.add_enabled(self.ready()&&!self.settings.printer.is_empty()&&!self.settings.media.is_empty(),egui::Button::new(RichText::new("Print label   Ctrl+P").color(Color32::WHITE)).fill(Color32::from_rgb(28,111,100)).min_size(Vec2::new(ui.available_width(),42.))).clicked(){self.print();}
+            if ui.add_enabled(self.ready()&&!self.settings.printer.is_empty()&&!self.settings.media.is_empty(),egui::Button::new(RichText::new(crate::i18n::tr("Print label   Ctrl+P")).color(Color32::WHITE)).fill(Color32::from_rgb(28,111,100)).min_size(Vec2::new(ui.available_width(),42.))).clicked(){self.print();}
             ui.horizontal(|ui|{if crate::designer_ui::icon_action(ui, "Export document", "PDF", "Export the prepared label as PDF", self.ready(), false).clicked(){self.export(true);}
                 if crate::designer_ui::icon_action(ui, "Add image / logo...", "PNG", "Export the prepared label as PNG", self.ready(), false).clicked(){self.export(false);}});
             if crate::designer_ui::icon_action(ui, "Status", "Job status", "Check jobs submitted to the selected CUPS printer", !self.settings.printer.is_empty() && !self.busy, false).clicked(){let p=self.settings.printer.clone();self.task("Checking CUPS queue…",move||Ok(Message::Done(printing::job_status(&p)?)));}
@@ -1611,11 +1646,23 @@ impl ThermalPrint {
                 ui.add_space(ui.available_height() * 0.15);
                 ui.add(egui::Image::new(&self.icon_texture).fit_to_exact_size(Vec2::splat(94.)));
                 ui.add_space(18.);
-                ui.label(RichText::new("Labels, ready to go.").size(28.).strong());
-                ui.add_space(12.);
-                ui.label(RichText::new("Drop PDFs or images to build a print queue").size(16.));
                 ui.label(
-                    RichText::new("From any marketplace or carrier. No account needed.").weak(),
+                    RichText::new(crate::i18n::tr("Labels, ready to go."))
+                        .size(28.)
+                        .strong(),
+                );
+                ui.add_space(12.);
+                ui.label(
+                    RichText::new(crate::i18n::tr(
+                        "Drop PDFs or images to build a print queue",
+                    ))
+                    .size(16.),
+                );
+                ui.label(
+                    RichText::new(crate::i18n::tr(
+                        "From any marketplace or carrier. No account needed.",
+                    ))
+                    .weak(),
                 );
                 ui.add_space(20.);
                 if crate::designer_ui::icon_action(
@@ -1640,8 +1687,10 @@ impl ThermalPrint {
         }
         if !self.reviewed {
             ui.label(
-                RichText::new("Check the original crop, then confirm it in the left panel.")
-                    .color(Color32::from_rgb(180, 110, 20)),
+                RichText::new(crate::i18n::tr(
+                    "Check the original crop, then confirm it in the left panel.",
+                ))
+                .color(Color32::from_rgb(180, 110, 20)),
             );
         }
         ui.label(
@@ -1851,7 +1900,7 @@ impl eframe::App for ThermalPrint {
                     let old = self.settings.theme;
                     let menu = ui
                         .add(egui::Button::new("").min_size(Vec2::splat(38.)))
-                        .on_hover_text("Main menu");
+                        .on_hover_text(crate::i18n::tr("Main menu"));
                     menu.widget_info(|| {
                         egui::WidgetInfo::labeled(egui::Role::Button, true, "Main menu")
                     });
@@ -1864,7 +1913,7 @@ impl eframe::App for ThermalPrint {
                     }
                     egui::Popup::menu(&menu).show(|ui| {
                         ui.set_min_width(164.);
-                        ui.label(RichText::new("Appearance").small().weak());
+                        ui.label(RichText::new(crate::i18n::tr("Appearance")).small().weak());
                         ui.horizontal(|ui| {
                             for (theme, label) in [
                                 (ThemeChoice::System, "System"),
@@ -1905,15 +1954,30 @@ impl eframe::App for ThermalPrint {
                             }
                         });
                         ui.separator();
-                        if ui.button("Printing terms").clicked() {
+                        ui.label(RichText::new(crate::i18n::tr("Language")).small().weak());
+                        for language in crate::i18n::Language::ALL {
+                            if ui
+                                .selectable_label(
+                                    self.settings.language == language,
+                                    crate::i18n::tr(language.name()),
+                                )
+                                .clicked()
+                            {
+                                self.settings.language = language;
+                                crate::i18n::set(language);
+                                self.persist();
+                            }
+                        }
+                        ui.separator();
+                        if ui.button(crate::i18n::tr("Printing terms")).clicked() {
                             self.terms_open = true;
                             ui.close();
                         }
-                        if ui.button("About ThermalPrint").clicked() {
+                        if ui.button(crate::i18n::tr("About ThermalPrint")).clicked() {
                             self.about_open = true;
                             ui.close();
                         }
-                        if ui.button("Quit").clicked() {
+                        if ui.button(crate::i18n::tr("Quit")).clicked() {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                         }
                     });
@@ -2090,7 +2154,7 @@ impl eframe::App for ThermalPrint {
             }
         }
         if self.terms_open {
-            egui::Window::new("Printing terms")
+            egui::Window::new(crate::i18n::tr("Printing terms"))
                 .id(egui::Id::unique("printing-terms-window"))
                 .default_width(600.)
                 .default_height(580.)
@@ -2116,8 +2180,8 @@ impl eframe::App for ThermalPrint {
                 egui::Modal::new(egui::Id::unique("thermalprint-license")).show(&ctx, |ui| {
                     ui.set_width((ctx.content_rect().width() - 72.).clamp(260., 480.));
                     ui.horizontal(|ui| {
-                        ui.heading("MIT License");
-                        if ui.button("Back").clicked() {
+                        ui.heading(crate::i18n::tr("MIT License"));
+                        if ui.button(crate::i18n::tr("Back")).clicked() {
                             ui.close();
                         }
                     });
