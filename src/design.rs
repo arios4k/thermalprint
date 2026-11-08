@@ -22,6 +22,13 @@ pub enum BarcodeKind {
     Code39,
     Ean13,
     UpcA,
+    Ean8,
+    /// Interleaved 2 of 5: digits only, in an even count.
+    Itf,
+    Codabar,
+    Code93,
+    /// A compact square 2D symbol (ECC 200) for small parts and labels.
+    DataMatrix,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ShapeKind {

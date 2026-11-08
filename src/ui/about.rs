@@ -67,9 +67,9 @@ pub(super) fn show(
             );
             ui.spacing_mut().item_spacing.y = 6.;
             ui.horizontal(|ui| {
-                ui.label(RichText::new("About ThermalPrint").strong());
+                ui.label(RichText::new(crate::i18n::tr("About ThermalPrint")).strong());
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("Close").clicked() {
+                    if ui.button(crate::i18n::tr("Close")).clicked() {
                         ui.close();
                     }
                 });
@@ -104,14 +104,23 @@ fn hero_details(ui: &mut egui::Ui) {
             .font(egui::FontId::new(32., bold_family()))
             .color(ui.visuals().strong_text_color()),
     );
-    ui.label(RichText::new("Design and prepare thermal labels for Linux.").weak());
+    ui.label(
+        RichText::new(crate::i18n::tr(
+            "Design and prepare thermal labels for Linux.",
+        ))
+        .weak(),
+    );
     let copied = ui
         .data_mut(|data| data.get_temp::<f64>(egui::Id::unique("about-version-copied")))
         .is_some_and(|time| ui.input(|input| input.time) - time < 2.);
     let label = if copied {
-        "Version copied".to_owned()
+        crate::i18n::tr("Version copied").to_owned()
     } else {
-        format!("Version {}", env!("CARGO_PKG_VERSION"))
+        format!(
+            "{} {}",
+            crate::i18n::tr("Version"),
+            env!("CARGO_PKG_VERSION")
+        )
     };
     // A flat, tinted pill with a copy icon, in the accent color.
     let color = accent_text(dark);
@@ -120,7 +129,7 @@ fn hero_details(ui: &mut egui::Ui) {
     let size = Vec2::new(galley.size().x + 56., 30.);
     let response = ui
         .allocate_response(size, egui::Sense::click())
-        .on_hover_text("Copy version information")
+        .on_hover_text(crate::i18n::tr("Copy version information"))
         .on_hover_cursor(egui::CursorIcon::PointingHand);
     response.widget_info(|| {
         egui::WidgetInfo::labeled(
@@ -270,7 +279,7 @@ fn tags(ui: &mut egui::Ui, dark: bool) {
         .iter()
         .map(|(_, text)| {
             ui.painter()
-                .layout_no_wrap((*text).into(), font.clone(), Color32::WHITE)
+                .layout_no_wrap(crate::i18n::tr(text).into(), font.clone(), Color32::WHITE)
                 .size()
                 .x
         })
@@ -285,6 +294,7 @@ fn tags(ui: &mut egui::Ui, dark: bool) {
             ui.add_space(lead);
         }
         for (icon, text) in TAGS {
+            let text = crate::i18n::tr(text);
             let (rect, response) = ui.allocate_exact_size(chip, egui::Sense::hover());
             response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, true, text));
             ui.painter().rect_filled(
@@ -317,7 +327,11 @@ fn tags(ui: &mut egui::Ui, dark: bool) {
 }
 
 fn project(ui: &mut egui::Ui) {
-    ui.heading(RichText::new("Explore ThermalPrint").size(16.).strong());
+    ui.heading(
+        RichText::new(crate::i18n::tr("Explore ThermalPrint"))
+            .size(16.)
+            .strong(),
+    );
     card(ui, |ui| {
         if row(
             ui,
@@ -346,7 +360,11 @@ fn project(ui: &mut egui::Ui) {
 }
 
 fn more_apps(ui: &mut egui::Ui, apps: &AppIcons) {
-    ui.heading(RichText::new("More from the author").size(16.).strong());
+    ui.heading(
+        RichText::new(crate::i18n::tr("More from the author"))
+            .size(16.)
+            .strong(),
+    );
     card(ui, |ui| {
         ui.columns(2, |columns| {
             if app_link(
@@ -375,6 +393,7 @@ fn more_apps(ui: &mut egui::Ui, apps: &AppIcons) {
 
 /// An icon with a title and subtitle that opens the app's project page.
 fn app_link(ui: &mut egui::Ui, icon: &egui::TextureHandle, title: &str, subtitle: &str) -> bool {
+    let subtitle = crate::i18n::tr(subtitle);
     const ICON: f32 = 36.;
     let width = ui.available_width();
     let text_width = (width - ICON - 34.).max(60.);
@@ -444,7 +463,11 @@ fn app_link(ui: &mut egui::Ui, icon: &egui::TextureHandle, title: &str, subtitle
 }
 
 fn credits(ui: &mut egui::Ui) -> bool {
-    ui.heading(RichText::new("Credits and license").size(16.).strong());
+    ui.heading(
+        RichText::new(crate::i18n::tr("Credits and license"))
+            .size(16.)
+            .strong(),
+    );
     let mut license = false;
     card(ui, |ui| {
         row(ui, "Created by", env!("CARGO_PKG_AUTHORS"), "", false);
@@ -473,6 +496,7 @@ fn card(ui: &mut egui::Ui, content: impl FnOnce(&mut egui::Ui)) {
 }
 
 fn row(ui: &mut egui::Ui, title: &str, subtitle: &str, suffix: &str, clickable: bool) -> bool {
+    let (title, subtitle) = (crate::i18n::tr(title), crate::i18n::tr(subtitle));
     if !clickable {
         ui.label(title);
         ui.label(RichText::new(subtitle).small().weak());

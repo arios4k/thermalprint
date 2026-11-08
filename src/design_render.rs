@@ -5,7 +5,10 @@ use crate::{
     layout::Output,
 };
 use anyhow::{Context, Result, bail};
-use barcoders::sym::{code39::Code39, code128::Code128, ean13::EAN13};
+use barcoders::sym::{
+    codabar::Codabar, code39::Code39, code93::Code93, code128::Code128, ean8::EAN8, ean13::EAN13,
+    tf::TF,
+};
 use base64::Engine as _;
 use fontdue::{Font, FontSettings};
 use image::{Rgb, RgbImage, Rgba, RgbaImage, imageops};
@@ -184,7 +187,68 @@ fn encoded(kind: BarcodeKind, data: &str) -> Result<Vec<u8>> {
                 .map_err(|e| anyhow::anyhow!("UPC-A: {e:?}"))?
                 .encode())
         }
+        BarcodeKind::Ean8 => {
+            if !data.bytes().all(|b| b.is_ascii_digit()) || ![7, 8].contains(&data.len()) {
+                bail!("EAN-8 requires 7 digits, or 8 including the check digit");
+            }
+            Ok(EAN8::new(data)
+                .map_err(|e| anyhow::anyhow!("EAN-8: {e:?}"))?
+                .encode())
+        }
+        BarcodeKind::Itf => {
+            if !data.bytes().all(|b| b.is_ascii_digit()) || !data.len().is_multiple_of(2) {
+                bail!("ITF requires an even number of digits");
+            }
+            Ok(TF::interleaved(data)
+                .map_err(|e| anyhow::anyhow!("ITF: {e:?}"))?
+                .encode())
+        }
+        BarcodeKind::Codabar => {
+            let bytes = data.as_bytes();
+            let framed = bytes.len() >= 3
+                && b"ABCD".contains(&bytes[0])
+                && b"ABCD".contains(&bytes[bytes.len() - 1])
+                && bytes[1..bytes.len() - 1]
+                    .iter()
+                    .all(|b| b.is_ascii_digit() || b"-$:/.+".contains(b));
+            if !framed {
+                bail!(
+                    "Codabar must start and end with A, B, C, or D and use digits or - $ : / . + between"
+                );
+            }
+            Ok(Codabar::new(data)
+                .map_err(|e| anyhow::anyhow!("Codabar: {e:?}"))?
+                .encode())
+        }
+        BarcodeKind::Code93 => Ok(Code93::new(data)
+            .map_err(|e| anyhow::anyhow!("Code 93: {e:?}"))?
+            .encode()),
+        BarcodeKind::DataMatrix => bail!("Data Matrix is a 2D symbol"),
     }
+}
+fn draw_data_matrix(im: &mut RgbaImage, data: &str) -> Result<()> {
+    let code = datamatrix::DataMatrix::encode_str(data, datamatrix::SymbolList::default())
+        .map_err(|e| anyhow::anyhow!("Data Matrix data cannot be encoded: {e:?}"))?;
+    let bitmap = code.bitmap();
+    // Two quiet-zone modules on every side keep the symbol scannable.
+    let modules = bitmap.width().max(bitmap.height()) as u32 + 4;
+    let module = im.width().min(im.height()) / modules;
+    if module < 2 {
+        bail!("Data Matrix is too small; enlarge the object or use shorter data");
+    }
+    let left = (im.width() - modules * module) / 2 + 2 * module;
+    let top = (im.height() - modules * module) / 2 + 2 * module;
+    for (x, y) in bitmap.pixels() {
+        fill(
+            im,
+            (left + x as u32 * module) as i32,
+            (top + y as u32 * module) as i32,
+            (left + (x as u32 + 1) * module) as i32,
+            (top + (y as u32 + 1) * module) as i32,
+            black(),
+        );
+    }
+    Ok(())
 }
 fn draw_barcode(
     im: &mut RgbaImage,
@@ -195,6 +259,12 @@ fn draw_barcode(
     serial: u64,
 ) -> Result<()> {
     let data = expand(data, serial);
+    if kind == BarcodeKind::DataMatrix {
+        if data.is_empty() {
+            bail!("Barcode data is empty");
+        }
+        return draw_data_matrix(im, &data);
+    }
     let bits = encoded(kind, &data)?;
     let module = (im.width() / (bits.len() as u32 + 20)).min(12);
     if module < 2 {
@@ -493,5 +563,68 @@ mod rotation_tests {
                 .iter()
                 .any(|warning| warning.contains("paper edge"))
         );
+    }
+}
+
+#[cfg(test)]
+mod barcode_kind_tests {
+    use super::*;
+
+    fn draws(kind: BarcodeKind, data: &str) -> Result<RgbaImage> {
+        let mut im = RgbaImage::new(600, 300);
+        draw_barcode(&mut im, kind, data, false, 203, 1).map(|_| im)
+    }
+    fn has_ink(im: &RgbaImage) -> bool {
+        im.pixels().any(|p| p.0[3] > 0)
+    }
+
+    #[test]
+    fn new_one_dimensional_symbologies_encode_valid_values() {
+        for (kind, data) in [
+            (BarcodeKind::Ean8, "5512345"),
+            (BarcodeKind::Itf, "12345670"),
+            (BarcodeKind::Codabar, "A40156B"),
+            (BarcodeKind::Code93, "TEST93"),
+        ] {
+            assert!(has_ink(&draws(kind, data).unwrap()), "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn invalid_values_explain_what_the_symbology_needs() {
+        let error = |kind, data| draws(kind, data).unwrap_err().to_string();
+        assert!(error(BarcodeKind::Ean8, "123").contains("7 digits"));
+        assert!(error(BarcodeKind::Itf, "123").contains("even"));
+        assert!(error(BarcodeKind::Codabar, "12345").contains("A, B, C, or D"));
+    }
+
+    #[test]
+    fn data_matrix_draws_a_square_symbol_and_rejects_empty_or_tiny_objects() {
+        let im = draws(BarcodeKind::DataMatrix, "SKU-1048-DEMO").unwrap();
+        assert!(has_ink(&im));
+        assert!(
+            draws(BarcodeKind::DataMatrix, "")
+                .unwrap_err()
+                .to_string()
+                .contains("empty")
+        );
+        let mut tiny = RgbaImage::new(12, 12);
+        assert!(draw_barcode(&mut tiny, BarcodeKind::DataMatrix, "ABC", false, 203, 1).is_err());
+    }
+
+    #[test]
+    fn data_matrix_variable_expansion_matches_other_symbols() {
+        let a = draws(BarcodeKind::DataMatrix, "N-${serial}").unwrap();
+        let mut b = RgbaImage::new(600, 300);
+        draw_barcode(
+            &mut b,
+            BarcodeKind::DataMatrix,
+            "N-${serial}",
+            false,
+            203,
+            2,
+        )
+        .unwrap();
+        assert_ne!(a.as_raw(), b.as_raw(), "serial changes the encoded symbol");
     }
 }

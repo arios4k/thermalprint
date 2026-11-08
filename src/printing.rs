@@ -251,7 +251,9 @@ pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
         );
     };
     let mut file = tempfile::Builder::new().suffix(".pdf").tempfile()?;
-    file.write_all(&export::pdf_bytes(output)?)?;
+    // Printer alignment correction applies to the printed copy only, never to exports.
+    let aligned = output.shifted(s.offset_x_mm, s.offset_y_mm);
+    file.write_all(&export::pdf_bytes(&aligned)?)?;
     file.flush()?;
     let mut cmd = Command::new("lp");
     cmd.args([

@@ -29,7 +29,18 @@ enum PendingAction {
     New,
     Open(PathBuf),
     Template(usize),
+    /// A past print reopened as an unsaved copy.
+    Copy(Box<LabelDocument>),
     Close,
+}
+
+/// The CSV merge window: the loaded table and which row is previewed.
+struct BatchState {
+    file: String,
+    table: Option<crate::batch::Table>,
+    error: Option<String>,
+    row: usize,
+    preview: Option<(usize, egui::TextureHandle)>,
 }
 
 pub struct Designer {
@@ -58,6 +69,7 @@ pub struct Designer {
     pub status: String,
     pub error: bool,
     job: Option<mpsc::Receiver<anyhow::Result<String>>>,
+    batch: Option<BatchState>,
 }
 impl Default for Designer {
     fn default() -> Self {
@@ -94,6 +106,7 @@ impl Designer {
             status: "Create a label or choose a template".into(),
             error: false,
             job: None,
+            batch: None,
         }
     }
     pub(crate) fn select_object(&mut self, id: u64) {
@@ -264,6 +277,9 @@ impl Designer {
     pub(crate) fn request_template(&mut self, index: usize) {
         self.request_action(PendingAction::Template(index));
     }
+    pub(crate) fn request_copy(&mut self, doc: LabelDocument) {
+        self.request_action(PendingAction::Copy(Box::new(doc)));
+    }
     pub(crate) fn request_open(&mut self, path: PathBuf) {
         self.request_action(PendingAction::Open(path));
     }
@@ -308,6 +324,10 @@ impl Designer {
             PendingAction::Template(index) => {
                 self.replace_document(design::from_template(index), None, false);
                 self.status = "Template opened · save to keep your label".into();
+            }
+            PendingAction::Copy(doc) => {
+                self.replace_document(*doc, None, false);
+                self.status = "Past label opened as a copy · save to keep it".into();
             }
             PendingAction::Open(path) => match LabelDocument::load(&path) {
                 Ok(doc) => {
@@ -361,8 +381,15 @@ impl Designer {
                     );
                     ui.add_space(4.);
                     ui.vertical(|ui| {
-                        ui.label(RichText::new("Save changes?").size(24.).strong());
-                        ui.label(RichText::new("Your label has unsaved changes.").weak());
+                        ui.label(
+                            RichText::new(crate::i18n::tr("Save changes?"))
+                                .size(24.)
+                                .strong(),
+                        );
+                        ui.label(
+                            RichText::new(crate::i18n::tr("Your label has unsaved changes."))
+                                .weak(),
+                        );
                     });
                 });
                 ui.add_space(12.);
@@ -373,13 +400,15 @@ impl Designer {
                     .inner_margin(14)
                     .show(ui, |ui| {
                         ui.set_width(ui.available_width());
-                        ui.label(RichText::new("Label").small().weak());
+                        ui.label(RichText::new(crate::i18n::tr("Label")).small().weak());
                         ui.label(RichText::new(&self.doc.title).strong());
                     });
                 ui.add_space(4.);
                 ui.label(
-                    RichText::new("Save your changes to keep them, or discard them to continue.")
-                        .weak(),
+                    RichText::new(crate::i18n::tr(
+                        "Save your changes to keep them, or discard them to continue.",
+                    ))
+                    .weak(),
                 );
                 if self.error {
                     ui.add_space(4.);
@@ -389,22 +418,30 @@ impl Designer {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
                         .add(
-                            egui::Button::new(RichText::new("Save").color(Color32::WHITE))
-                                .fill(accent)
-                                .min_size(Vec2::new(96., 38.)),
+                            egui::Button::new(
+                                RichText::new(crate::i18n::tr("Save")).color(Color32::WHITE),
+                            )
+                            .fill(accent)
+                            .min_size(Vec2::new(96., 38.)),
                         )
                         .clicked()
                     {
                         proceed = self.save(false);
                     }
                     if ui
-                        .add(egui::Button::new("Discard").min_size(Vec2::new(96., 38.)))
+                        .add(
+                            egui::Button::new(crate::i18n::tr("Discard"))
+                                .min_size(Vec2::new(96., 38.)),
+                        )
                         .clicked()
                     {
                         proceed = true;
                     }
                     if ui
-                        .add(egui::Button::new("Cancel").min_size(Vec2::new(96., 38.)))
+                        .add(
+                            egui::Button::new(crate::i18n::tr("Cancel"))
+                                .min_size(Vec2::new(96., 38.)),
+                        )
                         .clicked()
                     {
                         cancel = true;
@@ -499,15 +536,204 @@ impl Designer {
         let doc = self.doc.clone();
         let settings = settings.clone();
         let raw = self.raw_zpl;
+        let path = self.path.clone();
         self.start_job("Submitting design to CUPS…", move || {
-            if raw {
+            let submitted = if raw {
                 let bytes = zpl::encode_design(&doc, settings.dpi)?;
                 printing::submit_raw_zpl(&bytes, &settings, &printer)
             } else {
                 let output = design_render::render_label(&doc, settings.dpi)?;
                 printing::submit(&output, &settings, &printer)
-            }
+            }?;
+            crate::history::record(crate::history::design_entry(
+                &doc,
+                path.as_deref(),
+                &settings.printer,
+                settings.copies,
+            ));
+            Ok(submitted)
         });
+    }
+    fn batch_choose(state: &mut BatchState) {
+        let Some(path) = rfd::FileDialog::new()
+            .add_filter("Spreadsheet export", &["csv", "tsv", "txt"])
+            .pick_file()
+        else {
+            return;
+        };
+        state.preview = None;
+        state.row = 0;
+        let loaded = std::fs::metadata(&path)
+            .map_err(anyhow::Error::from)
+            .and_then(|meta| {
+                if meta.len() > crate::batch::MAX_BYTES as u64 {
+                    anyhow::bail!(
+                        "The file is larger than {} MB",
+                        crate::batch::MAX_BYTES / 1_000_000
+                    );
+                }
+                Ok(std::fs::read(&path)?)
+            })
+            .and_then(|bytes| crate::batch::parse_table(&bytes));
+        state.file = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        match loaded {
+            Ok(table) => {
+                state.table = Some(table);
+                state.error = None;
+            }
+            Err(error) => {
+                state.table = None;
+                state.error = Some(format!("{error:#}"));
+            }
+        }
+    }
+    fn batch_window(&mut self, ctx: &egui::Context, settings: &Settings, printers: &[Printer]) {
+        let Some(mut state) = self.batch.take() else {
+            return;
+        };
+        let mut open = true;
+        let mut start = false;
+        let printer = printers.iter().find(|p| p.name == settings.printer);
+        egui::Window::new(crate::i18n::tr("Batch print from CSV"))
+            .open(&mut open)
+            .collapsible(false)
+            .resizable(true)
+            .default_width(480.)
+            .show(ctx, |ui| {
+                ui.label(crate::i18n::tr("Put ${column} placeholders in text, barcode, and QR content. Each row of your spreadsheet becomes one label."));
+                ui.label(RichText::new(crate::i18n::tr("Export a CSV from your spreadsheet. Column names are not case-sensitive; ${serial} counts up from the design's serial number.")).small().weak());
+                if ui.button(crate::i18n::tr("Choose CSV file…")).clicked() {
+                    Self::batch_choose(&mut state);
+                }
+                if let Some(error) = &state.error {
+                    ui.colored_label(Color32::RED, error);
+                }
+                let Some(table) = state.table.clone() else {
+                    return;
+                };
+                let found = crate::batch::compare(&self.doc, &table);
+                ui.label(format!(
+                    "{} · {} rows · {} columns",
+                    state.file,
+                    table.rows.len(),
+                    table.headers.len()
+                ));
+                if found.used == 0 && found.missing.is_empty() {
+                    ui.colored_label(
+                        Color32::from_rgb(200, 120, 20),
+                        "This design has no ${column} placeholders yet. Type them into a text, barcode, or QR object, for example ${Name}.",
+                    );
+                }
+                for name in &found.missing {
+                    ui.colored_label(
+                        Color32::from_rgb(200, 60, 60),
+                        format!("The design uses ${{{name}}} but the file has no column with that name."),
+                    );
+                }
+                if !found.unused.is_empty() {
+                    ui.label(
+                        RichText::new(format!("Columns not used: {}", found.unused.join(", ")))
+                            .small()
+                            .weak(),
+                    );
+                }
+                ui.separator();
+                state.row = state.row.min(table.rows.len() - 1);
+                let mut shown = state.row + 1;
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Preview row"));
+                    ui.add(egui::DragValue::new(&mut shown).range(1..=table.rows.len()))
+                        .accessible_name(crate::i18n::tr("Preview row number"));
+                    ui.label(format!("of {}", table.rows.len()));
+                });
+                state.row = shown - 1;
+                if state.preview.as_ref().map(|(row, _)| *row) != Some(state.row) {
+                    let label = crate::batch::apply_row(&self.doc, &table, state.row);
+                    state.preview = design_render::render_label(&label, 203)
+                        .ok()
+                        .map(|output| {
+                            (
+                                state.row,
+                                ctx.load_texture(
+                                    "batch-preview",
+                                    egui::ColorImage::from_rgb(
+                                        [output.image.width() as usize, output.image.height() as usize],
+                                        output.image.as_raw(),
+                                    ),
+                                    egui::TextureOptions::LINEAR,
+                                ),
+                            )
+                        });
+                }
+                match &state.preview {
+                    Some((_, texture)) => {
+                        let size = texture.size_vec2();
+                        let scale = (260. / size.x).min(260. / size.y).min(1.);
+                        ui.add(egui::Image::new(texture).fit_to_exact_size(size * scale));
+                    }
+                    None => {
+                        ui.label(RichText::new(crate::i18n::tr("This row cannot be previewed. Printing will report the problem.")).weak());
+                    }
+                }
+                ui.separator();
+                let ready = printer.is_some() && found.missing.is_empty() && found.used > 0;
+                if printer.is_none() {
+                    ui.label(RichText::new(crate::i18n::tr("Choose a printer in Print Center first.")).weak());
+                }
+                let copies = settings.copies;
+                if ui
+                    .add_enabled(
+                        ready && self.job.is_none(),
+                        egui::Button::new(format!(
+                            "Print {} labels{}",
+                            table.rows.len(),
+                            if copies > 1 { format!(" × {copies} copies") } else { String::new() }
+                        )),
+                    )
+                    .on_hover_text(crate::i18n::tr("Every row is checked first; nothing prints if a row has a problem."))
+                    .clicked()
+                {
+                    start = true;
+                }
+            });
+        if start && let (Some(table), Some(printer)) = (state.table.clone(), printer.cloned()) {
+            let doc = self.doc.clone();
+            let settings = settings.clone();
+            let raw = self.raw_zpl;
+            let total = table.rows.len();
+            self.start_job("Printing batch…", move || {
+                crate::batch::preflight(&doc, &table, settings.dpi).map_err(|problems| {
+                    anyhow::anyhow!("Nothing was printed. {}", problems.join(" · "))
+                })?;
+                for index in 0..total {
+                    let label = crate::batch::apply_row(&doc, &table, index);
+                    if raw {
+                        let bytes = zpl::encode_design(&label, settings.dpi)?;
+                        printing::submit_raw_zpl(&bytes, &settings, &printer)
+                    } else {
+                        let output = design_render::render_label(&label, settings.dpi)?;
+                        printing::submit(&output, &settings, &printer)
+                    }
+                    .map_err(|e| {
+                        anyhow::anyhow!("Stopped at row {} of {total}: {e:#}", index + 1)
+                    })?;
+                }
+                let mut entry =
+                    crate::history::design_entry(&doc, None, &settings.printer, settings.copies);
+                entry.title = format!("{} · batch of {total}", doc.title);
+                crate::history::record(entry);
+                Ok(format!(
+                    "Submitted {total} labels. Use Job status to check the queue."
+                ))
+            });
+            open = false;
+        }
+        if open {
+            self.batch = Some(state);
+        }
     }
     fn start_render(&mut self, dpi: u32) {
         if self.worker.is_some() || self.rendered_revision == Some(self.revision) {
@@ -596,13 +822,27 @@ impl Designer {
         self.poll_job(&ctx);
         egui::Panel::top("designer-toolbar").show(root, |ui| {
             ui.horizontal_wrapped(|ui| {
-                ui.menu_button("File", |ui| {
-                    if ui.button("New label").clicked() {
+                ui.menu_button(crate::i18n::tr("File"), |ui| {
+                    if ui.button(crate::i18n::tr("New label")).clicked() {
                         self.request_new();
                         ui.close();
                     }
-                    if ui.button("Save as…").clicked() {
+                    if ui.button(crate::i18n::tr("Save as…")).clicked() {
                         self.save(true);
+                        ui.close();
+                    }
+                    if ui
+                        .button(crate::i18n::tr("Batch print from CSV…"))
+                        .on_hover_text(crate::i18n::tr("Print one label per row of a spreadsheet, filling ${column} placeholders"))
+                        .clicked()
+                    {
+                        self.batch = Some(BatchState {
+                            file: String::new(),
+                            table: None,
+                            error: None,
+                            row: 0,
+                            preview: None,
+                        });
                         ui.close();
                     }
                 });
@@ -674,13 +914,13 @@ impl Designer {
                     self.zoom = 1.;
                     self.pan = Vec2::ZERO;
                 }
-                ui.menu_button("View", |ui| {
-                    ui.checkbox(&mut self.grid, "Show grid");
-                    ui.checkbox(&mut self.snap, "Snap to grid");
-                    ui.checkbox(&mut self.show_properties, "Properties panel");
-                    ui.checkbox(&mut self.focus_canvas, "Focus canvas");
+                ui.menu_button(crate::i18n::tr("View"), |ui| {
+                    ui.checkbox(&mut self.grid, crate::i18n::tr("Show grid"));
+                    ui.checkbox(&mut self.snap, crate::i18n::tr("Snap to grid"));
+                    ui.checkbox(&mut self.show_properties, crate::i18n::tr("Properties panel"));
+                    ui.checkbox(&mut self.focus_canvas, crate::i18n::tr("Focus canvas"));
                 });
-                ui.menu_button("Export", |ui| {
+                ui.menu_button(crate::i18n::tr("Export"), |ui| {
                     for (name, format) in [
                         ("PDF document", "pdf"),
                         ("PNG image", "png"),
@@ -693,12 +933,12 @@ impl Designer {
                         }
                     }
                     ui.separator();
-                    ui.checkbox(&mut self.raw_zpl, "Print using raw ZPL")
-                        .on_hover_text("Requires a ZPL-compatible printer and raw CUPS queue.");
+                    ui.checkbox(&mut self.raw_zpl, crate::i18n::tr("Print using raw ZPL"))
+                        .on_hover_text(crate::i18n::tr("Requires a ZPL-compatible printer and raw CUPS queue."));
                 });
                 if ui
-                    .selectable_label(self.focus_canvas, "Focus")
-                    .on_hover_text("Hide navigation and properties to expand the canvas")
+                    .selectable_label(self.focus_canvas, crate::i18n::tr("Focus"))
+                    .on_hover_text(crate::i18n::tr("Hide navigation and properties to expand the canvas"))
                     .clicked()
                 {
                     self.focus_canvas = !self.focus_canvas;
@@ -717,6 +957,7 @@ impl Designer {
                 }
             });
         });
+        self.batch_window(&ctx, settings, printers);
         egui::Panel::left("designer-elements")
             .default_size(68.)
             .size_range(68.0..=68.0)
@@ -752,13 +993,13 @@ impl Designer {
             });
             if let Some(printer) = printers.iter().find(|p| p.name == settings.printer) {
                 if self.raw_zpl {
-                    ui.label("Raw ZPL: verify printer compatibility and loaded label size.")
+                    ui.label(crate::i18n::tr("Raw ZPL: verify printer compatibility and loaded label size."))
                         .on_hover_text(crate::help::explanation("ZPL"));
                 } else if let Some(warning) = printer.media_mismatch(&settings.media, self.doc.width_mm, self.doc.height_mm) {
                     let color = if ui.visuals().dark_mode { Color32::from_rgb(245, 193, 99) }
                         else { Color32::from_rgb(132, 83, 10) };
                     ui.colored_label(color, warning);
-                    ui.label(RichText::new("If the loaded paper matches the printer media, use the button below. To keep the current label size, choose matching media in Print Center instead.").small().weak());
+                    ui.label(RichText::new(crate::i18n::tr("If the loaded paper matches the printer media, use the button below. To keep the current label size, choose matching media in Print Center instead.")).small().weak());
                     if let Some(&(width, height)) = printer.media_sizes.get(&settings.media)
                         && icon_action(ui, "Rotate stock", "Match label to printer media",
                             "Set the canvas dimensions to the selected printer stock. Object sizes and positions are preserved; Ctrl+Z undoes this change.", true, false).clicked() {
@@ -771,10 +1012,10 @@ impl Designer {
                         self.status = format!("Label matched to printer media: {width:.1} × {height:.1} mm");
                     }
                 } else if settings.media.is_empty() {
-                    ui.label("Select printer media in Print Center before printing.");
+                    ui.label(crate::i18n::tr("Select printer media in Print Center before printing."));
                 }
             } else {
-                ui.label("Choose a printer in Print Center to print this design. Export is available without a printer.");
+                ui.label(crate::i18n::tr("Choose a printer in Print Center to print this design. Export is available without a printer."));
             }
         });
         egui::CentralPanel::default().show(root, |ui| self.canvas(ui));
@@ -875,7 +1116,7 @@ impl Designer {
             ui.separator();
             let templates = element_tool(ui, "Choose a label template");
             egui::Popup::menu(&templates).show(|ui| {
-                ui.label("Templates");
+                ui.label(crate::i18n::tr("Templates"));
                 for (i, t) in design::TEMPLATES.iter().enumerate() {
                     if template_button(ui, t.name)
                         .on_hover_text(t.description)
@@ -889,7 +1130,7 @@ impl Designer {
         });
     }
     fn inspector(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Properties");
+        ui.heading(crate::i18n::tr("Properties"));
         let before = self.doc.clone();
         let selected_name = self
             .selected
@@ -897,12 +1138,15 @@ impl Designer {
             .and_then(|id| self.doc.objects.iter().find(|object| object.id == *id))
             .map(|object| format!("{} #{}", object.label(), object.id))
             .unwrap_or_else(|| "Select an object".into());
-        ui.label("Object");
+        ui.label(crate::i18n::tr("Object"));
         egui::ComboBox::from_id_salt("designer-object-picker")
             .selected_text(selected_name)
             .show_ui(ui, |ui| {
                 if ui
-                    .selectable_label(self.selected.is_empty(), "Label setup (no selection)")
+                    .selectable_label(
+                        self.selected.is_empty(),
+                        crate::i18n::tr("Label setup (no selection)"),
+                    )
                     .clicked()
                 {
                     self.selected.clear();
@@ -920,35 +1164,35 @@ impl Designer {
                 }
             })
             .response
-            .accessible_name("Select label object");
+            .accessible_name(crate::i18n::tr("Select label object"));
         egui::CollapsingHeader::new("Label setup")
             .default_open(self.selected.is_empty())
             .show(ui, |ui| {
-                let label = ui.label("Label name");
+                let label = ui.label(crate::i18n::tr("Label name"));
                 ui.text_edit_singleline(&mut self.doc.title)
                     .labelled_by(label.id);
                 ui.horizontal(|ui| {
-                    ui.label("Width");
+                    ui.label(crate::i18n::tr("Width"));
                     ui.add(
                         egui::DragValue::new(&mut self.doc.width_mm)
                             .range(1.0..=2000.0)
                             .speed(0.2)
                             .suffix(" mm"),
                     )
-                    .accessible_name("Label width in millimeters");
-                    ui.label("Height");
+                    .accessible_name(crate::i18n::tr("Label width in millimeters"));
+                    ui.label(crate::i18n::tr("Height"));
                     ui.add(
                         egui::DragValue::new(&mut self.doc.height_mm)
                             .range(1.0..=2000.0)
                             .speed(0.2)
                             .suffix(" mm"),
                     )
-                    .accessible_name("Label height in millimeters");
+                    .accessible_name(crate::i18n::tr("Label height in millimeters"));
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Serial variable");
+                    ui.label(crate::i18n::tr("Serial variable"));
                     ui.add(egui::DragValue::new(&mut self.doc.serial_number))
-                        .accessible_name("Serial variable");
+                        .accessible_name(crate::i18n::tr("Serial variable"));
                 });
             });
         ui.separator();
@@ -969,8 +1213,8 @@ impl Designer {
             return;
         }
         let Some(id) = self.selected.first().copied() else {
-            ui.label("Select an object on the canvas.");
-            ui.label(RichText::new("Shift-click to select multiple objects. Use Ctrl+C/V, Ctrl+D, Delete, Ctrl+Z/Y.").small().weak());
+            ui.label(crate::i18n::tr("Select an object on the canvas."));
+            ui.label(RichText::new(crate::i18n::tr("Shift-click to select multiple objects. Use Ctrl+C/V, Ctrl+D, Delete, Ctrl+Z/Y.")).small().weak());
             if self.doc != before {
                 self.undo.push(before);
                 self.redo.clear();
@@ -985,31 +1229,31 @@ impl Designer {
         ui.horizontal(|ui| {
             ui.label("X");
             ui.add(egui::DragValue::new(&mut o.x_mm).speed(0.1).suffix(" mm"))
-                .accessible_name("Object horizontal position in millimeters");
+                .accessible_name(crate::i18n::tr("Object horizontal position in millimeters"));
             ui.label("Y");
             ui.add(egui::DragValue::new(&mut o.y_mm).speed(0.1).suffix(" mm"))
-                .accessible_name("Object vertical position in millimeters");
+                .accessible_name(crate::i18n::tr("Object vertical position in millimeters"));
         });
         ui.horizontal(|ui| {
-            ui.label("W");
+            ui.label(crate::i18n::tr("W"));
             ui.add(
                 egui::DragValue::new(&mut o.width_mm)
                     .range(1.0..=2000.0)
                     .speed(0.1)
                     .suffix(" mm"),
             )
-            .accessible_name("Object width in millimeters");
-            ui.label("H");
+            .accessible_name(crate::i18n::tr("Object width in millimeters"));
+            ui.label(crate::i18n::tr("H"));
             ui.add(
                 egui::DragValue::new(&mut o.height_mm)
                     .range(1.0..=2000.0)
                     .speed(0.1)
                     .suffix(" mm"),
             )
-            .accessible_name("Object height in millimeters");
+            .accessible_name(crate::i18n::tr("Object height in millimeters"));
         });
         ui.horizontal(|ui| {
-            let label = ui.label("Rotation");
+            let label = ui.label(crate::i18n::tr("Rotation"));
             let mut angle = o.rotation;
             if ui
                 .add(
@@ -1032,20 +1276,20 @@ impl Designer {
                 bold,
                 align,
             } => {
-                ui.label("Text · ${date} and ${serial} are dynamic");
+                ui.label(crate::i18n::tr("Text · ${date} and ${serial} are dynamic"));
                 ui.add(egui::TextEdit::multiline(text).desired_rows(6))
-                    .accessible_name("Object text");
+                    .accessible_name(crate::i18n::tr("Object text"));
                 ui.add(
                     egui::DragValue::new(font_pt)
                         .range(3.0..=300.0)
                         .suffix(" pt"),
                 )
-                .accessible_name("Font size in points");
-                ui.checkbox(bold, "Bold");
+                .accessible_name(crate::i18n::tr("Font size in points"));
+                ui.checkbox(bold, crate::i18n::tr("Bold"));
                 ui.horizontal(|ui| {
-                    ui.selectable_value(align, TextAlign::Left, "Left");
-                    ui.selectable_value(align, TextAlign::Center, "Center");
-                    ui.selectable_value(align, TextAlign::Right, "Right");
+                    ui.selectable_value(align, TextAlign::Left, crate::i18n::tr("Left"));
+                    ui.selectable_value(align, TextAlign::Center, crate::i18n::tr("Center"));
+                    ui.selectable_value(align, TextAlign::Right, crate::i18n::tr("Right"));
                 });
             }
             Element::Barcode {
@@ -1053,37 +1297,34 @@ impl Designer {
                 data,
                 show_text,
             } => {
-                ui.label("Enter your real product code or reference");
+                ui.label(crate::i18n::tr("Enter your real product code or reference"));
                 ui.text_edit_singleline(data)
-                    .accessible_name("Barcode or QR code content");
+                    .accessible_name(crate::i18n::tr("Barcode or QR code content"));
                 egui::ComboBox::from_id_salt("barcode-kind")
-                    .selected_text(match kind {
-                        BarcodeKind::Code128 => "Code 128", BarcodeKind::Code39 => "Code 39",
-                        BarcodeKind::Ean13 => "EAN-13", BarcodeKind::UpcA => "UPC-A",
-                    })
+                    .selected_text(barcode_name(*kind))
                     .show_ui(ui, |ui| {
                         for k in [
                             BarcodeKind::Code128,
                             BarcodeKind::Code39,
+                            BarcodeKind::Code93,
                             BarcodeKind::Ean13,
+                            BarcodeKind::Ean8,
                             BarcodeKind::UpcA,
+                            BarcodeKind::Itf,
+                            BarcodeKind::Codabar,
+                            BarcodeKind::DataMatrix,
                         ] {
-                            let (name, hint) = match k {
-                                BarcodeKind::Code128 => ("Code 128", "A compact barcode for letters, digits, and product references."),
-                                BarcodeKind::Code39 => ("Code 39", "A barcode for uppercase letters, digits, and a limited set of symbols."),
-                                BarcodeKind::Ean13 => ("EAN-13", crate::help::explanation("EAN")),
-                                BarcodeKind::UpcA => ("UPC-A", crate::help::explanation("UPC")),
-                            };
-                            ui.selectable_value(kind, k, name).on_hover_text(hint);
+                            ui.selectable_value(kind, k, barcode_name(k))
+                                .on_hover_text(barcode_hint(k));
                         }
                     });
-                ui.checkbox(show_text, "Show value below bars");
+                ui.checkbox(show_text, crate::i18n::tr("Show value below bars"));
             }
             Element::Qr { data } => {
-                ui.label("QR content")
+                ui.label(crate::i18n::tr("QR content"))
                     .on_hover_text(crate::help::explanation("QR"));
                 ui.add(egui::TextEdit::multiline(data).desired_rows(4))
-                    .accessible_name("QR code content");
+                    .accessible_name(crate::i18n::tr("QR code content"));
             }
             Element::Shape {
                 kind,
@@ -1115,11 +1356,13 @@ impl Designer {
                         .range(0.05..=20.)
                         .suffix(" mm"),
                 )
-                .accessible_name("Shape stroke width in millimeters");
-                ui.checkbox(filled, "Filled");
+                .accessible_name(crate::i18n::tr("Shape stroke width in millimeters"));
+                ui.checkbox(filled, crate::i18n::tr("Filled"));
             }
             Element::Image { .. } => {
-                ui.label("Embedded image. Resize with W/H or the canvas handle.");
+                ui.label(crate::i18n::tr(
+                    "Embedded image. Resize with W/H or the canvas handle.",
+                ));
             }
         }
         ui.horizontal_wrapped(|ui| {
@@ -1180,9 +1423,11 @@ impl Designer {
     }
     fn canvas(&mut self, ui: &mut egui::Ui) {
         ui.label(
-            RichText::new("Drag to move · square to resize · circle to rotate · Shift: 15°")
-                .small()
-                .weak(),
+            RichText::new(crate::i18n::tr(
+                "Drag to move · square to resize · circle to rotate · Shift: 15°",
+            ))
+            .small()
+            .weak(),
         );
         let Some(tex) = self.texture.clone() else {
             ui.spinner();
@@ -1297,7 +1542,9 @@ impl Designer {
                     if geometry.rotation_handle.distance(pointer) <= 14. {
                         response = response
                             .on_hover_cursor(egui::CursorIcon::Crosshair)
-                            .on_hover_text("Drag to rotate freely. Hold Shift to snap to 15°.");
+                            .on_hover_text(crate::i18n::tr(
+                                "Drag to rotate freely. Hold Shift to snap to 15°.",
+                            ));
                     } else if geometry.corners[2].distance(pointer) <= 14. {
                         response = response.on_hover_cursor(egui::CursorIcon::ResizeNwSe);
                     }
@@ -1527,11 +1774,13 @@ fn element_tool(ui: &mut egui::Ui, label: &str) -> egui::Response {
 
 pub(crate) fn template_button(ui: &mut egui::Ui, name: &str) -> egui::Response {
     let (rect, response) = ui.allocate_exact_size(Vec2::new(218., 34.), Sense::click());
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), name));
+    let shown = crate::i18n::tr(name);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), shown));
     let visuals = ui.style().interact(&response);
     if response.hovered() || response.has_focus() {
         ui.painter().rect_filled(rect, 5., visuals.bg_fill);
     }
+    // The icon is chosen from the English name, which stays the template's identity.
     let icon = match name {
         "Blank custom" => "Blank custom",
         "Shipping 4 × 6" => "Shipping",
@@ -1552,11 +1801,47 @@ pub(crate) fn template_button(ui: &mut egui::Ui, name: &str) -> egui::Response {
     ui.painter().text(
         Pos2::new(rect.left() + 40., rect.center().y),
         egui::Align2::LEFT_CENTER,
-        name,
+        shown,
         egui::TextStyle::Button.resolve(ui.style()),
         visuals.fg_stroke.color,
     );
     response
+}
+
+fn barcode_name(kind: BarcodeKind) -> &'static str {
+    match kind {
+        BarcodeKind::Code128 => "Code 128",
+        BarcodeKind::Code39 => "Code 39",
+        BarcodeKind::Code93 => "Code 93",
+        BarcodeKind::Ean13 => "EAN-13",
+        BarcodeKind::Ean8 => "EAN-8",
+        BarcodeKind::UpcA => "UPC-A",
+        BarcodeKind::Itf => "ITF (Interleaved 2 of 5)",
+        BarcodeKind::Codabar => "Codabar",
+        BarcodeKind::DataMatrix => "Data Matrix",
+    }
+}
+
+fn barcode_hint(kind: BarcodeKind) -> &'static str {
+    match kind {
+        BarcodeKind::Code128 => "A compact barcode for letters, digits, and product references.",
+        BarcodeKind::Code39 => {
+            "A barcode for uppercase letters, digits, and a limited set of symbols."
+        }
+        BarcodeKind::Code93 => "A denser alternative to Code 39 for letters, digits, and symbols.",
+        BarcodeKind::Ean13 => crate::help::explanation("EAN"),
+        BarcodeKind::Ean8 => {
+            "A short retail barcode for small packages. Enter 7 digits, or 8 with the check digit."
+        }
+        BarcodeKind::UpcA => crate::help::explanation("UPC"),
+        BarcodeKind::Itf => "Digits only, in pairs. Common on shipping cartons.",
+        BarcodeKind::Codabar => {
+            "Digits and a few symbols, framed by A–D. Used in libraries and blood banks."
+        }
+        BarcodeKind::DataMatrix => {
+            "A small square 2D symbol for tiny parts and labels. Keep the object roughly square."
+        }
+    }
 }
 
 pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Color32, label: &str) {
@@ -1919,6 +2204,7 @@ pub(crate) fn icon_action(
     enabled: bool,
     selected: bool,
 ) -> egui::Response {
+    let (label, tooltip) = (crate::i18n::tr(label), crate::i18n::tr(tooltip));
     let font = egui::TextStyle::Button.resolve(ui.style());
     let text_width = ui
         .painter()
@@ -2269,5 +2555,66 @@ mod window_close_tests {
                 .get(&egui::ViewportId::ROOT)
                 .is_some_and(|commands| commands.contains(&egui::ViewportCommand::CancelClose))
         );
+    }
+}
+
+#[cfg(test)]
+mod batch_window_tests {
+    use super::*;
+
+    #[test]
+    fn batch_window_previews_the_selected_row_and_stays_open() {
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(50., 30.);
+        designer.doc.add(
+            Element::Text {
+                text: "${Name}".into(),
+                font_pt: 14.,
+                bold: false,
+                align: TextAlign::Left,
+            },
+            2.,
+            2.,
+            40.,
+            10.,
+        );
+        designer.batch = Some(BatchState {
+            file: "people.csv".into(),
+            table: Some(crate::batch::parse_table(b"Name\nAda\nBo\n").unwrap()),
+            error: None,
+            row: 1,
+            preview: None,
+        });
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(900., 700.));
+        for _ in 0..3 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |_| designer.batch_window(&ctx, &Settings::default(), &[]),
+            );
+            output.textures_delta.clear();
+        }
+        let state = designer.batch.as_ref().expect("window stays open");
+        assert_eq!(state.preview.as_ref().map(|(row, _)| *row), Some(1));
+        assert!(designer.job.is_none(), "nothing prints without a printer");
+    }
+}
+
+#[cfg(test)]
+mod history_reopen_tests {
+    use super::*;
+
+    #[test]
+    fn a_past_print_reopens_as_an_unsaved_copy() {
+        let mut designer = Designer::new();
+        let mut past = LabelDocument::blank(40., 20.);
+        past.title = "Shelf tag".into();
+        designer.request_copy(past.clone());
+        assert_eq!(designer.doc, past);
+        assert!(designer.path.is_none(), "a copy has no file yet");
+        assert!(designer.is_modified(), "so closing it asks to save");
     }
 }

@@ -25,7 +25,7 @@ pub(super) fn title(ui: &mut egui::Ui, icon: &egui::TextureHandle) {
         ui.painter().text(
             Pos2::new(rect.left() + 188., rect.center().y),
             egui::Align2::LEFT_CENTER,
-            "Universal shipping labels",
+            crate::i18n::tr("Universal shipping labels"),
             egui::FontId::proportional(12.),
             ui.visuals().weak_text_color(),
         );

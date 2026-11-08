@@ -16,7 +16,7 @@ From a checkout of this repository, run:
 
 ```sh
 sh scripts/build-snap.sh
-python3 scripts/verify-snap.py target/snap/thermalprint_0.4.2_amd64.snap
+python3 scripts/verify-snap.py target/snap/thermalprint_0.5.0_amd64.snap
 ```
 
 Use the version from `Cargo.toml` in the filename. The build adopts that version
@@ -39,7 +39,7 @@ Python packaging checks require PyYAML (`python3-yaml` on Ubuntu).
 ## Install a local build
 
 ```sh
-sudo snap install --dangerous target/snap/thermalprint_0.4.2_amd64.snap
+sudo snap install --dangerous target/snap/thermalprint_0.5.0_amd64.snap
 snap connections thermalprint
 snap run thermalprint
 ```
@@ -64,6 +64,13 @@ Printer configuration remains in the host's printer settings or the CUPS
 provider. `cups-control`, direct USB access, and printer-administration
 permissions are not requested. Poppler and the CUPS client utilities are bundled;
 PDFium is optional and is not downloaded by this recipe.
+
+Features that read your files work in the Snap within these limits: batch
+printing from CSV and the watch folder read files you choose through the file
+chooser or in your home folder; the watch folder cannot read hidden folders
+(such as `~/.cache`) or other drives unless `removable-media` is connected. The
+app shows a hint when it chooses a folder the Snap cannot read. Preferences,
+printer profiles, and print history live in the Snap's own user-data directory.
 
 The GNOME extension enables file chooser portals. The `home` connection also
 allows ordinary documents in the user's home directory. Direct access to USB
@@ -122,6 +129,9 @@ Before promoting the package beyond an experimental channel:
   capability/driver-description lookup through the proxy works; the Snap does
   not read host PPD files under `/etc/cups/ppd`.
 - Test optional removable-media access and saving a design on an external drive.
+- Choose a watch folder in Downloads, drop in a PDF, and confirm it joins the queue;
+  choose a hidden or external folder and confirm the hint appears.
+- Open a CSV from Downloads in Batch print and confirm the preview renders.
 - Review confinement denials and package/library lint results. Build success
   alone does not demonstrate printer or desktop compatibility.
 
@@ -148,8 +158,8 @@ Tagged releases publish automatically. One-time setup:
    optionally add a required reviewer there if you want an approval gate.
 
 To release: bump `version` in `Cargo.toml` (and `Cargo.lock`), merge to `main`,
-then push a tag that exactly matches it, for example `git tag v0.4.2 && git push
-origin v0.4.2`. The workflow checks the tag, runs the packaging tests, builds and
+then push a tag that exactly matches it, for example `git tag v0.5.0 && git push
+origin v0.5.0`. The workflow checks the tag, runs the packaging tests, builds and
 inspects the Snap, then releases it to **stable**. The same `v*` tag also
 triggers the APT release ([release-apt.yml](../.github/workflows/release-apt.yml))
 and the Fedora RPM release ([release-rpm.yml](../.github/workflows/release-rpm.yml)),
