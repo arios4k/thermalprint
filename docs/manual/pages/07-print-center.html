@@ -1,0 +1,67 @@
+<!--
+title: Print Center
+group: Using ThermalPrint
+summary: Choose your printer and media, remember settings per printer, fix off-center printing, and reopen recent prints.
+-->
+<p><span class="ui">Print Center</span> is where you tell ThermalPrint about your printer. You usually set it up once. The same printer, media, and options are then used by both Import &amp; Convert and the Label Designer.</p>
+
+{{figure:print-center-full-annotated|Print Center with numbered callouts on printer and media, label stock, queue and diagnostics, output settings, alignment, and recent prints|Print Center. (1) Printer &amp; media, (2) Label stock, (3) Queue &amp; diagnostics, (4) Output settings, (5) Alignment, (6) Recent prints.}}
+
+<h2 id="printer-and-media">Printer and media</h2>
+<p>ThermalPrint prints through <strong>CUPS</strong>, the standard Linux printing system, using its command-line tools. If your printer works in other Linux programs, it works here. Add the printer first in your desktop's printer settings.</p>
+<table>
+  <tr><th>Setting</th><th>What it means</th></tr>
+  <tr><td><span class="ui">Printer queue</span></td><td>The printers your system knows. The line below shows a best-effort hint such as <em>Likely thermal label printer</em>. It is based on the name and media, and is a hint only.</td></tr>
+  <tr><td><span class="ui">Printer media size</span></td><td>The paper size the printer driver offers. Choose the one that matches your loaded labels, such as <em>4 × 6 in</em>. A <em>Custom dimensions</em> choice appears if the driver supports it.</td></tr>
+  <tr><td><span class="ui">Advanced driver resolution</span></td><td>An optional resolution choice if the printer offers one. Leave it on <em>Driver default</em> unless you have a reason.</td></tr>
+  <tr><td><span class="ui">Refresh printers</span></td><td>Looks for printers again after you add or turn on a printer.</td></tr>
+</table>
+<div class="note"><p><strong>Why media matters.</strong> The media tells the printer driver how big the label is, so it does not shrink, rotate, or add margins. If the output size and the printer media disagree, ThermalPrint warns you and offers <span class="ui">Match output to printer media</span>.</p></div>
+
+<h2>Output settings</h2>
+<table>
+  <tr><th>Setting</th><th>What it does</th></tr>
+  <tr><td><span class="ui">Copies</span></td><td>How many of each label to print (1 to 999).</td></tr>
+  <tr><td><span class="ui">Rendering DPI</span></td><td>The sharpness the label is drawn at: 203 (typical for 4 × 6 printers), 300, or 600. Use your printer's real resolution.</td></tr>
+  <tr><td><span class="ui">Output label size</span></td><td>Presets (4 × 6 in, 4 × 4 in, 2 × 1 in, 100 × 150 mm) or your own <span class="ui">Width</span> and <span class="ui">Height</span> in millimeters.</td></tr>
+  <tr><td><span class="ui">Swap portrait / landscape</span></td><td>Exchanges width and height.</td></tr>
+</table>
+
+<h2>Label stock and queue</h2>
+<p>The <span class="ui">Label stock</span> card draws your label's shape and size, with DPI, copies, and the printer media. The <span class="ui">Queue &amp; diagnostics</span> card shows:</p>
+<ul>
+  <li><strong>A status notice</strong> that says what to do next: <em>Add a label</em>, <em>Review the crop</em>, <em>Choose a printer</em>, <em>Choose printer media</em>, <em>Label size differs from printer media</em>, <em>Verify the loaded stock</em>, or <em>Ready to submit</em>.</li>
+  <li>How many imported labels are queued, with <span class="ui">Open import queue</span> to jump there.</li>
+  <li><span class="ui">Check CUPS job status</span>: asks CUPS what is waiting. A message that a job was accepted means the scheduler took it, not that the printer produced a label. Look at the printer.</li>
+</ul>
+
+<h2 id="alignment-and-printer-profiles">Alignment and printer profiles</h2>
+<h3>Each printer remembers its own settings</h3>
+<p>If you use more than one printer, such as a 4 × 6 shipping printer and a small price-tag printer, ThermalPrint remembers the <strong>media, resolution, DPI, label size, copies, and alignment</strong> separately for each. Switch printers in <span class="ui">Printer queue</span> and the right settings come back automatically. A printer you have never used starts clean. No "save" button is needed.</p>
+
+<h3>Fixing a printer that prints off-center</h3>
+<p>Some printers feed labels a little to one side, so the content is shifted or the edge is cut off. The <strong>alignment offset</strong> moves everything by a small amount to correct this.</p>
+<ol class="steps">
+  <li><strong>Print the test label.</strong> Press <span class="ui">Print alignment test</span>. It prints a ruler label with a thin border 1 mm in from every edge, a cross at the center, and tick marks every 5 mm.</li>
+  <li><strong>Measure.</strong> On a correctly aligned label the border is the same distance from each edge. Measure how far it is shifted.</li>
+  <li><strong>Enter the correction.</strong> Set <span class="ui">Horizontal</span> and <span class="ui">Vertical</span> in millimeters (positive moves content right and down, negative moves it left and up). The range is −10 to +10 mm.</li>
+  <li><strong>Print the test again</strong> and adjust until the border is even.</li>
+</ol>
+{{figure:alignment-test|The alignment test label: a thin border with tick marks every five millimeters and a cross at the center|The alignment test label, as printed. The border sits 1 mm inside every edge.}}
+<p><span class="ui">Reset offset</span> sets both values back to zero. The offset applies to printed labels only; exported PDF, PNG, SVG, and ZPL files are never shifted. It also does not apply to raw ZPL printing.</p>
+<div class="tip"><p>If the whole image is too small or the edges are cut off by the same amount all around, the cause is usually the <em>media size</em>, not alignment. Check that the printer media matches your labels first.</p></div>
+
+<h2 id="recent-prints">Recent prints</h2>
+<p>Each label you print is added to <span class="ui">Recent prints</span> at the bottom of Print Center, with the date and time, printer, and copies. It shows your last ten prints (the app keeps up to 50).</p>
+<ul>
+  <li>Press <span class="ui">Open</span> to bring the label back. A <strong>design</strong> reopens in the Label Designer as an unsaved copy exactly as it was printed; an <strong>imported label</strong> returns to the queue in Import &amp; Convert.</li>
+  <li><strong>Nothing prints when you press Open.</strong> You review the label, then press Print yourself.</li>
+  <li>If the original file has been moved or deleted, you are told to add it again.</li>
+  <li><span class="ui">Clear history</span> removes the list.</li>
+</ul>
+<p>A batch print is listed once, as <em>Design name · batch of N</em>. See <a href="automation.html">Folder watching and history</a> for more.</p>
+
+<div class="pair">
+{{figure:print-center-light|Print Center in the light theme|Light theme.}}
+{{figure:print-center-dark|Print Center in the dark theme|Dark theme.}}
+</div>

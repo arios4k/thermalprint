@@ -16,7 +16,7 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 [![Snap Store](https://snapcraft.io/thermalprint/badge.svg)](https://snapcraft.io/thermalprint)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3187e7)](LICENSE)
 
-[Install on Fedora](#fedora) · [Install on Debian / Ubuntu](#debian--ubuntu) · [See the app](#screenshots) · [Download packages](https://github.com/arios4k/thermalprint/releases/latest)
+[User manual](https://arios4k.github.io/thermalprint/manual/) · [Install on Fedora](#fedora) · [Install on Debian / Ubuntu](#debian--ubuntu) · [See the app](#screenshots) · [Download packages](https://github.com/arios4k/thermalprint/releases/latest)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/designer-dark.png">
@@ -209,7 +209,7 @@ cargo run --release --locked
 
 PDFium is optional. To use a custom installation, set `THERMALPRINT_PDFIUM_DIR` to the directory containing `libpdfium.so`.
 
-[Snap packaging](docs/SNAP.md) · [Development and tests](docs/DEVELOPMENT.md) · [Fedora packaging / Copr setup](packaging/rpm/README.md) · [APT release maintenance](docs/RELEASING.md) · [Regenerate screenshots](docs/screenshots/README.md)
+[User manual](https://arios4k.github.io/thermalprint/manual/) · [Snap packaging](docs/SNAP.md) · [Development and tests](docs/DEVELOPMENT.md) · [Fedora packaging / Copr setup](packaging/rpm/README.md) · [APT release maintenance](docs/RELEASING.md) · [Regenerate screenshots](docs/screenshots/README.md)
 
 ## Support ThermalPrint
 

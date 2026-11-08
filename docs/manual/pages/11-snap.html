@@ -1,0 +1,48 @@
+<!--
+title: Using the Snap
+group: Reference
+summary: What the Snap package can and cannot reach, the optional connections, and how to make files open by double-click.
+-->
+<p>The Snap runs inside a protected sandbox ("strict confinement"). That keeps your system safe, and it means a few things work a little differently from the APT and Fedora packages.</p>
+
+<h2>What works with no setup</h2>
+<ul>
+  <li>Printing, through the printing connection that comes with the Snap Store install.</li>
+  <li>Reading and saving files in your <strong>home folder</strong> (including Documents, Downloads, and Desktop).</li>
+  <li>Opening files you choose in the file chooser, wherever they are.</li>
+  <li>The system theme, dark mode, and your system language.</li>
+</ul>
+<p>To see what is connected, run <code>snap connections thermalprint</code>.</p>
+
+<h2>If printing is not connected</h2>
+<p>Normally the printing connection happens automatically. If it did not (for example, with a package you installed by hand), ThermalPrint tells you in the status bar and in Print Center, with the exact command:</p>
+<pre><code>sudo snap connect thermalprint:cups cups:cups</code></pre>
+<p>If the <code>cups</code> Snap is missing, install it first with <code>sudo snap install cups</code>.</p>
+
+<h2>Saving to USB drives and other disks</h2>
+<p>The Snap cannot see removable drives until you allow it. This is optional and only needed if you want to save or open files on external storage directly:</p>
+<pre><code>sudo snap connect thermalprint:removable-media</code></pre>
+
+<h2 id="saved-designs-and-double-click-opening">Saved designs and double-click opening</h2>
+<p>A Snap cannot register a new file type with your desktop. If you only have the Snap installed (no APT or Fedora package), run this <strong>once from a normal terminal</strong>, not from inside the Snap, to make <code>.thermalprint</code> files open in ThermalPrint when you double-click them:</p>
+<pre><code>/snap/thermalprint/current/usr/share/doc/thermalprint/register-mime.sh</code></pre>
+<p>It claims only <code>.thermalprint</code> files, never PDFs, images, or other JSON files. It needs <code>shared-mime-info</code> and <code>xdg-utils</code>, which most desktops already have. The script refuses to run if started inside the Snap.</p>
+
+<h2 id="folders-and-the-watch-folder">Folders and the watch folder</h2>
+<table>
+  <tr><th>Folder</th><th>Works in the Snap?</th></tr>
+  <tr><td>Your home folder and normal subfolders (Downloads, Documents)</td><td>Yes.</td></tr>
+  <tr><td>A folder chosen in the file chooser</td><td>Yes.</td></tr>
+  <tr><td>Hidden folders (those starting with a dot, such as <code>~/.cache</code>)</td><td>No. The Snap cannot read them.</td></tr>
+  <tr><td>Other disks, <code>/media</code>, <code>/mnt</code></td><td>Only after <code>removable-media</code> is connected.</td></tr>
+</table>
+<p>When you choose a folder the Snap cannot read, the <a href="automation.html#watching-a-folder">Watch a folder</a> section shows a hint explaining why, and watching stays off.</p>
+
+<h2>Opening this manual and web links</h2>
+<p>The Help button opens the manual in your default web browser. This uses the Snap's network permission only to hand the link to your browser; ThermalPrint does not download anything itself.</p>
+
+<h2>Where the Snap keeps your data</h2>
+<p>Preferences, printer profiles, and print history are stored in the Snap's own folder, so they do not mix with the data of a non-Snap installation. Settings made in a non-Snap installation are not copied. See <a href="settings.html#where-your-data-lives">Settings and privacy</a> for the paths.</p>
+
+<h2>Snap channels</h2>
+<p>The Store version tracks the <code>stable</code> channel and updates itself in the background. To go back to a previous version, run <code>sudo snap revert thermalprint</code>.</p>

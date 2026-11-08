@@ -1,0 +1,46 @@
+<!--
+title: Folder watching and history
+group: Using ThermalPrint
+summary: Let new downloads join the queue automatically, and reopen anything you printed recently.
+-->
+<p>Two features save clicks when you handle labels all day: a <strong>watch folder</strong> that picks up new downloads for you, and a <strong>print history</strong> that lets you reopen what you printed.</p>
+
+<h2 id="watching-a-folder">Watching a folder</h2>
+<p>Marketplaces and carriers save labels as PDFs in your Downloads folder. With a watch folder, ThermalPrint adds each new one to the print queue as soon as it appears.</p>
+{{figure:import-watch|Import and Convert with the Watch a folder section open, showing the chosen folder and the Watch for new labels checkbox|The Watch a folder section in Import &amp; Convert.}}
+<h3>Turn it on</h3>
+<ol class="steps">
+  <li>Open <span class="ui">Import &amp; Convert</span> and expand <span class="ui">Watch a folder</span>.</li>
+  <li>Press <span class="ui">Choose folder…</span> and pick the folder, for example Downloads. Watching starts right away.</li>
+  <li>Download a label. Within a couple of seconds it joins the queue, ready to review.</li>
+</ol>
+<p>Untick <span class="ui">Watch for new labels</span> to pause, or press <span class="ui">Clear</span> to forget the folder. ThermalPrint remembers the folder and the on/off choice for next time.</p>
+
+<h3>What is picked up</h3>
+<table>
+  <tr><th>Rule</th><th>Details</th></tr>
+  <tr><td>File types</td><td>PDF, PNG, JPEG, TIFF, BMP, and WebP, in the chosen folder itself (not its subfolders).</td></tr>
+  <tr><td>Old files</td><td>Files that were already in the folder when you turned watching on are <strong>ignored</strong>. Only new files are added.</td></tr>
+  <tr><td>Downloads in progress</td><td>A file is added only after its size has stopped changing, so a half-downloaded PDF is never opened. Temporary names such as <code>.crdownload</code> are skipped.</td></tr>
+  <tr><td>Skipped files</td><td>Empty files, files over 50 MB, hidden files that start with a dot, and shortcuts (symbolic links).</td></tr>
+  <tr><td>Each file once</td><td>A file is added a single time, even if you remove it from the queue.</td></tr>
+  <tr><td>Where you are</td><td>If you are on Home or Import &amp; Convert, the app switches to the queue. If you are in the Designer or Print Center, it stays put and the status bar says how many labels are waiting.</td></tr>
+</table>
+<div class="note"><p>The watch folder only <em>adds</em> labels to the queue. It never prints by itself. You still review each label and press Print.</p></div>
+<p>If the folder disappears or cannot be read, watching switches itself off and the status bar says why. The Snap can read your home folder and folders you pick in the file chooser; see <a href="snap.html#folders-and-the-watch-folder">Using the Snap</a>.</p>
+
+<h2>Drag and drop</h2>
+<p>You can always drop files onto the window instead: PDFs and images go to the Import queue, and a single <code>.thermalprint</code> file opens in the Designer.</p>
+
+<h2>Recent documents</h2>
+<p>The Home screen lists files you opened recently (up to eight). Pick one to open it again. These are remembered as file names and locations, not copies of the files.</p>
+
+<h2>Print history</h2>
+<p>ThermalPrint keeps a list of your last 50 successful prints, shown in <a href="print-center.html#recent-prints">Print Center → Recent prints</a>. Each entry records the time, printer, label name, and copies.</p>
+<table>
+  <tr><th>What you printed</th><th>What <span class="ui">Open</span> does</th></tr>
+  <tr><td>A design</td><td>Reopens it in the Designer as an unsaved copy of what was printed, even if you never saved it (unless it contained very large images, in which case the saved file is used).</td></tr>
+  <tr><td>An imported label</td><td>Adds the original file back to the queue in Import &amp; Convert. If the file moved or was deleted, you are asked to add it again.</td></tr>
+  <tr><td>A batch</td><td>Reopens the design you used. Choose the CSV again to repeat the batch.</td></tr>
+</table>
+<p>Opening an entry never prints. History is saved in a small file in your settings folder (see <a href="settings.html#where-your-data-lives">Settings and privacy</a>), and <span class="ui">Clear history</span> deletes it.</p>

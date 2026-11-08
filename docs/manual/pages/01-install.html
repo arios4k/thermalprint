@@ -1,0 +1,63 @@
+<!--
+title: Installing ThermalPrint
+group: Start here
+summary: Install from APT, Fedora Copr, the Snap Store, or source, and set up your printer.
+-->
+<p>ThermalPrint is available for Debian and Ubuntu (APT), Fedora (Copr), as a Snap, and from source. All packages include the app, a desktop launcher, icons, the CUPS client tools, and Poppler PDF utilities. Updates arrive through your normal update tool.</p>
+
+<h2>Before you start</h2>
+<ul>
+  <li>You need a Linux desktop with X11 or Wayland.</li>
+  <li>Add your label printer in your desktop's printer settings (or the CUPS web page) <em>before</em> printing. ThermalPrint uses the printers your system already knows. It does not install drivers.</li>
+  <li>Packages are for 64-bit Intel/AMD computers (amd64 / x86_64).</li>
+</ul>
+
+<h2>Debian and Ubuntu (APT)</h2>
+<p>The signed APT repository serves amd64 packages. Run these commands once:</p>
+<pre><code>sudo apt update
+sudo apt install curl
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://arios4k.github.io/thermalprint/key.asc | sudo tee /etc/apt/keyrings/thermalprint.asc &gt;/dev/null
+echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/thermalprint.asc] https://arios4k.github.io/thermalprint/ stable main' | sudo tee /etc/apt/sources.list.d/thermalprint.list &gt;/dev/null
+sudo apt update
+sudo apt install thermalprint</code></pre>
+<p>Afterwards, <code>sudo apt update &amp;&amp; sudo apt upgrade</code> keeps ThermalPrint current. To install a downloaded <code>.deb</code> file instead, use <code>sudo apt install ./thermalprint_*.deb</code> so its dependencies are installed too.</p>
+
+<h2>Fedora (Copr)</h2>
+<p>For Fedora 44 and 45 on x86_64, enable the community Copr repository once:</p>
+<pre><code>sudo dnf install dnf5-plugins
+sudo dnf copr enable arios/thermalprint
+sudo dnf install thermalprint</code></pre>
+<p>Updates arrive through normal DNF updates. Copr is a community repository and is separate from Fedora's official packages. You can also download the RPMs from the <a href="https://github.com/arios4k/thermalprint/releases/latest">latest release</a>.</p>
+
+<h2>Snap</h2>
+<pre><code>sudo snap install thermalprint</code></pre>
+<p>Snap packages update themselves. Printing connects automatically; if it ever does not, ThermalPrint shows the exact command to run. Optional extras, such as saving to USB drives, are covered in <a href="snap.html">Using the Snap</a>.</p>
+
+<h2>From source</h2>
+<p>You need Rust 1.96 or newer, a C/C++ toolchain, and the usual Linux development libraries.</p>
+<pre><code>git clone https://github.com/arios4k/thermalprint.git
+cd thermalprint
+cargo run --release --locked</code></pre>
+<p>PDFium is optional. To use your own copy, set <code>THERMALPRINT_PDFIUM_DIR</code> to the folder that holds <code>libpdfium.so</code>. Without it, ThermalPrint renders PDFs with Poppler's <code>pdfinfo</code> and <code>pdftoppm</code>, which the packages install for you.</p>
+
+<h2>First launch</h2>
+<ol class="steps">
+  <li><strong>Open ThermalPrint</strong> from your applications menu (or run <code>thermalprint</code> in a terminal).</li>
+  <li><strong>Open Print Center</strong> and pick your printer. If the list is empty, press <span class="ui">Refresh printers</span>, then see <a href="troubleshooting.html">Troubleshooting</a>.</li>
+  <li><strong>Choose the media</strong> that matches the labels you loaded, for example <span class="ui">4 × 6 in</span>.</li>
+  <li><strong>Print the alignment test</strong> if you like (<a href="print-center.html#alignment-and-printer-profiles">details</a>).</li>
+</ol>
+<p>ThermalPrint remembers your printer, media, and other choices, separately for each printer.</p>
+
+<h2>Opening saved designs by double-click</h2>
+<p>The Debian and Fedora packages register <code>.thermalprint</code> files as ThermalPrint label designs, so double-clicking one opens it straight in the Label Designer. PDFs and images open in Import &amp; Convert. Snap users can enable this with a one-time command; see <a href="snap.html#saved-designs-and-double-click-opening">Using the Snap</a>.</p>
+
+<h2>Uninstalling</h2>
+<table>
+  <tr><th>Installed with</th><th>Remove with</th></tr>
+  <tr><td>APT</td><td><code>sudo apt remove thermalprint</code></td></tr>
+  <tr><td>Fedora</td><td><code>sudo dnf remove thermalprint</code></td></tr>
+  <tr><td>Snap</td><td><code>sudo snap remove thermalprint</code> (add <code>--purge</code> to delete its saved data too)</td></tr>
+</table>
+<p>Your preferences are small files in your home folder; see <a href="settings.html#where-your-data-lives">Settings and privacy</a> if you want to remove them.</p>

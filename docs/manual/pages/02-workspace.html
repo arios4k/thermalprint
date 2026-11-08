@@ -1,0 +1,94 @@
+<!--
+title: The workspace
+group: Using ThermalPrint
+summary: A tour of the window, the sidebar, the main menu, themes, language, drag and drop, and keyboard shortcuts.
+-->
+<p>ThermalPrint has one window with four areas, chosen from the sidebar on the left. This page explains the parts of the window that are the same everywhere.</p>
+
+<h2>The window at a glance</h2>
+{{figure:designer-light-annotated|The Label Designer with numbered callouts on the toolbar, element palette, canvas, properties panel, status bar, and sidebar|The window parts, shown in the Label Designer. (1) toolbar, (2) element palette, (3) canvas, (4) properties panel, (5) status bar, (6) sidebar.}}
+
+<table>
+  <tr><th>Part</th><th>What it does</th></tr>
+  <tr><td><strong>Title bar</strong></td><td>Shows the app name and has the <span class="ui">?</span> Help button, the main menu (<span class="ui">☰</span>), and the window controls. Drag it to move the window; double-click to maximize.</td></tr>
+  <tr><td><strong>Sidebar</strong></td><td>Chooses the area: Home, Label Designer, Import &amp; Convert, or Print Center.</td></tr>
+  <tr><td><strong>Workspace</strong></td><td>The big area that changes with the sidebar choice.</td></tr>
+  <tr><td><strong>Status bar</strong></td><td>The line at the bottom. It reports what the app is doing, such as <em>Rendering document</em>, and shows errors in red.</td></tr>
+</table>
+
+<h2>The four areas</h2>
+<table>
+  <tr><th>Area</th><th>Use it to</th><th>Manual page</th></tr>
+  <tr><td><strong>Home</strong></td><td>Start a new label, open existing labels, pick a template, see the printer status, and reopen recent documents.</td><td><a href="#the-home-screen">Below</a></td></tr>
+  <tr><td><strong>Label Designer</strong></td><td>Create and edit your own labels.</td><td><a href="designer.html">Label Designer</a></td></tr>
+  <tr><td><strong>Import &amp; Convert</strong></td><td>Prepare PDFs and images, one or many.</td><td><a href="import.html">Import &amp; Convert</a></td></tr>
+  <tr><td><strong>Print Center</strong></td><td>Choose the printer and media, set alignment, and review recent prints.</td><td><a href="print-center.html">Print Center</a></td></tr>
+</table>
+
+<h3>The sidebar</h3>
+<p>Click the small panel icon at the top of the sidebar to collapse it to icons only, or expand it again. ThermalPrint remembers your choice the next time you open it. In the Label Designer, <span class="ui">Focus</span> hides the sidebar and the properties panel to give the canvas the whole window.</p>
+
+<h3>The Home screen</h3>
+<ul>
+  <li><span class="ui">Create new label</span> opens the Label Designer with a new blank label.</li>
+  <li><span class="ui">Open existing labels</span> opens the file chooser for PDFs and images.</li>
+  <li><strong>Templates</strong> lists ready-made layouts: Blank custom, Shipping 4 × 6, Return address, Product barcode, Inventory, QR code, Asset tracking, Shelf, Price tag, Name label, and Fragile. Hover one to read what it is for. Example text and codes in a template are placeholders; replace them before printing.</li>
+  <li><strong>Printer status</strong> shows the selected printer and a hint about it.</li>
+  <li><strong>Recent documents</strong> lists files you opened before. Pick one to open it again.</li>
+</ul>
+
+<h2>The main menu</h2>
+<p>Open it with the <span class="ui">☰</span> button at the top right.</p>
+<table>
+  <tr><th>Item</th><th>What it does</th></tr>
+  <tr><td><span class="ui">Appearance</span></td><td>Three buttons: System (follow your desktop), Light, and Dark. See <a href="#themes">Themes</a>.</td></tr>
+  <tr><td><span class="ui">User manual</span></td><td>Opens this manual in your web browser, at the page for the area you are in.</td></tr>
+  <tr><td><span class="ui">Printing terms</span></td><td>A searchable glossary inside the app: CUPS, DPI, ZPL, barcode terms, and more.</td></tr>
+  <tr><td><span class="ui">About ThermalPrint</span></td><td>Shows the version (click it to copy), links to the project and bug tracker, the license, and the author's other apps.</td></tr>
+  <tr><td><span class="ui">Quit</span></td><td>Closes the app. If a design has unsaved changes you are asked first.</td></tr>
+</table>
+<div class="pair">
+{{figure:about|The About ThermalPrint dialog with the version button, links, credits, and the more-from-the-author card|The About dialog. Click the version to copy it when you report a bug.}}
+{{figure:printing-terms|The Printing terms window with a search box and explanations of CUPS, DPI, and ZPL|Printing terms: a glossary you can search without leaving the app.}}
+</div>
+
+<h2>Themes</h2>
+<p>Choose <span class="ui">System</span>, <span class="ui">Light</span>, or <span class="ui">Dark</span> in the main menu. System follows your desktop's setting and changes with it.</p>
+<div class="pair">
+{{figure:designer-light|The Label Designer in the light theme|Light theme.}}
+{{figure:designer-dark|The Label Designer in the dark theme|Dark theme.}}
+</div>
+
+<h2>Language</h2>
+<p>ThermalPrint is available in English, Spanish, German, and French. It uses your computer's language automatically: if your system language is one of these, the interface appears in it; otherwise it appears in English. There is no language setting inside the app. To change the language, change your system language and restart ThermalPrint.</p>
+<div class="pair">
+{{figure:home-es|The home screen in Spanish|Spanish.}}
+{{figure:home-de|The home screen in German|German.}}
+{{figure:home-fr|The home screen in French|French.}}
+</div>
+<div class="note"><p>Most labels, buttons, and explanations are translated. Some status messages, error details, template descriptions, and the printing-terms glossary are still in English. Printer names and the text on your own labels are never changed.</p></div>
+
+<h2>Opening files by drag and drop</h2>
+<p>Drop files onto the window from your file manager at any time:</p>
+<ul>
+  <li><strong>PDFs and images:</strong> they join the print queue in <span class="ui">Import &amp; Convert</span>. You can drop several at once.</li>
+  <li><strong>One <code>.thermalprint</code> file:</strong> it opens in the Label Designer. If your current design has unsaved changes, you are asked to Save, Discard, or Cancel first.</li>
+</ul>
+<p>For a folder that fills up with new labels, see <a href="automation.html">Folder watching and history</a>.</p>
+
+<h2>Keyboard shortcuts</h2>
+<table>
+  <tr><th>Keys</th><th>Action</th><th>Where</th></tr>
+  <tr><td><kbd>F1</kbd></td><td>Open the manual page for this screen</td><td>Everywhere</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>Add labels (opens the file chooser)</td><td>Everywhere</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Print the current label</td><td>Import &amp; Convert</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save the design</td><td>Label Designer</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Undo / redo</td><td>Label Designer</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Copy / paste the selected objects</td><td>Label Designer</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>Duplicate the selected objects</td><td>Label Designer</td></tr>
+  <tr><td><kbd>Delete</kbd></td><td>Delete the selected objects</td><td>Label Designer</td></tr>
+  <tr><td><kbd>Shift</kbd>+click</td><td>Add or remove an object from the selection</td><td>Label Designer</td></tr>
+  <tr><td><kbd>Shift</kbd> while rotating</td><td>Snap rotation to 15° steps</td><td>Label Designer</td></tr>
+  <tr><td><kbd>Tab</kbd> / <kbd>Enter</kbd> / <kbd>Space</kbd></td><td>Move between buttons and activate them</td><td>Everywhere</td></tr>
+</table>
+<p>Keyboard users can reach every button with <kbd>Tab</kbd>; each button has an accessible name for screen readers.</p>

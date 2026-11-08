@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="{{summary}}">
+<meta name="color-scheme" content="light dark">
+<title>{{title}} · ThermalPrint Manual</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="assets/manual.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+  <button class="menu-toggle" aria-label="Show or hide the page list" aria-controls="sidebar" aria-expanded="false">☰</button>
+  <a class="brand" href="{{home}}"><img src="assets/icon.svg" alt="" width="28" height="28"><span>ThermalPrint <strong>Manual</strong></span></a>
+  <div class="search">
+    <input id="search" type="search" placeholder="Search the manual" aria-label="Search the manual" autocomplete="off">
+    <ul id="results" hidden></ul>
+  </div>
+  <a class="top-link" href="{{repository}}">GitHub</a>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar" aria-label="Manual pages">
+{{nav}}
+  </aside>
+  <main id="content" class="content">
+    <h1>{{title}}</h1>
+    <p class="summary">{{summary}}</p>
+{{content}}
+{{pager}}
+    <footer class="footer">
+      <p>ThermalPrint {{version}} · <a href="{{repository}}">Source and issues</a> · Screenshots use fictional sample data.</p>
+    </footer>
+  </main>
+  <aside class="toc-wrap">
+{{toc}}
+  </aside>
+</div>
+</body>
+</html>

@@ -14,6 +14,10 @@ jobs:
           sudo apt-get install -y shared-mime-info desktop-file-utils xdg-utils libfile-mimeinfo-perl
           desktop-file-validate data/org.thermalprint.ThermalPrint.desktop
           python3 -m unittest discover -s scripts -p test_desktop_integration.py
+      - name: Build and check the user manual
+        run: |
+          python3 -m unittest discover -s scripts -p test_build_manual.py
+          python3 scripts/build-manual.py --output target/manual
       - run: cargo fmt --check
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked

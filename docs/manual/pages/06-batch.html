@@ -1,0 +1,84 @@
+<!--
+title: Batch printing from CSV
+group: Using ThermalPrint
+summary: Merge a spreadsheet into a label design and print one label per row, with a preview and a safety check.
+-->
+<p>Batch printing fills one label design with the rows of a spreadsheet and prints one label per row. Use it for customer addresses, product SKUs, asset tags, serial-numbered stickers, or anything where the layout stays the same and the words change.</p>
+
+{{figure:batch|The Batch print from CSV window showing the loaded file, a row preview of a customer label, and the Print 3 labels button|The batch window: the file summary, a live preview of the chosen row, and the Print button.}}
+
+<h2>How it works in three steps</h2>
+<ol class="steps">
+  <li><strong>Put placeholders in your design.</strong> In the <a href="designer.html">Label Designer</a>, type <code>${ColumnName}</code> wherever a value should go, in text, barcode, or QR content.</li>
+  <li><strong>Prepare a CSV file</strong> whose first row names the columns.</li>
+  <li><strong>Open the batch window</strong> with <span class="ui">File → Batch print from CSV…</span>, choose the file, check the preview, and print.</li>
+</ol>
+
+<h2>Step 1: placeholders in the design</h2>
+<p>A placeholder is a column name between <code>${</code> and <code>}</code>. For the sample file below, a design might contain:</p>
+<table>
+  <tr><th>Object</th><th>Content</th></tr>
+  <tr><td>Text</td><td><code>Ship to: ${Name}</code></td></tr>
+  <tr><td>Text</td><td><code>${City}   #${serial}</code></td></tr>
+  <tr><td>Barcode (Code 128)</td><td><code>${SKU}</code></td></tr>
+  <tr><td>QR code</td><td><code>https://example.com/${SKU}</code></td></tr>
+</table>
+<ul>
+  <li>Column names are <strong>not case-sensitive</strong>: <code>${sku}</code> matches a column called <code>SKU</code>.</li>
+  <li>Use as many placeholders as you like, in any text, barcode, or QR object. The same column can appear more than once.</li>
+  <li><code>${date}</code> and <code>${serial}</code> keep their usual meaning. In a batch, <code>${serial}</code> starts at the design's serial number and goes up by one per row.</li>
+</ul>
+
+<h2>Step 2: the CSV file</h2>
+<p>Export a CSV from your spreadsheet program (<em>File → Save as → CSV</em>). Here is a small example:</p>
+<pre><code>Name,City,SKU
+Ada Lovelace,London,SKU-1001
+Grace Hopper,New York,SKU-1002
+Alan Turing,Manchester,SKU-1003</code></pre>
+<table>
+  <tr><th>Rule</th><th>Details</th></tr>
+  <tr><td>Separator</td><td>Commas, semicolons, or tabs. ThermalPrint works out which one your file uses, so exports from any region work.</td></tr>
+  <tr><td>First row</td><td>Column names. Every name must be filled in and different from the others (ignoring upper and lower case).</td></tr>
+  <tr><td>Values with commas or line breaks</td><td>Put them in double quotes, like <code>"Smith, Jo"</code>. Spreadsheet programs do this for you.</td></tr>
+  <tr><td>Short or empty rows</td><td>Missing cells print as blank. Completely empty rows are skipped.</td></tr>
+  <tr><td>Spaces</td><td>Spaces around a value are trimmed.</td></tr>
+  <tr><td>Limits</td><td>Up to 500 rows, 64 columns, and 2 MB per file. Split bigger lists into several files.</td></tr>
+  <tr><td>File types</td><td><code>.csv</code>, <code>.tsv</code>, or <code>.txt</code>. A byte-order mark at the start (added by some Excel exports) is handled.</td></tr>
+</table>
+
+<h2>Step 3: the batch window</h2>
+<ol>
+  <li>Open <span class="ui">File → Batch print from CSV…</span> in the Label Designer.</li>
+  <li>Press <span class="ui">Choose CSV file…</span> and pick your file. The window shows <em>customers.csv · 3 rows · 3 columns</em>.</li>
+  <li>Read the messages below it:
+    <ul>
+      <li>A <strong>red</strong> message means the design uses a placeholder the file has no column for, such as <em>The design uses ${Phone} but the file has no column with that name</em>. Printing is disabled until you fix the name.</li>
+      <li>A gray line lists <em>Columns not used</em>. This is only information.</li>
+      <li>An orange message says the design has no placeholders yet.</li>
+    </ul>
+  </li>
+  <li>Change <span class="ui">Preview row</span> to see the finished label for any row.</li>
+  <li>Press <span class="ui">Print N labels</span>. If Print Center asks for more than one copy, the button says so (for example <em>Print 3 labels × 2 copies</em>).</li>
+</ol>
+<div class="note"><p>The <span class="ui">Help</span> button in the batch window opens this page.</p></div>
+
+<h2>What happens when you print</h2>
+<ul>
+  <li><strong>Every row is checked first.</strong> ThermalPrint draws all the labels before it sends anything. If any row has a problem, <em>nothing is printed</em> and the message names the rows, for example <em>Row 2: EAN-13: … </em>. Fix the data and try again.</li>
+  <li>The labels are then sent in order to the printer chosen in Print Center, using its media, resolution, and copies. Alignment offsets apply too.</li>
+  <li>If something goes wrong partway through, the batch stops and tells you which row it stopped at.</li>
+  <li>With <em>Print using raw ZPL</em> turned on (Export menu), labels are sent as ZPL instead of PDF.</li>
+  <li>The finished batch appears in <a href="print-center.html#recent-prints">Recent prints</a> as one entry, such as <em>Customer label · batch of 3</em>.</li>
+</ul>
+<p>Values are inserted exactly as written. A value that itself looks like a placeholder, such as <code>${City}</code>, is printed literally and not replaced again.</p>
+
+<h2>Common problems</h2>
+<table>
+  <tr><th>Message</th><th>What to do</th></tr>
+  <tr><td>The first row must name the columns, or Column N has no name</td><td>Make sure the first row has a name in every column.</td></tr>
+  <tr><td>Two columns are named "…"</td><td>Rename one. Names that differ only in capital letters count as the same.</td></tr>
+  <tr><td>More than 500 rows</td><td>Split the file into smaller ones.</td></tr>
+  <tr><td>The file has a header but no data rows</td><td>Add at least one row under the header.</td></tr>
+  <tr><td>Row N: … invalid barcode</td><td>The value in that row does not suit the barcode type. See the <a href="barcodes.html">rules for each type</a>. A common case is an EAN-13 with the wrong number of digits.</td></tr>
+  <tr><td>Characters look wrong</td><td>Save the file as UTF-8 CSV. Characters that the built-in label font does not have, such as Chinese, Japanese, and Korean, cannot be drawn.</td></tr>
+</table>

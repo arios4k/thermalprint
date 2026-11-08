@@ -1,0 +1,86 @@
+<!--
+title: The Label Designer
+group: Using ThermalPrint
+summary: Create, edit, save, and print your own labels on a canvas that matches your stock exactly.
+-->
+<p>The <span class="ui">Label Designer</span> is for labels you make yourself: shelf tags, price tags, inventory stickers, return address labels, shipping labels, and more. The canvas is the exact size of your label, measured in millimeters, so what you see is what the printer gets.</p>
+
+{{figure:designer-light-annotated|The Label Designer with numbered callouts on the toolbar, element palette, canvas, properties panel, status bar, and sidebar|The Label Designer. (1) toolbar, (2) element palette, (3) canvas, (4) properties panel, (5) status bar, (6) sidebar.}}
+
+<h2>Starting a label</h2>
+<ul>
+  <li><strong>Blank:</strong> choose <span class="ui">File → New label</span>, or <span class="ui">Create new label</span> on Home. A blank label is 101.6 × 152.4 mm (4 × 6 inches).</li>
+  <li><strong>From a template:</strong> pick one on the Home screen, or open the template menu (the last icon in the element palette). Templates are ordinary labels you can change freely. They open as <em>unsaved</em>, so save them under your own name to keep your edits.</li>
+  <li><strong>From a saved design:</strong> press <span class="ui">Open</span>, drop a <code>.thermalprint</code> file on the window, or double-click one in your file manager.</li>
+</ul>
+
+<h2>Label setup</h2>
+<p>Select nothing (click an empty part of the canvas) and open <span class="ui">Label setup</span> in the properties panel:</p>
+<table>
+  <tr><th>Field</th><th>Meaning</th></tr>
+  <tr><td><span class="ui">Label name</span></td><td>The title of the design. It is used when you save and in your recent prints.</td></tr>
+  <tr><td><span class="ui">Width</span> and <span class="ui">Height</span></td><td>The label size in millimeters.</td></tr>
+  <tr><td><span class="ui">Serial variable</span></td><td>The starting number for <code>${serial}</code>. See <a href="objects.html#dynamic-text-date-and-serial-number">Dynamic text</a>.</td></tr>
+</table>
+<p>If the label size does not match the media of the selected printer, the status area under the canvas says so and offers <span class="ui">Match label to printer media</span>. That button resizes the canvas to the printer's stock without moving or resizing your objects, and <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it. If a smaller label is intentional, choose matching media in <a href="print-center.html">Print Center</a> instead.</p>
+
+<h2>The toolbar</h2>
+<table>
+  <tr><th>Control</th><th>What it does</th></tr>
+  <tr><td><span class="ui">File</span></td><td><em>New label</em>, <em>Save as…</em>, and <em>Batch print from CSV…</em> (see <a href="batch.html">Batch printing</a>).</td></tr>
+  <tr><td><span class="ui">Open</span> / <span class="ui">Save</span></td><td>Open a design file; save the current one (<kbd>Ctrl</kbd>+<kbd>S</kbd>).</td></tr>
+  <tr><td>Undo / redo</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> and <kbd>Ctrl</kbd>+<kbd>Y</kbd>.</td></tr>
+  <tr><td>Zoom out / in / fit</td><td>Zoom from 25 % to 500 %. <em>Fit</em> returns to 100 % and re-centers. Drag with the <strong>middle mouse button</strong> to pan.</td></tr>
+  <tr><td><span class="ui">View</span></td><td><em>Show grid</em>, <em>Snap to grid</em>, <em>Properties panel</em>, and <em>Focus canvas</em>.</td></tr>
+  <tr><td><span class="ui">Export</span></td><td>Save as PDF, PNG, SVG, or ZPL, and the <em>Print using raw ZPL</em> switch. See <a href="export.html">Exporting</a>.</td></tr>
+  <tr><td><span class="ui">Focus</span></td><td>Hide the sidebar and properties to give the canvas the whole window. Press it again to bring them back.</td></tr>
+  <tr><td><span class="ui">Print</span></td><td>Print the label on the printer chosen in Print Center.</td></tr>
+</table>
+
+<h2>The element palette</h2>
+<p>The column of icons at the left adds objects. Click one and the new object appears on the canvas, selected, ready to edit.</p>
+<table>
+  <tr><th>Icon (top to bottom)</th><th>Adds</th></tr>
+  <tr><td>T</td><td>A text box.</td></tr>
+  <tr><td>Address card</td><td>A multi-line text block prefilled as an address.</td></tr>
+  <tr><td>Barcode</td><td>A barcode (Code 128 to start; change the type in the properties).</td></tr>
+  <tr><td>QR</td><td>A QR code.</td></tr>
+  <tr><td>Rectangle, ellipse, line</td><td>Basic shapes.</td></tr>
+  <tr><td>Two divider icons</td><td>A horizontal or vertical divider line.</td></tr>
+  <tr><td>Picture</td><td>An image or logo from a file.</td></tr>
+  <tr><td>Last icon</td><td>The template menu.</td></tr>
+</table>
+<p>Each object type has its own page section in <a href="objects.html">Objects</a>.</p>
+
+<h2>Working on the canvas</h2>
+<ul>
+  <li><strong>Select:</strong> click an object. <kbd>Shift</kbd>+click adds or removes objects from the selection. Click an empty spot to deselect.</li>
+  <li><strong>Move:</strong> drag the object.</li>
+  <li><strong>Resize:</strong> drag the <strong>square handle</strong> at the bottom-right corner. It resizes along the object's own direction, even when it is rotated.</li>
+  <li><strong>Rotate:</strong> drag the <strong>round handle</strong> above the object. Hold <kbd>Shift</kbd> to snap to 15° steps. For an exact angle, type it into <span class="ui">Rotation</span>; fractional degrees such as 23.5° work.</li>
+  <li><strong>Grid and snapping:</strong> turn on <em>Show grid</em> to see a guide grid, and <em>Snap to grid</em> to make movement land on it.</li>
+</ul>
+<p>The line above the canvas reminds you: <em>Drag to move · square to resize · circle to rotate · Shift: 15°</em>.</p>
+{{figure:rotation|A QR code rotated to 23.5 degrees on the label canvas, with its rotation handle|Rotating an object freely. The Rotation field accepts exact and fractional angles.}}
+
+<h2>The properties panel</h2>
+<p>With one object selected, the panel on the right shows:</p>
+<ul>
+  <li>An <span class="ui">Object</span> list to jump to any object, including ones hidden behind others.</li>
+  <li><span class="ui">X</span>, <span class="ui">Y</span>, <span class="ui">W</span>, <span class="ui">H</span> and <span class="ui">Rotation</span>: exact position and size in millimeters.</li>
+  <li>Content settings for that object type (text, barcode value and type, QR content, stroke).</li>
+  <li><span class="ui">Forward</span> and <span class="ui">Backward</span> to change which object is on top, <span class="ui">Duplicate</span>, and <span class="ui">Delete</span>.</li>
+</ul>
+<p>With several objects selected, the panel shows the count and a <span class="ui">Delete selected</span> button. Hide the panel with <em>View → Properties panel</em>.</p>
+
+<h2>Saving and the unsaved-changes prompt</h2>
+<p>Designs are saved as <code>.thermalprint</code> files. They are editable, versioned, and include embedded images, so a design is a single file you can copy or email. The status bar shows <em>Unsaved</em> when there are changes.</p>
+<p>Whenever an action would replace your current design (New, Open, choosing a template, a past print, or closing the app), ThermalPrint asks first:</p>
+{{figure:save-changes|The Save changes dialog with Cancel, Discard, and Save buttons and a label name field|The Save changes? prompt. Cancel keeps working; Discard throws the changes away; Save keeps them.}}
+<p>If a save fails or you cancel the file chooser, your design stays open and unchanged.</p>
+
+<h2>Printing from the Designer</h2>
+<p>Choose your printer and media in <a href="print-center.html">Print Center</a>, then press <span class="ui">Print</span> in the toolbar. The design is drawn at the printer's resolution (203, 300, or 600 DPI) and sent as a one-page PDF. If a label contains something that cannot be drawn, such as a barcode value that is not valid, printing stops with a message that names the problem. Designs you print are listed under <em>Recent prints</em> in Print Center so you can reopen them later.</p>
+<div class="note"><p>For many different labels from one design, use <span class="ui">File → Batch print from CSV…</span>. For direct ZPL printing, see <a href="export.html#printing-raw-zpl">Exporting</a>.</p></div>
+
+{{figure:designer-de|The Label Designer shown in German|The Label Designer follows your system language. This is the same screen in German.}}
