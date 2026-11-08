@@ -30,7 +30,9 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
   <tr><td><strong>Bold</strong></td><td>Heavier letters. Good for thermal printing, which can make thin text faint.</td></tr>
   <tr><td><strong>Italic</strong></td><td>Slanted letters.</td></tr>
   <tr><td><strong>Inverse</strong></td><td>White letters on a black box that fills the object.</td></tr>
+  <tr><td><strong>Font</strong></td><td>The built-in font (DejaVu Sans), or one of your own. The <strong>T</strong> button next to the list adds a font from a <code>.ttf</code> or <code>.otf</code> file; it is copied into ThermalPrint's <code>fonts</code> folder. A design stores only the font's <em>name</em>, so the font has to be installed on each computer that prints it, and without it the built-in font is used and a note says so. Your own fonts have no <strong>Bold</strong> switch: install a bold file.</td></tr>
   <tr><td><strong>Left</strong> / <strong>Center</strong> / <strong>Right</strong></td><td>Alignment inside the box.</td></tr>
+  <tr><td><strong>Save to address book</strong></td><td>Keeps the text, named after its first line. See <a href="objects.html#address-book">Address book</a> below.</td></tr>
   <tr><td><strong>Wrap long lines</strong></td><td>Breaks lines at spaces so they fit the box width. A single word longer than the box is broken as well.</td></tr>
   <tr><td><strong>Shrink to fit the box</strong></td><td>Makes the text smaller, down to 3 pt, until all of it fits inside the box.</td></tr>
   <tr><td><strong>Line spacing</strong></td><td>A multiplier from 0.5 to 3 for the space between lines (1 to start).</td></tr>
@@ -48,6 +50,9 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
 </table>
 <p>For example, a barcode with the value <code>INV-${serial}</code> encodes <code>INV-1</code>. The hint above the text box reminds you: <em>${date} and ${serial} are dynamic</em>. Words in a batch, such as <code>${Name}</code>, are covered in <a href="batch.html">Batch printing</a>.</p>
 
+<h2 id="address-book">Address book</h2>
+<p>The address book tool in the palette (the card with a person) lists the addresses you saved. Click one to add it to the label as a text block; the <strong>✕</strong> beside it removes it. To add one, select a text object and press <strong>Save to address book</strong>; it is named after its first line, and saving the same name again replaces it. The book holds up to 500 addresses and is stored in <code>addresses.json</code> (see <a href="settings.html#where-your-data-lives">Where your data lives</a>).</p>
+
 <h2>Barcodes</h2>
 <p>Click the barcode tool, type the value in <strong>Enter your real product code or reference</strong>, and choose the type from the dropdown. Hovering a type explains it.</p>
 <ul>
@@ -57,10 +62,21 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
   <li><strong>Text size</strong> sets the size of the readable text under the bars, in points; <em>Auto</em> picks one that fits. <strong>Text above the bars</strong> moves it to the top.</li>
   <li>For EAN-13, EAN-8, and UPC-A, enter the digits without the last one and ThermalPrint calculates the check digit; a hint shows the complete number that will print.</li>
 </ul>
-<p>The nine supported types, what each accepts, and when to use them are in the <a href="barcodes.html">Barcode reference</a>.</p>
+<p>The supported types, what each accepts, and when to use them are in the <a href="barcodes.html">Barcode reference</a>, including <strong>GS1-128</strong> and <strong>GS1 Data Matrix</strong> for logistics labels.</p>
 
 <h2>QR codes</h2>
 <p>The QR tool adds a square QR code. Type the content in <strong>QR content</strong>; it can be a web address, plain text, or several lines. <strong>QR error correction level</strong> chooses how much damage the code survives: Low, Medium, Quartile, or High. More correction makes a denser code, so keep the default unless the label will be scuffed. Keep the object square and at least about 20 mm wide for reliable scanning. If the object is too small for the amount of data, you see <em>QR code is too small; enlarge the object</em>.</p>
+
+<h3>Building the content</h3>
+<p>Open <strong>Build the content</strong> under the QR content box to fill it in from a form instead of typing the special syntax yourself. Choose the kind, fill in the fields, and press <strong>Use this content</strong>; a field that cannot work is reported in red.</p>
+<table>
+  <tr><th>Kind</th><th>Fields</th><th>Stored as</th></tr>
+  <tr><td><strong>Website</strong></td><td>Web address. <code>https://</code> is added when missing; only http and https are accepted.</td><td>The address.</td></tr>
+  <tr><td><strong>Wi-Fi</strong></td><td>Network name, password, WPA / WEP / no password, hidden network.</td><td>A <code>WIFI:</code> sign-in code that phones offer to join.</td></tr>
+  <tr><td><strong>Contact card</strong></td><td>Name, organization, phone, email, website, address.</td><td>A vCard that phones offer to save.</td></tr>
+  <tr><td><strong>Email</strong></td><td>Address, subject, message.</td><td>A <code>mailto:</code> link.</td></tr>
+  <tr><td><strong>Phone number</strong></td><td>The number.</td><td>A <code>tel:</code> link.</td></tr>
+</table>
 
 <h2>Shapes</h2>
 <table>
@@ -82,6 +98,9 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
   <tr><td><strong>Invert black and white</strong></td><td>Swaps black and white. Transparent areas stay transparent.</td></tr>
   <tr><td><strong>Reset image adjustments</strong></td><td>Returns all of the above to their defaults.</td></tr>
 </table>
+
+<h3>Symbols and logos</h3>
+<p>The warning-triangle tool in the palette (<strong>Symbols and logos</strong>) adds ready-made shipping symbols as images: <em>Fragile</em>, <em>This side up</em>, <em>Keep dry</em>, <em>Recycling</em>, and <em>Hazard</em>. They are drawn in black and print crisply at any size. Under <strong>Your logos</strong> are images you kept: select an image and press <strong>Save as logo</strong>, and it joins the list for every future label (they are stored as PNG files in a <code>logos</code> folder, up to 60). The <strong>✕</strong> removes one.</p>
 
 <h2>Layout tips</h2>
 <ul>

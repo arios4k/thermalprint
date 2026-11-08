@@ -1,7 +1,7 @@
 <!--
 title: Barcode reference
 group: Reference
-summary: The nine barcode types plus QR codes: what each accepts and how to make them scan.
+summary: The eleven barcode types plus QR codes: what each accepts and how to make them scan.
 -->
 <p>ThermalPrint draws real barcodes, not pictures of them. Pick the type your scanner, shop, or carrier expects. If you are not sure, <strong>Code 128</strong> is the safest general-purpose choice.</p>
 
@@ -19,9 +19,27 @@ summary: The nine barcode types plus QR codes: what each accepts and how to make
   <tr><td><strong>ITF</strong> (Interleaved 2 of 5)</td><td>Digits only, in an <strong>even</strong> number.</td><td>Shipping cartons and warehouse boxes.</td></tr>
   <tr><td><strong>Codabar</strong></td><td>Starts and ends with A, B, C, or D; digits and <code>- $ : / . +</code> in between.</td><td>Libraries, blood banks, some parcel systems.</td></tr>
   <tr><td><strong>Data Matrix</strong></td><td>Any text.</td><td>Very small parts and labels; a square 2D symbol.</td></tr>
+  <tr><td><strong>GS1-128</strong></td><td>GS1 data written with the identifier in brackets, such as <code>(01)09506000134352(10)LOT7</code>.</td><td>Pallet, carton, and parcel labels in logistics and retail supply chains.</td></tr>
+  <tr><td><strong>GS1 Data Matrix</strong></td><td>The same GS1 data, with any batch or serial field last.</td><td>Small labels that carry a product number and a batch or serial.</td></tr>
   <tr><td><strong>QR code</strong></td><td>Any text, up to 2,048 characters.</td><td>Web addresses, contact details, longer data.</td></tr>
 </table>
 <div class="callout note"><p>Some types check themselves. If you give an EAN-13 or EAN-8 its check digit and it is wrong, ThermalPrint refuses it instead of printing a barcode that would not scan. Give 12 (or 7) digits and the correct check digit is added.</p></div>
+
+<h2>GS1 barcodes</h2>
+<p>GS1 labels carry <em>elements</em>: an application identifier (AI) in brackets followed by its value. ThermalPrint checks each one before it prints, so a typo is reported instead of becoming a barcode that does not scan.</p>
+{{figure:designer-gs1|A GS1-128 barcode selected in the Label Designer with the data (01)0950600013435(10)LOT7 and the text it prints as|A GS1-128 barcode. A line under the settings shows exactly what will print, with the check digit added.}}
+<table>
+  <tr><th>AI</th><th>Meaning</th><th>Value</th></tr>
+  <tr><td><code>(00)</code></td><td>SSCC, a pallet or parcel number</td><td>18 digits, or 17 and the check digit is added</td></tr>
+  <tr><td><code>(01)</code>, <code>(02)</code></td><td>Product number (GTIN)</td><td>14 digits, or 13 and the check digit is added</td></tr>
+  <tr><td><code>(10)</code>, <code>(21)</code></td><td>Batch or lot, serial number</td><td>Up to 20 letters, digits, or symbols; no spaces</td></tr>
+  <tr><td><code>(11)</code>, <code>(13)</code>, <code>(15)</code>, <code>(17)</code></td><td>Production, packaging, best-before, and expiry dates</td><td>6 digits as YYMMDD</td></tr>
+  <tr><td><code>(20)</code>, <code>(30)</code>, <code>(37)</code></td><td>Variant, count, number of units</td><td>Digits</td></tr>
+  <tr><td><code>(310n)</code> to <code>(316n)</code>, <code>(320n)</code> to <code>(325n)</code></td><td>Weights, lengths, and other measures with n decimals</td><td>6 digits</td></tr>
+  <tr><td><code>(240)</code>, <code>(241)</code>, <code>(242)</code>, <code>(400)</code>, <code>(401)</code>, <code>(410)</code> to <code>(415)</code>, <code>(420)</code></td><td>Additional product and order numbers, locations (GLN), and postal code</td><td>As the standard defines</td></tr>
+</table>
+<p>Other identifiers are refused. In a GS1-128 barcode, a variable-length field that is followed by another one is separated for you with the FNC1 control character. In a GS1 Data Matrix this separator is not available, so <strong>put the one variable-length field (batch or serial) last</strong>; ThermalPrint tells you if you do not.</p>
+<p>The <strong>SSCC helper</strong> under the barcode settings builds a pallet or parcel number: enter the extension digit (0 to 9), your GS1 company prefix (6 to 12 digits), and a serial reference. It pads the serial with zeros, adds the check digit, and fills the barcode with <code>(00)</code> and the number.</p>
 
 <h2>Error messages and what they mean</h2>
 <table>
@@ -35,6 +53,8 @@ summary: The nine barcode types plus QR codes: what each accepts and how to make
   <tr><td>Barcode is too narrow at N DPI. Widen it or use a shorter value.</td><td>Make the object wider or the value shorter. Each bar needs at least two printed dots.</td></tr>
   <tr><td>Data Matrix is too small; enlarge the object or use shorter data</td><td>Make the box bigger. Keep it roughly square.</td></tr>
   <tr><td>QR code is too small; enlarge the object</td><td>Make the box bigger.</td></tr>
+  <tr><td>(01) has a wrong check digit</td><td>Fix the last digit, or leave it off and it is added.</td></tr>
+  <tr><td>In a GS1 Data Matrix, put the variable-length field … last</td><td>Reorder the elements, or use GS1-128.</td></tr>
   <tr><td>Barcode data is too long</td><td>The limit is 2,048 characters.</td></tr>
 </table>
 
@@ -43,7 +63,7 @@ summary: The nine barcode types plus QR codes: what each accepts and how to make
   <li><strong>Leave quiet space.</strong> Keep a blank margin of at least a few millimeters on each side of a barcode. Text or lines touching the bars can stop a scanner reading it.</li>
   <li><strong>Print large enough.</strong> Thin bars are the usual cause of failed scans. Prefer wider objects, and print at your printer's real DPI (203 DPI is common).</li>
   <li><strong>Keep it black and white.</strong> Avoid gray fills behind or inside a barcode.</li>
-  <li><strong>Test a real label.</strong> Scan the first label with your phone or a scanner. ThermalPrint cannot test a physical scan or read imported barcodes for you.</li>
+  <li><strong>Test a real label.</strong> Scan the first label with your phone or a scanner. ThermalPrint does not read a barcode back to test it, and it cannot read barcodes in imported labels.</li>
   <li><strong>Data Matrix and QR need to be square-ish.</strong> A symbol is drawn as a square in the middle of its box; a very wide box wastes space.</li>
 </ul>
 <p>You can use <code>${date}</code>, <code>${serial}</code>, and (in a batch) <code>${Column}</code> placeholders inside any barcode value. See <a href="objects.html#dynamic-text-date-and-serial-number">Dynamic text</a> and <a href="batch.html">Batch printing</a>.</p>

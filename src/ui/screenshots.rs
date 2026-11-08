@@ -141,6 +141,9 @@ impl Capture {
                 }
                 "designer-gallery" => app.designer.demo_window("gallery"),
                 "designer-sheet" | "designer-range" => {
+                    if let Some(printer) = app.printers.first_mut() {
+                        printer.media.push("A4".into());
+                    }
                     app.designer.doc = batch_demo_design();
                     app.designer
                         .demo_window(scene.trim_start_matches("designer-"));

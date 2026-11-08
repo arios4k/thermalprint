@@ -1056,8 +1056,7 @@ impl Designer {
         let mut budget = 4;
         let mut missing = false;
         egui::Window::new(crate::i18n::tr("Template gallery"))
-            .pivot(egui::Align2::CENTER_CENTER)
-            .default_pos(ctx.content_rect().center())
+            .default_pos(window_start(ctx))
             .open(&mut open)
             .collapsible(false)
             .default_width(560.)
@@ -1177,8 +1176,7 @@ impl Designer {
         let mut action: Option<bool> = None; // Some(true) = print, Some(false) = save PDF
         let printer = printers.iter().find(|p| p.name == settings.printer);
         egui::Window::new(crate::i18n::tr("Print on a sheet"))
-            .pivot(egui::Align2::CENTER_CENTER)
-            .default_pos(ctx.content_rect().center())
+            .default_pos(window_start(ctx))
             .open(&mut open)
             .collapsible(false)
             .resizable(false)
@@ -1411,8 +1409,7 @@ impl Designer {
         let mut start = false;
         let printer = printers.iter().find(|p| p.name == settings.printer);
         egui::Window::new(crate::i18n::tr("Print a number range"))
-            .pivot(egui::Align2::CENTER_CENTER)
-            .default_pos(ctx.content_rect().center())
+            .default_pos(window_start(ctx))
             .open(&mut open)
             .collapsible(false)
             .resizable(false)
@@ -3568,6 +3565,15 @@ fn element_tool(ui: &mut egui::Ui, label: &str) -> egui::Response {
     };
     paint_tool_icon(painter, response.rect.center(), color, label);
     response
+}
+
+/// Where a new window opens: near the middle top of the application window.
+fn window_start(ctx: &egui::Context) -> Pos2 {
+    let area = ctx.content_rect();
+    Pos2::new(
+        (area.center().x - 200.).max(area.left() + 20.),
+        area.top() + 70.,
+    )
 }
 
 /// One card of the template gallery: the preview above the name, as a single button.
