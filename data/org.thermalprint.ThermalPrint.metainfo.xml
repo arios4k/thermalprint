@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.thermalprint.ThermalPrint</id>
+  <name>ThermalPrint</name>
+  <summary>Design, prepare, and print thermal labels</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.arios4k">
+    <name>Alexis Rios-Negron</name>
+  </developer>
+  <description>
+    <p>ThermalPrint is a local workspace for designing, preparing, and printing labels on thermal label printers, with a native Linux desktop interface.</p>
+    <ul>
+      <li>Design labels with text, addresses, logos, shipping symbols, real barcodes (including GS1), and QR codes.</li>
+      <li>Import PDF and image labels from carriers and marketplaces, crop them, and print them in order.</li>
+      <li>Print numbered runs, merge a spreadsheet into a design, or place labels on an A4 or Letter sheet.</li>
+      <li>Print through CUPS, or export PDF, PNG, SVG, and ZPL.</li>
+    </ul>
+    <p>Documents are processed on your computer; nothing is uploaded.</p>
+  </description>
+  <launchable type="desktop-id">org.thermalprint.ThermalPrint.desktop</launchable>
+  <url type="homepage">https://github.com/arios4k/thermalprint</url>
+  <url type="bugtracker">https://github.com/arios4k/thermalprint/issues</url>
+  <url type="help">https://arios4k.github.io/thermalprint/manual/</url>
+  <categories>
+    <category>Graphics</category>
+    <category>Utility</category>
+  </categories>
+  <provides>
+    <binary>thermalprint</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/arios4k/thermalprint/main/docs/screenshots/designer-light.png</image>
+      <caption>The Label Designer</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/arios4k/thermalprint/main/docs/screenshots/import-light.png</image>
+      <caption>Importing and preparing a shipping label</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/arios4k/thermalprint/main/docs/screenshots/print-center-light.png</image>
+      <caption>Print Center</caption>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="0.6.0" date="2026-11-08">
+      <description>
+        <p>More control in the Label Designer.</p>
+        <ul>
+          <li>Align, distribute, center, flip, lock, nudge with the arrow keys, smart guides, and a custom grid.</li>
+          <li>Text that wraps or shrinks to fit, line spacing, italic, inverse, and your own fonts.</li>
+          <li>Image dithering and contrast, barcode text options, and QR error correction.</li>
+          <li>See the printer's unprintable border and get a warning for objects inside it.</li>
+          <li>Print a numbered range, or several labels on an A4 or Letter sheet.</li>
+          <li>GS1-128 and GS1 Data Matrix barcodes with an SSCC helper.</li>
+          <li>QR codes from website, Wi-Fi, contact, email, and phone forms.</li>
+          <li>Shipping symbols, saved logos, an address book, and a template gallery with previews.</li>
+          <li>Auto-length labels for continuous rolls.</li>
+          <li>Unsaved changes are recovered after an unexpected exit.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.5.2" date="2026-11-07">
+      <description>
+        <p>Maintenance release: fixes building the user manual on older systems.</p>
+      </description>
+    </release>
+  </releases>
+</component>

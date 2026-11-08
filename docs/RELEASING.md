@@ -14,6 +14,10 @@ sudo apt install ./thermalprint_0.6.0-1_amd64.deb
 
 Replace the filename with the version you downloaded. The application appears as **ThermalPrint** in the desktop launcher, using the bundled color icon. You can also run `thermalprint` from a terminal.
 
+### Release notes
+
+Software centers (GNOME Software, KDE Discover, and the Zorin store) show release notes from [`data/org.thermalprint.ThermalPrint.metainfo.xml`](../data/org.thermalprint.ThermalPrint.metainfo.xml), which the deb, RPM, and Snap packages all install. When you bump the version, add a `<release version="…" date="…">` entry with a short `<description>` at the top of `<releases>`. A test (`tests/metainfo.rs`) fails if the newest entry does not match the `Cargo.toml` version. Validate the file with `appstreamcli validate --no-net data/org.thermalprint.ThermalPrint.metainfo.xml`. Whether a given store displays the notes for a snap depends on that store; the Snap Store itself has no per-release notes field.
+
 ### Release automation
 
 The [release workflow](../.github/workflows/release-apt.yml) checks formatting, Clippy, and tests, builds the Debian package on Ubuntu 22.04, signs an APT index with `reprepro`, keeps the index and public signing key on `gh-pages`, deploys them with GitHub Pages Actions, and attaches the package to a GitHub release. The tag must exactly match the `Cargo.toml` version, for example `v0.4.0`. Only create a release tag after reviewing the build and package contents.

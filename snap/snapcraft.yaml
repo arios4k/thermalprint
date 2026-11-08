@@ -14,8 +14,11 @@ description: |
 
   Design
   - Start from a template or a blank label, then add text, addresses, logos, shapes, real barcodes, and QR codes.
-  - Position objects precisely, align them with grid snapping, and rotate them freely, including fractional angles.
-  - Save reusable designs as editable .thermalprint files.
+  - Position objects precisely with a custom grid, smart guides, arrow-key nudging, and align, distribute, flip, and lock tools. Rotate freely, including fractional angles.
+  - Wrap or shrink text to fit its box, use your own fonts, dither photos for thermal printing, and see the printer's unprintable border.
+  - Make GS1-128 and GS1 Data Matrix barcodes with an SSCC helper, and fill QR codes from website, Wi-Fi, contact, email, and phone forms.
+  - Add shipping symbols, saved logos, and addresses from an address book; browse templates in a gallery with previews.
+  - Save reusable designs as editable .thermalprint files, and your own templates. Unsaved changes are recovered after an unexpected exit.
 
   Prepare existing labels
   - Import PDF and image labels (PNG, JPEG, TIFF, BMP, WebP) from carriers and marketplaces such as Vinted, eBay, Etsy, Shopify, USPS, UPS, and FedEx.
@@ -24,6 +27,7 @@ description: |
   Print or export
   - Start at 4 x 6 inches, choose another preset, or enter custom dimensions.
   - Print through CUPS with media size matching, resolution (DPI) options, copies, and job status.
+  - Print a numbered range, place several labels on an A4 or Letter sheet, or merge a spreadsheet into a design. Labels for continuous rolls can size themselves to their content.
   - Export a dimensioned PDF or PNG, an SVG design, or raster ZPL for a ZPL-compatible raw queue.
 
   Comfort
@@ -103,6 +107,7 @@ parts:
       install -Dm644 data/org.thermalprint.ThermalPrint.desktop "$CRAFT_PART_INSTALL/usr/share/applications/org.thermalprint.ThermalPrint.desktop"
       desktop-file-validate "$CRAFT_PART_INSTALL/usr/share/applications/org.thermalprint.ThermalPrint.desktop"
       sed -i 's|^Icon=.*|Icon=${SNAP}/meta/gui/icon.png|; /^StartupWMClass=/d' "$CRAFT_PART_INSTALL/usr/share/applications/org.thermalprint.ThermalPrint.desktop"
+      install -Dm644 data/org.thermalprint.ThermalPrint.metainfo.xml "$CRAFT_PART_INSTALL/usr/share/metainfo/org.thermalprint.ThermalPrint.metainfo.xml"
       install -Dm644 data/org.thermalprint.ThermalPrint.xml "$CRAFT_PART_INSTALL/usr/share/mime/packages/org.thermalprint.ThermalPrint.xml"
       update-mime-database "$CRAFT_PART_INSTALL/usr/share/mime"
       install -Dm644 README.md "$CRAFT_PART_INSTALL/usr/share/doc/thermalprint/README.md"
