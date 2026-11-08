@@ -26,6 +26,9 @@ const MANUAL_SCREENS: &[&str] = &[
     "batch",
     "barcode-types",
     "alignment-test",
+    "designer-arrange",
+    "designer-printable",
+    "designer-image",
 ];
 
 /// The screens to capture: the README set, or the named ones.
@@ -94,9 +97,8 @@ impl Capture {
         }
         if !self.prepared {
             app.area = match scene {
-                "designer" | "rotation" | "save-changes" | "designer-text" | "batch" => {
-                    Area::Designer
-                }
+                "designer" | "rotation" | "save-changes" | "designer-text" | "batch"
+                | "designer-arrange" | "designer-printable" | "designer-image" => Area::Designer,
                 "import" | "import-watch" => Area::Import,
                 "print-center" | "print-center-full" => Area::PrintCenter,
                 _ => Area::Home,
@@ -129,6 +131,72 @@ impl Capture {
                     {
                         app.designer.select_object(id);
                     }
+                }
+                "designer-arrange" => {
+                    let ids: Vec<u64> = app
+                        .designer
+                        .doc
+                        .objects
+                        .iter()
+                        .filter(|o| matches!(o.element, Element::Text { .. }))
+                        .map(|o| o.id)
+                        .take(4)
+                        .collect();
+                    app.designer.select_objects(&ids);
+                }
+                "designer-printable" => {
+                    if let Some(printer) = app.printers.first_mut() {
+                        printer
+                            .media_margins
+                            .insert("4x6".into(), (2.54, 2.03, 2.54, 2.54));
+                    }
+                    app.designer.doc.title = "Label with an object near the edge".into();
+                    app.designer.doc.add(
+                        Element::Text {
+                            text: "TOO CLOSE TO THE EDGE".into(),
+                            font_pt: 9.,
+                            bold: true,
+                            align: TextAlign::Left,
+                        },
+                        0.8,
+                        147.,
+                        60.,
+                        5.,
+                    );
+                }
+                "designer-image" => {
+                    let mut photo = image::GrayImage::new(96, 96);
+                    for (x, y, pixel) in photo.enumerate_pixels_mut() {
+                        let dx = x as f32 - 48.;
+                        let dy = y as f32 - 48.;
+                        let shade = 255. - ((dx * dx + dy * dy).sqrt() * 5.3).min(255.);
+                        *pixel = image::Luma([shade as u8]);
+                    }
+                    let mut png = Vec::new();
+                    photo
+                        .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+                        .expect("encode demo picture");
+                    let mut doc = app.designer.doc.clone();
+                    doc.objects.clear();
+                    doc.title = "Photo label".into();
+                    let id = doc.add(
+                        Element::Image {
+                            data_base64: base64::Engine::encode(
+                                &base64::engine::general_purpose::STANDARD,
+                                &png,
+                            ),
+                        },
+                        30.,
+                        40.,
+                        40.,
+                        40.,
+                    );
+                    if let Some(object) = doc.objects.iter_mut().find(|o| o.id == id) {
+                        object.options.image_mode = crate::design::ImageMode::Dither;
+                        object.options.contrast = 0.3;
+                    }
+                    app.designer.doc = doc;
+                    app.designer.select_object(id);
                 }
                 "import-watch" => {
                     app.settings.watch_folder = Some(PathBuf::from("/home/demo/Downloads"));
@@ -190,6 +258,7 @@ pub(super) fn seed(app: &mut ThermalPrint, ctx: &egui::Context) {
             ("4x4".into(), (101.6, 101.6)),
         ]
         .into(),
+        media_margins: Default::default(),
         resolutions: vec!["203dpi".into(), "300dpi".into()],
         resolution_option: "Resolution".into(),
         custom_media: true,

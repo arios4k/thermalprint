@@ -93,8 +93,10 @@ pub fn variables(doc: &LabelDocument) -> Vec<String> {
             let after = &rest[start + 2..];
             let Some(end) = after.find('}') else { break };
             let name = after[..end].trim();
+            // `${date:%d/%m}` and `${serial:4}` are built-ins with a format after the colon.
+            let base = name.split(':').next().unwrap_or_default().to_lowercase();
             if !name.is_empty()
-                && !BUILT_IN.contains(&name.to_lowercase().as_str())
+                && !BUILT_IN.contains(&base.as_str())
                 && !found.iter().any(|f| f.eq_ignore_ascii_case(name))
             {
                 found.push(name.to_owned());
@@ -283,6 +285,26 @@ mod tests {
         let second = apply_row(&design(), &table, 1);
         assert_eq!(second.serial_number, design().serial_number + 1);
         assert_eq!(text(&second, 0), "Ship to Bo\nRome ${date}");
+    }
+
+    #[test]
+    fn formatted_date_and_serial_are_built_ins_not_columns() {
+        let mut doc = LabelDocument::blank(50., 30.);
+        doc.add(
+            Element::Text {
+                text: "${date:%d/%m/%Y} #${serial:4} ${Name}".into(),
+                font_pt: 10.,
+                bold: false,
+                align: crate::design::TextAlign::Left,
+            },
+            1.,
+            1.,
+            40.,
+            8.,
+        );
+        assert_eq!(variables(&doc), ["Name"]);
+        let table = parse_table(b"Name\nAda\n").unwrap();
+        assert!(compare(&doc, &table).missing.is_empty());
     }
 
     #[test]

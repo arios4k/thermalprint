@@ -1,7 +1,10 @@
 //! Deterministic rasterization of editable labels at the requested printer DPI.
 //! Preview textures are downsampled from this output by the UI.
 use crate::{
-    design::{BarcodeKind, DesignObject, Element, LabelDocument, ShapeKind, TextAlign},
+    design::{
+        BarcodeKind, DesignObject, Element, ImageMode, LabelDocument, ObjectOptions, QrLevel,
+        ShapeKind, TextAlign,
+    },
     layout::Output,
 };
 use anyhow::{Context, Result, bail};
@@ -112,13 +115,111 @@ fn font(bold: bool) -> &'static Font {
         })
     }
 }
+/// Replace `${date}`, `${date:FORMAT}`, `${serial}`, and `${serial:WIDTH}`. A date FORMAT uses
+/// strftime codes such as `%d/%m/%Y`; WIDTH zero-pads the serial number. Anything else
+/// (including an invalid format) is left as written.
 fn expand(text: &str, serial: u64) -> String {
-    text.replace(
-        "${date}",
-        &chrono::Local::now().format("%Y-%m-%d").to_string(),
-    )
-    .replace("${serial}", &serial.to_string())
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(start) = rest.find("${") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 2..];
+        let Some(end) = after.find('}') else {
+            out.push_str(&rest[start..]);
+            return out;
+        };
+        match replacement(&after[..end], serial) {
+            Some(value) => out.push_str(&value),
+            None => out.push_str(&rest[start..start + 2 + end + 1]),
+        }
+        rest = &after[end + 1..];
+    }
+    out.push_str(rest);
+    out
 }
+fn replacement(token: &str, serial: u64) -> Option<String> {
+    let (name, argument) = match token.split_once(':') {
+        Some((name, argument)) => (name, Some(argument)),
+        None => (token, None),
+    };
+    match (name, argument) {
+        ("date", None) => Some(chrono::Local::now().format("%Y-%m-%d").to_string()),
+        ("date", Some(format)) => format_date(format),
+        ("serial", None) => Some(serial.to_string()),
+        ("serial", Some(width)) => width
+            .parse::<usize>()
+            .ok()
+            .filter(|width| (1..=12).contains(width))
+            .map(|width| format!("{serial:0width$}")),
+        _ => None,
+    }
+}
+/// Today's date in a strftime format, or None when the format is invalid or very long.
+pub fn format_date(format: &str) -> Option<String> {
+    use chrono::format::{Item, StrftimeItems};
+    if format.is_empty() || format.len() > 40 {
+        return None;
+    }
+    let items: Vec<Item> = StrftimeItems::new(format).collect();
+    if items.iter().any(|item| matches!(item, Item::Error)) {
+        return None;
+    }
+    Some(
+        chrono::Local::now()
+            .format_with_items(items.into_iter())
+            .to_string(),
+    )
+}
+fn advance(font: &Font, text: &str, px: f32) -> f32 {
+    text.chars()
+        .map(|c| font.metrics(c, px).advance_width)
+        .sum()
+}
+/// Break text into lines. Without `wrap` only explicit line breaks apply; with it, lines are
+/// also broken at spaces (and inside a word that is wider than the box).
+fn layout_text(text: &str, font: &Font, px: f32, width: f32, wrap: bool) -> Vec<String> {
+    let mut lines = Vec::new();
+    for paragraph in text.lines() {
+        if !wrap || advance(font, paragraph, px) <= width {
+            lines.push(paragraph.to_owned());
+            continue;
+        }
+        let mut current = String::new();
+        for word in paragraph.split(' ') {
+            let candidate = if current.is_empty() {
+                word.to_owned()
+            } else {
+                format!("{current} {word}")
+            };
+            if advance(font, &candidate, px) <= width {
+                current = candidate;
+                continue;
+            }
+            if !current.is_empty() {
+                lines.push(std::mem::take(&mut current));
+            }
+            if advance(font, word, px) <= width {
+                current = word.to_owned();
+            } else {
+                // A single word wider than the box is broken between letters.
+                for c in word.chars() {
+                    let mut grown = current.clone();
+                    grown.push(c);
+                    if !current.is_empty() && advance(font, &grown, px) > width {
+                        lines.push(std::mem::take(&mut current));
+                    }
+                    current.push(c);
+                }
+            }
+        }
+        lines.push(current);
+    }
+    lines
+}
+fn text_height(lines: usize, px: f32, line_height: i32) -> f32 {
+    lines.saturating_sub(1) as f32 * line_height as f32 + px * 1.2
+}
+#[allow(clippy::too_many_arguments)]
 fn draw_text(
     im: &mut RgbaImage,
     text: &str,
@@ -127,19 +228,48 @@ fn draw_text(
     align: TextAlign,
     dpi: u32,
     serial: u64,
+    options: &ObjectOptions,
 ) -> Result<()> {
     let f = font(bold);
-    let px = font_pt * dpi as f32 / 72.;
-    let line_height = (px * 1.32).ceil() as i32;
-    for (row, line_text) in expand(text, serial).lines().enumerate() {
-        let advances = line_text
-            .chars()
-            .map(|c| f.metrics(c, px).advance_width)
-            .sum::<f32>();
+    let expanded = expand(text, serial);
+    let width = im.width() as f32;
+    let spacing = options.line_spacing.clamp(0.5, 3.);
+    let measure = |pt: f32| {
+        let px = pt * dpi as f32 / 72.;
+        let line_height = (px * 1.32 * spacing).ceil() as i32;
+        (
+            px,
+            line_height,
+            layout_text(&expanded, f, px, width, options.wrap),
+        )
+    };
+    let (mut px, mut line_height, mut lines) = measure(font_pt);
+    if options.fit {
+        let mut pt = font_pt;
+        loop {
+            (px, line_height, lines) = measure(pt);
+            let widest = lines.iter().map(|l| advance(f, l, px)).fold(0., f32::max);
+            if (widest <= width + 0.5
+                && text_height(lines.len(), px, line_height) <= im.height() as f32)
+                || pt <= 3.
+            {
+                break;
+            }
+            pt = (pt - 0.5).max(3.);
+        }
+    }
+    if options.inverse {
+        for pixel in im.pixels_mut() {
+            *pixel = black();
+        }
+    }
+    let shear = if options.italic { 0.21 } else { 0. };
+    for (row, line_text) in lines.iter().enumerate() {
+        let advances = advance(f, line_text, px);
         let start = match align {
             TextAlign::Left => 0,
-            TextAlign::Center => ((im.width() as f32 - advances) / 2.).max(0.) as i32,
-            TextAlign::Right => (im.width() as f32 - advances).max(0.) as i32,
+            TextAlign::Center => ((width - advances) / 2.).max(0.) as i32,
+            TextAlign::Right => (width - advances).max(0.) as i32,
         };
         let baseline = (row as i32) * line_height + px.ceil() as i32;
         let mut pen = start as f32;
@@ -151,7 +281,15 @@ fn draw_text(
                 for xx in 0..m.width {
                     let a = bits[yy * m.width + xx];
                     if a > 0 {
-                        put(im, left + xx as i32, top + yy as i32, Rgba([0, 0, 0, a]));
+                        let y = top + yy as i32;
+                        // Italic leans each glyph right above the baseline.
+                        let x = left + xx as i32 + ((baseline - y) as f32 * shear).round() as i32;
+                        let color = if options.inverse {
+                            Rgba([a, a, a, 255])
+                        } else {
+                            Rgba([0, 0, 0, a])
+                        };
+                        put(im, x, y, color);
                     }
                 }
             }
@@ -255,6 +393,44 @@ fn draw_data_matrix(im: &mut RgbaImage, data: &str) -> Result<()> {
     }
     Ok(())
 }
+/// The check digit EAN-13, EAN-8, and UPC-A add to a value that has none yet.
+pub fn check_digit(kind: BarcodeKind, data: &str) -> Option<char> {
+    let (body_len, odd_weight_first) = match kind {
+        BarcodeKind::Ean13 => (12, true),
+        BarcodeKind::Ean8 => (7, false),
+        BarcodeKind::UpcA => (11, false),
+        _ => return None,
+    };
+    if data.len() < body_len || !data.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let sum: u32 = data.as_bytes()[..body_len]
+        .iter()
+        .enumerate()
+        .map(|(i, b)| {
+            let weight = if (i % 2 == 0) == odd_weight_first {
+                1
+            } else {
+                3
+            };
+            (b - b'0') as u32 * weight
+        })
+        .sum();
+    char::from_digit((10 - sum % 10) % 10, 10)
+}
+/// The value as printed under the bars: retail codes show their check digit.
+fn readable_value(kind: BarcodeKind, data: &str) -> String {
+    let body_len = match kind {
+        BarcodeKind::Ean13 => 12,
+        BarcodeKind::Ean8 => 7,
+        BarcodeKind::UpcA => 11,
+        _ => return data.to_owned(),
+    };
+    match check_digit(kind, data) {
+        Some(digit) if data.len() == body_len => format!("{data}{digit}"),
+        _ => data.to_owned(),
+    }
+}
 fn draw_barcode(
     im: &mut RgbaImage,
     kind: BarcodeKind,
@@ -262,6 +438,7 @@ fn draw_barcode(
     show_text: bool,
     dpi: u32,
     serial: u64,
+    options: &ObjectOptions,
 ) -> Result<()> {
     let data = expand(data, serial);
     if kind == BarcodeKind::DataMatrix {
@@ -277,33 +454,62 @@ fn draw_barcode(
     }
     let barcode_w = (bits.len() as u32 + 20) * module;
     let left = (im.width() - barcode_w) / 2 + 10 * module;
-    let text_h = if show_text {
-        dots(4., dpi).min(im.height() / 3)
+    // The readable text is 8 pt in at most 4 mm unless a size is chosen.
+    let (text_pt, text_h) = if !show_text {
+        (0., 0)
+    } else if options.barcode_text_pt > 0. {
+        let pt = options.barcode_text_pt;
+        (
+            pt,
+            ((pt * dpi as f32 / 72.) * 1.4)
+                .ceil()
+                .min((im.height() / 2) as f32) as u32,
+        )
     } else {
-        0
+        (8., dots(4., dpi).min(im.height() / 3))
+    };
+    let (bars_top, text_y) = if options.text_above {
+        (text_h, 0)
+    } else {
+        (0, im.height() - text_h)
     };
     for (i, b) in bits.iter().enumerate() {
         if *b != 0 {
             fill(
                 im,
                 (left + i as u32 * module) as i32,
-                0,
+                bars_top as i32,
                 (left + (i as u32 + 1) * module) as i32,
-                (im.height() - text_h) as i32,
+                (bars_top + im.height() - text_h) as i32,
                 black(),
             );
         }
     }
     if show_text {
-        let text_y = im.height() - text_h;
         let mut layer = RgbaImage::new(im.width(), text_h);
-        draw_text(&mut layer, &data, 8., false, TextAlign::Center, dpi, serial)?;
+        draw_text(
+            &mut layer,
+            &readable_value(kind, &data),
+            text_pt,
+            false,
+            TextAlign::Center,
+            dpi,
+            serial,
+            &ObjectOptions::default(),
+        )?;
         imageops::overlay(im, &layer, 0, text_y as i64);
     }
     Ok(())
 }
-fn draw_qr(im: &mut RgbaImage, data: &str, serial: u64) -> Result<()> {
-    let code = QrCode::new(expand(data, serial).as_bytes()).context("QR data cannot be encoded")?;
+fn draw_qr(im: &mut RgbaImage, data: &str, serial: u64, level: QrLevel) -> Result<()> {
+    let level = match level {
+        QrLevel::Low => qrcode::EcLevel::L,
+        QrLevel::Medium => qrcode::EcLevel::M,
+        QrLevel::Quartile => qrcode::EcLevel::Q,
+        QrLevel::High => qrcode::EcLevel::H,
+    };
+    let code = QrCode::with_error_correction_level(expand(data, serial).as_bytes(), level)
+        .context("QR data cannot be encoded")?;
     let modules = code.width() as u32 + 8;
     let module = im.width().min(im.height()) / modules;
     if module < 2 {
@@ -327,7 +533,71 @@ fn draw_qr(im: &mut RgbaImage, data: &str, serial: u64) -> Result<()> {
     }
     Ok(())
 }
-fn draw_image(im: &mut RgbaImage, data: &str) -> Result<()> {
+/// Reduce an image to black and white for a thermal printer, or adjust its contrast.
+/// Fully transparent pixels stay transparent. Returns whether anything was changed.
+fn adjust_image(image: &mut RgbaImage, options: &ObjectOptions) {
+    let neutral = options.contrast == 0. && !options.invert;
+    if options.image_mode == ImageMode::Original && neutral {
+        return;
+    }
+    let contrast = options.contrast.clamp(-1., 1.) * 255.;
+    let factor = (259. * (contrast + 255.)) / (255. * (259. - contrast));
+    let (width, height) = (image.width() as usize, image.height() as usize);
+    // Gray values over a white background, after contrast and inversion.
+    let mut gray = vec![255f32; width * height];
+    let mut opaque = vec![false; width * height];
+    for (index, pixel) in image.pixels().enumerate() {
+        let alpha = pixel[3] as f32 / 255.;
+        opaque[index] = pixel[3] > 0;
+        let luma = 0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32;
+        let over_white = luma * alpha + 255. * (1. - alpha);
+        let mut value = (factor * (over_white - 128.) + 128.).clamp(0., 255.);
+        if options.invert {
+            value = 255. - value;
+        }
+        gray[index] = value;
+    }
+    match options.image_mode {
+        ImageMode::Original => {}
+        ImageMode::Threshold => {
+            for value in &mut gray {
+                *value = if *value < options.threshold as f32 {
+                    0.
+                } else {
+                    255.
+                };
+            }
+        }
+        ImageMode::Dither => {
+            // Floyd-Steinberg error diffusion.
+            for y in 0..height {
+                for x in 0..width {
+                    let index = y * width + x;
+                    let old = gray[index];
+                    let new = if old < 128. { 0. } else { 255. };
+                    gray[index] = new;
+                    let error = old - new;
+                    let mut spread = |dx: i32, dy: usize, share: f32| {
+                        let nx = x as i32 + dx;
+                        if nx >= 0 && (nx as usize) < width && y + dy < height {
+                            let target = (y + dy) * width + nx as usize;
+                            gray[target] = (gray[target] + error * share).clamp(0., 255.);
+                        }
+                    };
+                    spread(1, 0, 7. / 16.);
+                    spread(-1, 1, 3. / 16.);
+                    spread(0, 1, 5. / 16.);
+                    spread(1, 1, 1. / 16.);
+                }
+            }
+        }
+    }
+    for (index, pixel) in image.pixels_mut().enumerate() {
+        let value = gray[index].round() as u8;
+        *pixel = Rgba([value, value, value, if opaque[index] { 255 } else { 0 }]);
+    }
+}
+fn draw_image(im: &mut RgbaImage, data: &str, options: &ObjectOptions) -> Result<()> {
     let bytes = base64::engine::general_purpose::STANDARD.decode(data)?;
     if bytes.len() > 9_000_000 {
         bail!("Image exceeds 9 MB");
@@ -337,7 +607,9 @@ fn draw_image(im: &mut RgbaImage, data: &str) -> Result<()> {
         (im.width() as f32 / src.width() as f32).min(im.height() as f32 / src.height() as f32);
     let w = (src.width() as f32 * fit).round().max(1.) as u32;
     let h = (src.height() as f32 * fit).round().max(1.) as u32;
-    let scaled = imageops::resize(&src, w, h, imageops::FilterType::Lanczos3);
+    let mut scaled = imageops::resize(&src, w, h, imageops::FilterType::Lanczos3);
+    // Adjust after scaling so dithering happens at the printed resolution.
+    adjust_image(&mut scaled, options);
     imageops::overlay(
         im,
         &scaled,
@@ -353,26 +625,33 @@ fn render_object(o: &DesignObject, dpi: u32, serial: u64) -> Result<RgbaImage> {
         bail!("Object exceeds render limit");
     }
     let mut im = RgbaImage::new(w, h);
+    let options = &o.options;
     match &o.element {
         Element::Text {
             text,
             font_pt,
             bold,
             align,
-        } => draw_text(&mut im, text, *font_pt, *bold, *align, dpi, serial)?,
+        } => draw_text(&mut im, text, *font_pt, *bold, *align, dpi, serial, options)?,
         Element::Barcode {
             kind,
             data,
             show_text,
-        } => draw_barcode(&mut im, *kind, data, *show_text, dpi, serial)?,
-        Element::Qr { data } => draw_qr(&mut im, data, serial)?,
+        } => draw_barcode(&mut im, *kind, data, *show_text, dpi, serial, options)?,
+        Element::Qr { data } => draw_qr(&mut im, data, serial, options.qr_level)?,
         Element::Shape {
             kind,
             stroke_mm,
             filled,
         } => draw_shape(&mut im, *kind, *stroke_mm, *filled, dpi),
-        Element::Image { data_base64 } => draw_image(&mut im, data_base64)?,
+        Element::Image { data_base64 } => draw_image(&mut im, data_base64, options)?,
     };
+    if o.flip_x {
+        imageops::flip_horizontal_in_place(&mut im);
+    }
+    if o.flip_y {
+        imageops::flip_vertical_in_place(&mut im);
+    }
     rotate_layer(im, o.rotation)
 }
 
@@ -577,7 +856,16 @@ mod barcode_kind_tests {
 
     fn draws(kind: BarcodeKind, data: &str) -> Result<RgbaImage> {
         let mut im = RgbaImage::new(600, 300);
-        draw_barcode(&mut im, kind, data, false, 203, 1).map(|_| im)
+        draw_barcode(
+            &mut im,
+            kind,
+            data,
+            false,
+            203,
+            1,
+            &ObjectOptions::default(),
+        )
+        .map(|_| im)
     }
     fn has_ink(im: &RgbaImage) -> bool {
         im.pixels().any(|p| p.0[3] > 0)
@@ -614,7 +902,18 @@ mod barcode_kind_tests {
                 .contains("empty")
         );
         let mut tiny = RgbaImage::new(12, 12);
-        assert!(draw_barcode(&mut tiny, BarcodeKind::DataMatrix, "ABC", false, 203, 1).is_err());
+        assert!(
+            draw_barcode(
+                &mut tiny,
+                BarcodeKind::DataMatrix,
+                "ABC",
+                false,
+                203,
+                1,
+                &ObjectOptions::default()
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -641,8 +940,359 @@ mod barcode_kind_tests {
             false,
             203,
             2,
+            &ObjectOptions::default(),
         )
         .unwrap();
         assert_ne!(a.as_raw(), b.as_raw(), "serial changes the encoded symbol");
+    }
+}
+
+#[cfg(test)]
+mod option_render_tests {
+    use super::*;
+    use crate::design::{DesignObject, ImageMode};
+
+    fn text_layer(text: &str, width_mm: f32, height_mm: f32, options: ObjectOptions) -> RgbaImage {
+        let mut im = RgbaImage::new(dots(width_mm, 203), dots(height_mm, 203));
+        draw_text(&mut im, text, 12., false, TextAlign::Left, 203, 1, &options).unwrap();
+        im
+    }
+    fn ink_rows(im: &RgbaImage) -> usize {
+        (0..im.height())
+            .filter(|&y| (0..im.width()).any(|x| im.get_pixel(x, y)[3] > 0))
+            .count()
+    }
+    fn ink(im: &RgbaImage) -> usize {
+        im.pixels().filter(|p| p[3] > 0).count()
+    }
+    fn rightmost(im: &RgbaImage) -> u32 {
+        (0..im.width())
+            .rev()
+            .find(|&x| (0..im.height()).any(|y| im.get_pixel(x, y)[3] > 0))
+            .unwrap_or(0)
+    }
+
+    #[test]
+    fn dates_and_serials_accept_formats_and_leave_bad_ones_alone() {
+        assert_eq!(expand("n${serial:4}", 7), "n0007");
+        assert_eq!(expand("${serial}/${serial:2}", 5), "5/05");
+        assert_eq!(
+            expand("${serial:0} ${serial:99} ${serial:x}", 5),
+            "${serial:0} ${serial:99} ${serial:x}"
+        );
+        let today = chrono::Local::now();
+        assert_eq!(expand("${date}", 1), today.format("%Y-%m-%d").to_string());
+        assert_eq!(
+            expand("${date:%d/%m/%Y}", 1),
+            today.format("%d/%m/%Y").to_string()
+        );
+        assert_eq!(
+            expand("${date:%Q%}", 1),
+            "${date:%Q%}",
+            "an invalid format is not replaced"
+        );
+        assert_eq!(expand("${unknown} ${date", 1), "${unknown} ${date");
+    }
+
+    #[test]
+    fn wrapping_breaks_long_text_into_lines_and_plain_text_stays_on_one() {
+        let long = "Fragile glass items packed with care";
+        let plain = text_layer(long, 30., 30., ObjectOptions::default());
+        let wrapped = text_layer(
+            long,
+            30.,
+            30.,
+            ObjectOptions {
+                wrap: true,
+                ..Default::default()
+            },
+        );
+        assert!(
+            ink_rows(&wrapped) > ink_rows(&plain) * 2,
+            "wrapped text uses several lines"
+        );
+        assert!(
+            rightmost(&wrapped) < dots(30., 203),
+            "wrapped text stays inside the box"
+        );
+        // A word wider than the box is broken between letters instead of overflowing.
+        let word = text_layer(
+            "Supercalifragilisticexpialidocious",
+            20.,
+            40.,
+            ObjectOptions {
+                wrap: true,
+                ..Default::default()
+            },
+        );
+        assert!(ink_rows(&word) > 20 && rightmost(&word) < dots(20., 203));
+    }
+
+    #[test]
+    fn shrink_to_fit_makes_text_fit_and_spacing_changes_the_height() {
+        let text = "ASSET TAG 0000123 WAREHOUSE";
+        let natural = advance(font(false), text, 12. * 203. / 72.);
+        assert!(
+            natural > dots(25., 203) as f32,
+            "the text is wider than the box at its normal size"
+        );
+        let fitted = text_layer(
+            text,
+            25.,
+            8.,
+            ObjectOptions {
+                fit: true,
+                ..Default::default()
+            },
+        );
+        assert!(
+            rightmost(&fitted) < dots(25., 203),
+            "fitted text ends inside the box"
+        );
+        assert!(ink(&fitted) > 0);
+        let tight = text_layer(
+            "a\nb\nc",
+            20.,
+            40.,
+            ObjectOptions {
+                line_spacing: 0.8,
+                ..Default::default()
+            },
+        );
+        let loose = text_layer(
+            "a\nb\nc",
+            20.,
+            40.,
+            ObjectOptions {
+                line_spacing: 2.,
+                ..Default::default()
+            },
+        );
+        let last_row = |im: &RgbaImage| {
+            (0..im.height())
+                .rev()
+                .find(|&y| (0..im.width()).any(|x| im.get_pixel(x, y)[3] > 0))
+                .unwrap()
+        };
+        assert!(last_row(&loose) > last_row(&tight) + 20);
+    }
+
+    #[test]
+    fn inverse_text_is_light_on_a_black_box_and_italic_leans_right() {
+        let inverse = text_layer(
+            "HI",
+            20.,
+            8.,
+            ObjectOptions {
+                inverse: true,
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            inverse.get_pixel(0, 0).0,
+            [0, 0, 0, 255],
+            "the box is black"
+        );
+        assert!(inverse.pixels().any(|p| p[0] > 200), "letters are white");
+        let upright = text_layer("l", 10., 8., ObjectOptions::default());
+        let leaning = text_layer(
+            "l",
+            10.,
+            8.,
+            ObjectOptions {
+                italic: true,
+                ..Default::default()
+            },
+        );
+        assert!(
+            rightmost(&leaning) > rightmost(&upright),
+            "italic shifts the top to the right"
+        );
+    }
+
+    fn photo() -> RgbaImage {
+        // A horizontal gradient from black to white.
+        RgbaImage::from_fn(64, 8, |x, _| {
+            let v = (x * 255 / 63) as u8;
+            Rgba([v, v, v, 255])
+        })
+    }
+    fn options(mode: ImageMode) -> ObjectOptions {
+        ObjectOptions {
+            image_mode: mode,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn threshold_dither_contrast_and_invert_adjust_images() {
+        let mut original = photo();
+        adjust_image(&mut original, &ObjectOptions::default());
+        assert_eq!(original, photo(), "defaults leave the picture alone");
+
+        let mut thresholded = photo();
+        adjust_image(
+            &mut thresholded,
+            &ObjectOptions {
+                threshold: 200,
+                ..options(ImageMode::Threshold)
+            },
+        );
+        assert!(thresholded.pixels().all(|p| p[0] == 0 || p[0] == 255));
+        let blacks = thresholded.pixels().filter(|p| p[0] == 0).count();
+        assert!(
+            blacks > 64 * 8 / 2,
+            "a high cut-off makes more pixels black"
+        );
+
+        let mut dithered = photo();
+        adjust_image(&mut dithered, &options(ImageMode::Dither));
+        assert!(dithered.pixels().all(|p| p[0] == 0 || p[0] == 255));
+        // The middle of the gradient is mixed black and white, not one solid color.
+        let middle: Vec<u8> = (24..40).map(|x| dithered.get_pixel(x, 4)[0]).collect();
+        assert!(middle.contains(&0) && middle.contains(&255));
+
+        let mut inverted = photo();
+        adjust_image(
+            &mut inverted,
+            &ObjectOptions {
+                invert: true,
+                ..Default::default()
+            },
+        );
+        assert_eq!(inverted.get_pixel(0, 0)[0], 255);
+        assert_eq!(inverted.get_pixel(63, 0)[0], 0);
+
+        let mut harsh = photo();
+        adjust_image(
+            &mut harsh,
+            &ObjectOptions {
+                contrast: 1.,
+                ..Default::default()
+            },
+        );
+        assert!(
+            harsh.get_pixel(20, 0)[0] < photo().get_pixel(20, 0)[0],
+            "contrast darkens the darks"
+        );
+    }
+
+    #[test]
+    fn transparent_pixels_stay_transparent_when_images_are_adjusted() {
+        let mut logo = RgbaImage::from_pixel(4, 4, Rgba([0, 0, 0, 0]));
+        logo.put_pixel(1, 1, Rgba([20, 20, 20, 255]));
+        adjust_image(&mut logo, &options(ImageMode::Threshold));
+        assert_eq!(logo.get_pixel(0, 0)[3], 0);
+        assert_eq!(logo.get_pixel(1, 1).0, [0, 0, 0, 255]);
+    }
+
+    #[test]
+    fn retail_barcodes_compute_and_print_their_check_digit() {
+        assert_eq!(check_digit(BarcodeKind::Ean13, "590123412345"), Some('7'));
+        assert_eq!(check_digit(BarcodeKind::Ean8, "5512345"), Some('7'));
+        assert_eq!(check_digit(BarcodeKind::UpcA, "03600029145"), Some('2'));
+        assert_eq!(check_digit(BarcodeKind::Code128, "123"), None);
+        assert_eq!(check_digit(BarcodeKind::Ean13, "12"), None);
+        assert_eq!(
+            readable_value(BarcodeKind::Ean13, "590123412345"),
+            "5901234123457"
+        );
+        assert_eq!(
+            readable_value(BarcodeKind::Ean13, "5901234123457"),
+            "5901234123457"
+        );
+        assert_eq!(readable_value(BarcodeKind::Code128, "ABC"), "ABC");
+    }
+
+    #[test]
+    fn barcode_text_size_and_position_can_be_chosen() {
+        let draw = |options: ObjectOptions| {
+            let mut im = RgbaImage::new(600, 200);
+            draw_barcode(
+                &mut im,
+                BarcodeKind::Code128,
+                "SKU-1",
+                true,
+                203,
+                1,
+                &options,
+            )
+            .unwrap();
+            im
+        };
+        let bars_top = |im: &RgbaImage| {
+            (0..im.height())
+                .find(|&y| (0..im.width()).any(|x| im.get_pixel(x, y)[3] > 0))
+                .unwrap()
+        };
+        let below = draw(ObjectOptions::default());
+        let above = draw(ObjectOptions {
+            text_above: true,
+            ..Default::default()
+        });
+        assert_eq!(
+            bars_top(&below),
+            0,
+            "bars start at the top when the text is below"
+        );
+        assert!(bars_top(&above) < 30, "text sits at the top when above");
+        let bar_height = |im: &RgbaImage| {
+            (0..im.height())
+                .filter(|&y| im.get_pixel(300, y)[3] > 0 || im.get_pixel(310, y)[3] > 0)
+                .count()
+        };
+        let small = draw(ObjectOptions {
+            barcode_text_pt: 4.,
+            ..Default::default()
+        });
+        let big = draw(ObjectOptions {
+            barcode_text_pt: 20.,
+            ..Default::default()
+        });
+        assert!(
+            bar_height(&small) > bar_height(&big),
+            "bigger text leaves shorter bars"
+        );
+    }
+
+    #[test]
+    fn qr_error_correction_changes_the_symbol_size() {
+        let module_count = |level: QrLevel| {
+            let mut im = RgbaImage::new(400, 400);
+            draw_qr(
+                &mut im,
+                "https://example.com/a/fairly/long/address?x=1",
+                1,
+                level,
+            )
+            .unwrap();
+            ink(&im)
+        };
+        assert_ne!(module_count(QrLevel::Low), module_count(QrLevel::High));
+    }
+
+    #[test]
+    fn flips_mirror_an_object_before_it_is_rotated() {
+        let mut doc = LabelDocument::blank(30., 12.);
+        doc.add(
+            Element::Text {
+                text: "L".into(),
+                font_pt: 14.,
+                bold: true,
+                align: TextAlign::Left,
+            },
+            1.,
+            1.,
+            10.,
+            8.,
+        );
+        let plain = render_label(&doc, 203).unwrap();
+        doc.objects[0].flip_x = true;
+        let flipped = render_label(&doc, 203).unwrap();
+        assert_ne!(plain.image, flipped.image);
+        doc.objects[0].flip_x = false;
+        doc.objects[0].flip_y = true;
+        assert_ne!(plain.image, render_label(&doc, 203).unwrap().image);
+        let _ = DesignObject::label;
     }
 }

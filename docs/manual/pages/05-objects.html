@@ -12,6 +12,9 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
   <tr><td><strong>W</strong>, <strong>H</strong></td><td>Width and height in millimeters.</td></tr>
   <tr><td><strong>Rotation</strong></td><td>Clockwise degrees, any value including fractions. The X and Y of a rotated object describe the box that contains it.</td></tr>
   <tr><td><strong>Forward</strong> / <strong>Backward</strong></td><td>Move the object up or down one layer. Objects higher in the stack cover those below.</td></tr>
+  <tr><td><strong>Rotate 90°</strong>, <strong>Flip horizontally</strong>, <strong>Flip vertically</strong></td><td>A quarter turn clockwise, and mirror images. The flip is applied before the rotation.</td></tr>
+  <tr><td><strong>Center on label</strong></td><td>Centers the object horizontally or vertically on the label.</td></tr>
+  <tr><td><strong>Lock position and size</strong></td><td>Protects the object from being moved, resized, rotated, or deleted on the canvas. Its other settings stay editable only after you unlock it.</td></tr>
   <tr><td><strong>Duplicate</strong></td><td>Makes a copy of the object (<kbd>Ctrl</kbd>+<kbd>D</kbd>).</td></tr>
   <tr><td><strong>Delete</strong></td><td>Removes it (<kbd>Delete</kbd>).</td></tr>
 </table>
@@ -25,16 +28,23 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
   <tr><td><strong>Object text</strong> box</td><td>The text. It can have several lines; press <kbd>Enter</kbd> for a new line.</td></tr>
   <tr><td>Font size</td><td>In points, from 3 to 300. Larger numbers make taller letters.</td></tr>
   <tr><td><strong>Bold</strong></td><td>Heavier letters. Good for thermal printing, which can make thin text faint.</td></tr>
+  <tr><td><strong>Italic</strong></td><td>Slanted letters.</td></tr>
+  <tr><td><strong>Inverse</strong></td><td>White letters on a black box that fills the object.</td></tr>
   <tr><td><strong>Left</strong> / <strong>Center</strong> / <strong>Right</strong></td><td>Alignment inside the box.</td></tr>
+  <tr><td><strong>Wrap long lines</strong></td><td>Breaks lines at spaces so they fit the box width. A single word longer than the box is broken as well.</td></tr>
+  <tr><td><strong>Shrink to fit the box</strong></td><td>Makes the text smaller, down to 3 pt, until all of it fits inside the box.</td></tr>
+  <tr><td><strong>Line spacing</strong></td><td>A multiplier from 0.5 to 3 for the space between lines (1 to start).</td></tr>
 </table>
-<p>Text <strong>does not wrap</strong> by itself: each line stays on one line, so press <kbd>Enter</kbd> where you want a new line. Anything that extends past the box is cut off at its edge, so make the box larger or the text smaller if letters disappear. The font is built in and does not depend on the fonts installed on your computer, so labels look the same on every machine.</p>
+<p>Unless you tick <strong>Wrap long lines</strong>, text <strong>does not wrap</strong>: each line stays on one line, so press <kbd>Enter</kbd> where you want a new line. Anything that extends past the box is cut off at its edge, so make the box larger, tick <strong>Shrink to fit the box</strong>, or make the text smaller if letters disappear. The font is built in and does not depend on the fonts installed on your computer, so labels look the same on every machine.</p>
 
 <h3 id="dynamic-text-date-and-serial-number">Dynamic text: date and serial number</h3>
 <p>Two special words are replaced when the label is drawn, in text, barcodes, and QR codes:</p>
 <table>
   <tr><th>Write this</th><th>Printed as</th></tr>
   <tr><td><code>${date}</code></td><td>Today's date, like <code>2026-11-07</code>.</td></tr>
+  <tr><td><code>${date:%d/%m/%Y}</code></td><td>Today's date in a format you choose, like <code>07/11/2026</code>. The codes are the usual <code>%Y</code> year, <code>%m</code> month, <code>%d</code> day, <code>%H</code> hour, <code>%M</code> minute. A format that is not valid is left as written.</td></tr>
   <tr><td><code>${serial}</code></td><td>The serial number from <strong>Label setup → Serial variable</strong> (1 to start). In a <a href="batch.html">batch</a>, it counts up by one for each row.</td></tr>
+  <tr><td><code>${serial:4}</code></td><td>The serial number padded with zeros to 4 digits, like <code>0007</code>. The width can be 1 to 12.</td></tr>
 </table>
 <p>For example, a barcode with the value <code>INV-${serial}</code> encodes <code>INV-1</code>. The hint above the text box reminds you: <em>${date} and ${serial} are dynamic</em>. Words in a batch, such as <code>${Name}</code>, are covered in <a href="batch.html">Batch printing</a>.</p>
 
@@ -44,11 +54,13 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
   <li><strong>Show value below bars</strong> prints the readable text under the bars.</li>
   <li>Make the object wide enough: if the bars would be too thin to print at the selected resolution, you see <em>Barcode is too narrow</em>. Widen the object or use a shorter value.</li>
   <li>Values longer than 2,048 characters are refused.</li>
+  <li><strong>Text size</strong> sets the size of the readable text under the bars, in points; <em>Auto</em> picks one that fits. <strong>Text above the bars</strong> moves it to the top.</li>
+  <li>For EAN-13, EAN-8, and UPC-A, enter the digits without the last one and ThermalPrint calculates the check digit; a hint shows the complete number that will print.</li>
 </ul>
 <p>The nine supported types, what each accepts, and when to use them are in the <a href="barcodes.html">Barcode reference</a>.</p>
 
 <h2>QR codes</h2>
-<p>The QR tool adds a square QR code. Type the content in <strong>QR content</strong>; it can be a web address, plain text, or several lines. Keep the object square and at least about 20 mm wide for reliable scanning. If the object is too small for the amount of data, you see <em>QR code is too small; enlarge the object</em>.</p>
+<p>The QR tool adds a square QR code. Type the content in <strong>QR content</strong>; it can be a web address, plain text, or several lines. <strong>QR error correction level</strong> chooses how much damage the code survives: Low, Medium, Quartile, or High. More correction makes a denser code, so keep the default unless the label will be scuffed. Keep the object square and at least about 20 mm wide for reliable scanning. If the object is too small for the amount of data, you see <em>QR code is too small; enlarge the object</em>.</p>
 
 <h2>Shapes</h2>
 <table>
@@ -61,11 +73,21 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
 
 <h2>Images and logos</h2>
 <p>The picture tool lets you choose a PNG, JPEG, TIFF, BMP, or WebP file (up to 9 MB). The image is <em>embedded</em> in the design, so you can move the design to another computer without the original file. Resize the object to fit; the image keeps its proportions inside the box. Color images print in black and white on a thermal printer, so a high-contrast logo looks best.</p>
+{{figure:designer-image|An image selected in the Label Designer with the image mode, contrast, and invert settings in the properties panel|Image options. The canvas shows the result of the chosen mode.}}
+<table>
+  <tr><th>Setting</th><th>Meaning</th></tr>
+  <tr><td><strong>Original / Black and white / Dithered</strong></td><td><em>Original</em> leaves the conversion to the printer driver. <em>Black and white</em> makes every pixel black or white around the <strong>Cut-off</strong>. <em>Dithered</em> uses error diffusion, which keeps shading in photos.</td></tr>
+  <tr><td><strong>Contrast</strong></td><td>From −100 % to 100 %. Applied before the conversion.</td></tr>
+  <tr><td><strong>Cut-off</strong></td><td>Only for Black and white: pixels darker than this print black.</td></tr>
+  <tr><td><strong>Invert black and white</strong></td><td>Swaps black and white. Transparent areas stay transparent.</td></tr>
+  <tr><td><strong>Reset image adjustments</strong></td><td>Returns all of the above to their defaults.</td></tr>
+</table>
 
 <h2>Layout tips</h2>
 <ul>
   <li>Leave at least 2 mm between objects and the label edge; many printers cannot print right to the edge.</li>
-  <li>Use <em>Show grid</em> and <em>Snap to grid</em> to line things up quickly.</li>
+  <li>Use <em>Show grid</em>, <em>Snap to grid</em>, and <em>Smart guides</em> to line things up quickly, and the arrow keys for fine adjustments.</li>
+  <li>Lock the parts of a design that must not move, such as a logo.</li>
   <li>Use <strong>Focus</strong> (hide the panels) to see the label larger while you arrange it.</li>
   <li>Select several objects with <kbd>Shift</kbd>+click and press <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> to copy a whole group.</li>
 </ul>
