@@ -196,7 +196,7 @@ fn encoded(kind: BarcodeKind, data: &str) -> Result<Vec<u8>> {
                 .encode())
         }
         BarcodeKind::Itf => {
-            if !data.bytes().all(|b| b.is_ascii_digit()) || data.len() % 2 != 0 {
+            if !data.bytes().all(|b| b.is_ascii_digit()) || !data.len().is_multiple_of(2) {
                 bail!("ITF requires an even number of digits");
             }
             Ok(TF::interleaved(data)

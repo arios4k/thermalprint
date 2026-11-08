@@ -1,3 +1,4 @@
+pub mod batch;
 pub mod calibration;
 pub mod design;
 pub mod design_render;

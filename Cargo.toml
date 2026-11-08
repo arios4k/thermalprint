@@ -29,6 +29,7 @@ fontdue = "0.9"
 base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 datamatrix = "0.3.3"
+csv = "1"
 
 [profile.release]
 lto = "thin"

@@ -32,6 +32,15 @@ enum PendingAction {
     Close,
 }
 
+/// The CSV merge window: the loaded table and which row is previewed.
+struct BatchState {
+    file: String,
+    table: Option<crate::batch::Table>,
+    error: Option<String>,
+    row: usize,
+    preview: Option<(usize, egui::TextureHandle)>,
+}
+
 pub struct Designer {
     pub doc: LabelDocument,
     pub path: Option<PathBuf>,
@@ -58,6 +67,7 @@ pub struct Designer {
     pub status: String,
     pub error: bool,
     job: Option<mpsc::Receiver<anyhow::Result<String>>>,
+    batch: Option<BatchState>,
 }
 impl Default for Designer {
     fn default() -> Self {
@@ -94,6 +104,7 @@ impl Designer {
             status: "Create a label or choose a template".into(),
             error: false,
             job: None,
+            batch: None,
         }
     }
     pub(crate) fn select_object(&mut self, id: u64) {
@@ -509,6 +520,183 @@ impl Designer {
             }
         });
     }
+    fn batch_choose(state: &mut BatchState) {
+        let Some(path) = rfd::FileDialog::new()
+            .add_filter("Spreadsheet export", &["csv", "tsv", "txt"])
+            .pick_file()
+        else {
+            return;
+        };
+        state.preview = None;
+        state.row = 0;
+        let loaded = std::fs::metadata(&path)
+            .map_err(anyhow::Error::from)
+            .and_then(|meta| {
+                if meta.len() > crate::batch::MAX_BYTES as u64 {
+                    anyhow::bail!(
+                        "The file is larger than {} MB",
+                        crate::batch::MAX_BYTES / 1_000_000
+                    );
+                }
+                Ok(std::fs::read(&path)?)
+            })
+            .and_then(|bytes| crate::batch::parse_table(&bytes));
+        state.file = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        match loaded {
+            Ok(table) => {
+                state.table = Some(table);
+                state.error = None;
+            }
+            Err(error) => {
+                state.table = None;
+                state.error = Some(format!("{error:#}"));
+            }
+        }
+    }
+    fn batch_window(&mut self, ctx: &egui::Context, settings: &Settings, printers: &[Printer]) {
+        let Some(mut state) = self.batch.take() else {
+            return;
+        };
+        let mut open = true;
+        let mut start = false;
+        let printer = printers.iter().find(|p| p.name == settings.printer);
+        egui::Window::new("Batch print from CSV")
+            .open(&mut open)
+            .collapsible(false)
+            .resizable(true)
+            .default_width(480.)
+            .show(ctx, |ui| {
+                ui.label("Put ${column} placeholders in text, barcode, and QR content. Each row of your spreadsheet becomes one label.");
+                ui.label(RichText::new("Export a CSV from your spreadsheet. Column names are not case-sensitive; ${serial} counts up from the design's serial number.").small().weak());
+                if ui.button("Choose CSV file…").clicked() {
+                    Self::batch_choose(&mut state);
+                }
+                if let Some(error) = &state.error {
+                    ui.colored_label(Color32::RED, error);
+                }
+                let Some(table) = state.table.clone() else {
+                    return;
+                };
+                let found = crate::batch::compare(&self.doc, &table);
+                ui.label(format!(
+                    "{} · {} rows · {} columns",
+                    state.file,
+                    table.rows.len(),
+                    table.headers.len()
+                ));
+                if found.used == 0 && found.missing.is_empty() {
+                    ui.colored_label(
+                        Color32::from_rgb(200, 120, 20),
+                        "This design has no ${column} placeholders yet. Type them into a text, barcode, or QR object, for example ${Name}.",
+                    );
+                }
+                for name in &found.missing {
+                    ui.colored_label(
+                        Color32::from_rgb(200, 60, 60),
+                        format!("The design uses ${{{name}}} but the file has no column with that name."),
+                    );
+                }
+                if !found.unused.is_empty() {
+                    ui.label(
+                        RichText::new(format!("Columns not used: {}", found.unused.join(", ")))
+                            .small()
+                            .weak(),
+                    );
+                }
+                ui.separator();
+                state.row = state.row.min(table.rows.len() - 1);
+                let mut shown = state.row + 1;
+                ui.horizontal(|ui| {
+                    ui.label("Preview row");
+                    ui.add(egui::DragValue::new(&mut shown).range(1..=table.rows.len()))
+                        .accessible_name("Preview row number");
+                    ui.label(format!("of {}", table.rows.len()));
+                });
+                state.row = shown - 1;
+                if state.preview.as_ref().map(|(row, _)| *row) != Some(state.row) {
+                    let label = crate::batch::apply_row(&self.doc, &table, state.row);
+                    state.preview = design_render::render_label(&label, 203)
+                        .ok()
+                        .map(|output| {
+                            (
+                                state.row,
+                                ctx.load_texture(
+                                    "batch-preview",
+                                    egui::ColorImage::from_rgb(
+                                        [output.image.width() as usize, output.image.height() as usize],
+                                        output.image.as_raw(),
+                                    ),
+                                    egui::TextureOptions::LINEAR,
+                                ),
+                            )
+                        });
+                }
+                match &state.preview {
+                    Some((_, texture)) => {
+                        let size = texture.size_vec2();
+                        let scale = (260. / size.x).min(260. / size.y).min(1.);
+                        ui.add(egui::Image::new(texture).fit_to_exact_size(size * scale));
+                    }
+                    None => {
+                        ui.label(RichText::new("This row cannot be previewed. Printing will report the problem.").weak());
+                    }
+                }
+                ui.separator();
+                let ready = printer.is_some() && found.missing.is_empty() && found.used > 0;
+                if printer.is_none() {
+                    ui.label(RichText::new("Choose a printer in Print Center first.").weak());
+                }
+                let copies = settings.copies;
+                if ui
+                    .add_enabled(
+                        ready && self.job.is_none(),
+                        egui::Button::new(format!(
+                            "Print {} labels{}",
+                            table.rows.len(),
+                            if copies > 1 { format!(" × {copies} copies") } else { String::new() }
+                        )),
+                    )
+                    .on_hover_text("Every row is checked first; nothing prints if a row has a problem.")
+                    .clicked()
+                {
+                    start = true;
+                }
+            });
+        if start && let (Some(table), Some(printer)) = (state.table.clone(), printer.cloned()) {
+            let doc = self.doc.clone();
+            let settings = settings.clone();
+            let raw = self.raw_zpl;
+            let total = table.rows.len();
+            self.start_job("Printing batch…", move || {
+                crate::batch::preflight(&doc, &table, settings.dpi).map_err(|problems| {
+                    anyhow::anyhow!("Nothing was printed. {}", problems.join(" · "))
+                })?;
+                for index in 0..total {
+                    let label = crate::batch::apply_row(&doc, &table, index);
+                    if raw {
+                        let bytes = zpl::encode_design(&label, settings.dpi)?;
+                        printing::submit_raw_zpl(&bytes, &settings, &printer)
+                    } else {
+                        let output = design_render::render_label(&label, settings.dpi)?;
+                        printing::submit(&output, &settings, &printer)
+                    }
+                    .map_err(|e| {
+                        anyhow::anyhow!("Stopped at row {} of {total}: {e:#}", index + 1)
+                    })?;
+                }
+                Ok(format!(
+                    "Submitted {total} labels. Use Job status to check the queue."
+                ))
+            });
+            open = false;
+        }
+        if open {
+            self.batch = Some(state);
+        }
+    }
     fn start_render(&mut self, dpi: u32) {
         if self.worker.is_some() || self.rendered_revision == Some(self.revision) {
             return;
@@ -603,6 +791,20 @@ impl Designer {
                     }
                     if ui.button("Save as…").clicked() {
                         self.save(true);
+                        ui.close();
+                    }
+                    if ui
+                        .button("Batch print from CSV…")
+                        .on_hover_text("Print one label per row of a spreadsheet, filling ${column} placeholders")
+                        .clicked()
+                    {
+                        self.batch = Some(BatchState {
+                            file: String::new(),
+                            table: None,
+                            error: None,
+                            row: 0,
+                            preview: None,
+                        });
                         ui.close();
                     }
                 });
@@ -717,6 +919,7 @@ impl Designer {
                 }
             });
         });
+        self.batch_window(&ctx, settings, printers);
         egui::Panel::left("designer-elements")
             .default_size(68.)
             .size_range(68.0..=68.0)
@@ -2302,5 +2505,50 @@ mod window_close_tests {
                 .get(&egui::ViewportId::ROOT)
                 .is_some_and(|commands| commands.contains(&egui::ViewportCommand::CancelClose))
         );
+    }
+}
+
+#[cfg(test)]
+mod batch_window_tests {
+    use super::*;
+
+    #[test]
+    fn batch_window_previews_the_selected_row_and_stays_open() {
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(50., 30.);
+        designer.doc.add(
+            Element::Text {
+                text: "${Name}".into(),
+                font_pt: 14.,
+                bold: false,
+                align: TextAlign::Left,
+            },
+            2.,
+            2.,
+            40.,
+            10.,
+        );
+        designer.batch = Some(BatchState {
+            file: "people.csv".into(),
+            table: Some(crate::batch::parse_table(b"Name\nAda\nBo\n").unwrap()),
+            error: None,
+            row: 1,
+            preview: None,
+        });
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(900., 700.));
+        for _ in 0..3 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |_| designer.batch_window(&ctx, &Settings::default(), &[]),
+            );
+            output.textures_delta.clear();
+        }
+        let state = designer.batch.as_ref().expect("window stays open");
+        assert_eq!(state.preview.as_ref().map(|(row, _)| *row), Some(1));
+        assert!(designer.job.is_none(), "nothing prints without a printer");
     }
 }
