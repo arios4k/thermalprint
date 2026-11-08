@@ -7,6 +7,7 @@ pub mod detection;
 pub mod document;
 pub mod export;
 pub mod history;
+pub mod i18n;
 pub mod layout;
 pub mod printing;
 pub mod settings;
