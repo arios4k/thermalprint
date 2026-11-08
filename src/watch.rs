@@ -96,7 +96,8 @@ pub fn snap_access_hint(
     real_home: Option<&Path>,
     in_snap: bool,
 ) -> Option<&'static str> {
-    if !in_snap {
+    // Folders chosen in the file picker arrive as document-portal paths, which the Snap can read.
+    if !in_snap || dir.starts_with("/run/user") {
         return None;
     }
     let Some(relative) = real_home.and_then(|home| dir.strip_prefix(home).ok()) else {
@@ -223,5 +224,7 @@ mod tests {
             snap_access_hint(Path::new("/media/usb"), Some(home), false),
             None
         );
+        let portal = Path::new("/run/user/1000/doc/ab12/Downloads");
+        assert_eq!(snap_access_hint(portal, Some(home), true), None);
     }
 }
