@@ -75,6 +75,232 @@ pub struct DesignObject {
     #[serde(serialize_with = "serialize_rotation")]
     pub rotation: f32,
     pub element: Element,
+    /// A locked object cannot be moved, resized, rotated, or deleted from the canvas.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub locked: bool,
+    /// Mirror the object before it is rotated.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub flip_x: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub flip_y: bool,
+    /// Per-type options added after format 1; defaults keep older files unchanged.
+    #[serde(default, skip_serializing_if = "ObjectOptions::is_default")]
+    pub options: ObjectOptions,
+}
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
+/// How an image is reduced to the black and white a thermal printer prints.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ImageMode {
+    /// Draw the picture as it is and let the printer driver convert it.
+    #[default]
+    Original,
+    /// Every pixel becomes black or white around a cut-off.
+    Threshold,
+    /// Error-diffusion dithering, which keeps shading in photos.
+    Dither,
+}
+/// QR error-correction level: more correction survives more damage but needs a bigger code.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum QrLevel {
+    Low,
+    #[default]
+    Medium,
+    Quartile,
+    High,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ObjectOptions {
+    /// Text: break long lines at word ends so they fit the box width.
+    pub wrap: bool,
+    /// Text: shrink the font until the text fits the box.
+    pub fit: bool,
+    /// Text: multiplier on the normal line height.
+    pub line_spacing: f32,
+    pub italic: bool,
+    /// Text: white letters on a black box.
+    pub inverse: bool,
+    pub image_mode: ImageMode,
+    /// Image: -1 (flat) to 1 (harsh); 0 leaves contrast unchanged.
+    pub contrast: f32,
+    /// Image: the black and white cut-off for Threshold, 0 to 255.
+    pub threshold: u8,
+    /// Image: swap black and white.
+    pub invert: bool,
+    /// Barcode: readable text size in points; 0 chooses a size automatically.
+    pub barcode_text_pt: f32,
+    /// Barcode: put the readable text above the bars.
+    pub text_above: bool,
+    pub qr_level: QrLevel,
+}
+impl Default for ObjectOptions {
+    fn default() -> Self {
+        Self {
+            wrap: false,
+            fit: false,
+            line_spacing: 1.,
+            italic: false,
+            inverse: false,
+            image_mode: ImageMode::Original,
+            contrast: 0.,
+            threshold: 128,
+            invert: false,
+            barcode_text_pt: 0.,
+            text_above: false,
+            qr_level: QrLevel::Medium,
+        }
+    }
+}
+impl ObjectOptions {
+    pub fn is_default(&self) -> bool {
+        *self == Self::default()
+    }
+    pub fn validate(&self) -> Result<()> {
+        if !self.line_spacing.is_finite() || !(0.5..=3.).contains(&self.line_spacing) {
+            bail!("Invalid line spacing");
+        }
+        if !self.contrast.is_finite() || !(-1.0..=1.).contains(&self.contrast) {
+            bail!("Invalid image contrast");
+        }
+        if !self.barcode_text_pt.is_finite()
+            || !(self.barcode_text_pt == 0. || (2.0..=60.).contains(&self.barcode_text_pt))
+        {
+            bail!("Invalid barcode text size");
+        }
+        Ok(())
+    }
+}
+
+/// Where objects are aligned to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AlignTo {
+    /// The combined outline of the selected objects.
+    Selection,
+    /// The label itself.
+    Label,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Alignment {
+    Left,
+    CenterHorizontally,
+    Right,
+    Top,
+    CenterVertically,
+    Bottom,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Axis {
+    Horizontal,
+    Vertical,
+}
+
+fn outline(object: &DesignObject) -> (f32, f32, f32, f32) {
+    let (width, height) = object.rotated_size_mm();
+    (
+        object.x_mm,
+        object.y_mm,
+        object.x_mm + width,
+        object.y_mm + height,
+    )
+}
+
+impl LabelDocument {
+    /// Align the chosen unlocked objects. Rotated objects are aligned by their outline.
+    pub fn align(&mut self, ids: &[u64], alignment: Alignment, to: AlignTo) {
+        let chosen: Vec<usize> = self
+            .objects
+            .iter()
+            .enumerate()
+            .filter(|(_, o)| ids.contains(&o.id) && !o.locked)
+            .map(|(index, _)| index)
+            .collect();
+        if chosen.is_empty() || (to == AlignTo::Selection && chosen.len() < 2) {
+            return;
+        }
+        let frame = match to {
+            AlignTo::Label => (0., 0., self.width_mm, self.height_mm),
+            AlignTo::Selection => chosen
+                .iter()
+                .map(|&i| outline(&self.objects[i]))
+                .fold((f32::MAX, f32::MAX, f32::MIN, f32::MIN), |a, b| {
+                    (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))
+                }),
+        };
+        for index in chosen {
+            let object = &mut self.objects[index];
+            let (x0, y0, x1, y1) = outline(object);
+            match alignment {
+                Alignment::Left => object.x_mm += frame.0 - x0,
+                Alignment::Right => object.x_mm += frame.2 - x1,
+                Alignment::CenterHorizontally => {
+                    object.x_mm += (frame.0 + frame.2) / 2. - (x0 + x1) / 2.
+                }
+                Alignment::Top => object.y_mm += frame.1 - y0,
+                Alignment::Bottom => object.y_mm += frame.3 - y1,
+                Alignment::CenterVertically => {
+                    object.y_mm += (frame.1 + frame.3) / 2. - (y0 + y1) / 2.
+                }
+            }
+        }
+    }
+
+    /// Spread three or more unlocked objects so the gaps between them are equal. The two
+    /// outermost objects stay where they are.
+    pub fn distribute(&mut self, ids: &[u64], axis: Axis) {
+        let mut chosen: Vec<usize> = self
+            .objects
+            .iter()
+            .enumerate()
+            .filter(|(_, o)| ids.contains(&o.id) && !o.locked)
+            .map(|(index, _)| index)
+            .collect();
+        if chosen.len() < 3 {
+            return;
+        }
+        let span = |o: &DesignObject| {
+            let (x0, y0, x1, y1) = outline(o);
+            match axis {
+                Axis::Horizontal => (x0, x1),
+                Axis::Vertical => (y0, y1),
+            }
+        };
+        chosen.sort_by(|&a, &b| {
+            let (a, b) = (span(&self.objects[a]), span(&self.objects[b]));
+            (a.0 + a.1).total_cmp(&(b.0 + b.1))
+        });
+        let first = span(&self.objects[chosen[0]]).0;
+        let last = span(&self.objects[*chosen.last().unwrap()]).1;
+        let sizes: f32 = chosen
+            .iter()
+            .map(|&i| span(&self.objects[i]).1 - span(&self.objects[i]).0)
+            .sum();
+        let gap = (last - first - sizes) / (chosen.len() - 1) as f32;
+        let mut cursor = first;
+        for index in chosen {
+            let (start, end) = span(&self.objects[index]);
+            let object = &mut self.objects[index];
+            match axis {
+                Axis::Horizontal => object.x_mm += cursor - start,
+                Axis::Vertical => object.y_mm += cursor - start,
+            }
+            cursor += end - start + gap;
+        }
+    }
+
+    /// Move the chosen unlocked objects by a distance in millimeters.
+    pub fn nudge(&mut self, ids: &[u64], dx_mm: f32, dy_mm: f32) {
+        for object in self
+            .objects
+            .iter_mut()
+            .filter(|o| ids.contains(&o.id) && !o.locked)
+        {
+            object.x_mm += dx_mm;
+            object.y_mm += dy_mm;
+        }
+    }
 }
 // Keep whole-degree values compatible with existing integer-valued documents.
 fn serialize_rotation<S: serde::Serializer>(angle: &f32, serializer: S) -> Result<S::Ok, S::Error> {
@@ -143,6 +369,13 @@ pub struct LabelDocument {
     pub serial_number: u64,
     pub objects: Vec<DesignObject>,
     pub next_id: u64,
+    /// Spacing of the guide grid in millimeters; snapping moves in steps of a fifth of it.
+    #[serde(default = "default_grid")]
+    pub grid_mm: f32,
+}
+pub const DEFAULT_GRID_MM: f32 = 5.;
+fn default_grid() -> f32 {
+    DEFAULT_GRID_MM
 }
 impl LabelDocument {
     pub fn blank(width_mm: f32, height_mm: f32) -> Self {
@@ -154,6 +387,7 @@ impl LabelDocument {
             serial_number: 1,
             objects: vec![],
             next_id: 1,
+            grid_mm: DEFAULT_GRID_MM,
         }
     }
     pub fn add(
@@ -174,6 +408,10 @@ impl LabelDocument {
             height_mm,
             rotation: 0.,
             element,
+            locked: false,
+            flip_x: false,
+            flip_y: false,
+            options: ObjectOptions::default(),
         });
         id
     }
@@ -190,8 +428,12 @@ impl LabelDocument {
         {
             bail!("Invalid label dimensions");
         }
+        if !self.grid_mm.is_finite() || !(0.5..=50.).contains(&self.grid_mm) {
+            bail!("Invalid grid size");
+        }
         let mut seen = std::collections::HashSet::new();
         for o in &self.objects {
+            o.options.validate()?;
             if !seen.insert(o.id)
                 || ![o.x_mm, o.y_mm, o.width_mm, o.height_mm]
                     .iter()
@@ -577,6 +819,142 @@ mod rotation_tests {
         doc.objects[0].rotation = f32::NAN;
         assert!(doc.validate().is_err());
         doc.objects[0].rotation = f32::INFINITY;
+        assert!(doc.validate().is_err());
+    }
+}
+
+#[cfg(test)]
+mod arrangement_tests {
+    use super::*;
+
+    fn rect(doc: &mut LabelDocument, x: f32, y: f32, w: f32, h: f32) -> u64 {
+        doc.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 0.4,
+                filled: false,
+            },
+            x,
+            y,
+            w,
+            h,
+        )
+    }
+    fn bounds(doc: &LabelDocument, id: u64) -> (f32, f32, f32, f32) {
+        outline(doc.objects.iter().find(|o| o.id == id).unwrap())
+    }
+
+    #[test]
+    fn objects_align_to_each_edge_and_center_of_the_selection() {
+        let mut doc = LabelDocument::blank(100., 100.);
+        let (a, b) = (
+            rect(&mut doc, 10., 20., 10., 10.),
+            rect(&mut doc, 40., 50., 20., 5.),
+        );
+        let both = [a, b];
+        doc.align(&both, Alignment::Left, AlignTo::Selection);
+        assert_eq!((bounds(&doc, a).0, bounds(&doc, b).0), (10., 10.));
+        doc.align(&both, Alignment::Right, AlignTo::Selection);
+        assert_eq!((bounds(&doc, a).2, bounds(&doc, b).2), (30., 30.));
+        doc.align(&both, Alignment::Top, AlignTo::Selection);
+        assert_eq!((bounds(&doc, a).1, bounds(&doc, b).1), (20., 20.));
+        doc.align(&both, Alignment::Bottom, AlignTo::Selection);
+        assert_eq!((bounds(&doc, a).3, bounds(&doc, b).3), (30., 30.));
+        doc.align(&both, Alignment::CenterVertically, AlignTo::Selection);
+        let (ay, by) = (bounds(&doc, a), bounds(&doc, b));
+        assert_eq!((ay.1 + ay.3) / 2., (by.1 + by.3) / 2.);
+    }
+
+    #[test]
+    fn centering_on_the_label_works_for_one_object_and_uses_the_rotated_outline() {
+        let mut doc = LabelDocument::blank(100., 60.);
+        let id = rect(&mut doc, 0., 0., 20., 10.);
+        doc.align(&[id], Alignment::CenterHorizontally, AlignTo::Label);
+        doc.align(&[id], Alignment::CenterVertically, AlignTo::Label);
+        assert_eq!(bounds(&doc, id), (40., 25., 60., 35.));
+        doc.objects[0].rotate_to(90.);
+        doc.align(&[id], Alignment::CenterHorizontally, AlignTo::Label);
+        doc.align(&[id], Alignment::CenterVertically, AlignTo::Label);
+        assert_eq!(bounds(&doc, id), (45., 20., 55., 40.));
+        // Aligning a single object to its own selection does nothing.
+        doc.align(&[id], Alignment::Left, AlignTo::Selection);
+        assert_eq!(bounds(&doc, id), (45., 20., 55., 40.));
+    }
+
+    #[test]
+    fn distributing_equalizes_the_gaps_and_keeps_the_outer_objects() {
+        let mut doc = LabelDocument::blank(200., 50.);
+        let a = rect(&mut doc, 0., 0., 10., 10.);
+        let b = rect(&mut doc, 20., 0., 30., 10.);
+        let c = rect(&mut doc, 70., 0., 10., 10.);
+        doc.distribute(&[a, b, c], Axis::Horizontal);
+        let (ab, bb, cb) = (bounds(&doc, a), bounds(&doc, b), bounds(&doc, c));
+        assert_eq!((ab.0, cb.2), (0., 80.), "outer objects stay put");
+        assert!((bb.0 - ab.2 - (cb.0 - bb.2)).abs() < 1e-4, "equal gaps");
+        // Two objects cannot be distributed.
+        let before = doc.clone();
+        doc.distribute(&[a, b], Axis::Horizontal);
+        assert_eq!(doc, before);
+    }
+
+    #[test]
+    fn locked_objects_are_never_moved() {
+        let mut doc = LabelDocument::blank(100., 100.);
+        let (a, b) = (
+            rect(&mut doc, 10., 10., 10., 10.),
+            rect(&mut doc, 50., 50., 10., 10.),
+        );
+        doc.objects[1].locked = true;
+        doc.align(&[a, b], Alignment::Left, AlignTo::Label);
+        assert_eq!(bounds(&doc, b).0, 50.);
+        assert_eq!(bounds(&doc, a).0, 0.);
+        doc.nudge(&[a, b], 1., 2.);
+        assert_eq!((bounds(&doc, a).0, bounds(&doc, a).1), (1., 12.));
+        assert_eq!((bounds(&doc, b).0, bounds(&doc, b).1), (50., 50.));
+    }
+
+    #[test]
+    fn older_files_load_and_new_options_survive_a_round_trip() {
+        let old = r#"{"version":1,"title":"t","width_mm":50.0,"height_mm":30.0,"serial_number":1,"objects":[{"id":1,"x_mm":1.0,"y_mm":1.0,"width_mm":10.0,"height_mm":5.0,"rotation":0,"element":{"type":"Text","text":"x","font_pt":10.0,"bold":false,"align":"Left"}}],"next_id":2}"#;
+        let doc: LabelDocument = serde_json::from_str(old).unwrap();
+        doc.validate().unwrap();
+        assert_eq!(
+            (
+                doc.grid_mm,
+                doc.objects[0].locked,
+                doc.objects[0].options.clone()
+            ),
+            (5., false, ObjectOptions::default())
+        );
+        let mut changed = doc.clone();
+        changed.objects[0].locked = true;
+        changed.objects[0].flip_x = true;
+        changed.objects[0].options.wrap = true;
+        changed.objects[0].options.image_mode = ImageMode::Dither;
+        changed.grid_mm = 2.;
+        let back: LabelDocument =
+            serde_json::from_str(&serde_json::to_string(&changed).unwrap()).unwrap();
+        assert_eq!(back, changed);
+        let plain = serde_json::to_string(&doc).unwrap();
+        assert!(
+            !plain.contains("locked") && !plain.contains("options"),
+            "defaults are not written"
+        );
+    }
+
+    #[test]
+    fn out_of_range_options_are_rejected() {
+        let mut doc = LabelDocument::blank(50., 30.);
+        let id = rect(&mut doc, 1., 1., 5., 5.);
+        doc.objects
+            .iter_mut()
+            .find(|o| o.id == id)
+            .unwrap()
+            .options
+            .line_spacing = 9.;
+        assert!(doc.validate().is_err());
+        doc.objects[0].options.line_spacing = 1.;
+        doc.grid_mm = 0.;
         assert!(doc.validate().is_err());
     }
 }
