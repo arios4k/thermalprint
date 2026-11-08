@@ -21,3 +21,12 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked
+  manual:
+    # The APT release job runs on Ubuntu 22.04 (Python 3.10), so build the manual there too.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the user manual with the release job's Python
+        run: |
+          python3 --version
+          python3 scripts/build-manual.py --output target/manual

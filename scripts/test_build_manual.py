@@ -32,6 +32,13 @@ class ManualTests(unittest.TestCase):
         self.assertTrue((self.output / "index.html").exists())
         self.assertTrue((self.output / ".nojekyll").exists())
 
+    def test_version_matches_cargo_without_needing_tomllib(self):
+        import tomllib  # the test may use it; the builder must not
+
+        expected = tomllib.loads((ROOT / "Cargo.toml").read_text())["package"]["version"]
+        self.assertEqual(build_manual.version(), expected)
+        self.assertNotIn("tomllib", (ROOT / "scripts/build-manual.py").read_text().replace("tomllib.", "").replace("without tomllib", "").replace("no tomllib", ""))
+
     def test_the_pages_the_app_links_to_exist(self):
         # The Help button opens these; renaming one would break the app.
         for name in ("index", "designer", "import", "print-center", "batch"):
