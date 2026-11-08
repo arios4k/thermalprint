@@ -6,7 +6,7 @@
 
 **Your labels. Your printer. Your Linux desktop.**
 
-Design custom labels, prepare downloaded PDFs, and print on thermal stock—all in one local workspace.
+Design custom labels, prepare downloaded PDFs, and print on thermal stock—all in one local workspace. ThermalPrint is made for thermal label printers, but it prints through CUPS, so it also works with regular laser and inkjet printers (choose the paper size, such as A4 or Letter, and use the sheet printing to place several labels on a page).
 
 [![Latest release](https://img.shields.io/github/v/release/arios4k/thermalprint?label=download&color=207568)](https://github.com/arios4k/thermalprint/releases/latest)
 [![Rust CI](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml/badge.svg)](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml)

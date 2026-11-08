@@ -10,7 +10,7 @@ website: https://github.com/arios4k/thermalprint
 source-code: https://github.com/arios4k/thermalprint
 issues: https://github.com/arios4k/thermalprint/issues
 description: |
-  ThermalPrint is a local workspace for designing, preparing, and printing labels on thermal label printers, with a native Linux desktop interface.
+  ThermalPrint is a local workspace for designing, preparing, and printing labels on thermal label printers, with a native Linux desktop interface. It prints through CUPS, so it also works with regular laser and inkjet printers.
 
   Design
   - Start from a template or a blank label, then add text, addresses, logos, shapes, real barcodes, and QR codes.

@@ -9,7 +9,7 @@
     <name>Alexis Rios-Negron</name>
   </developer>
   <description>
-    <p>ThermalPrint is a local workspace for designing, preparing, and printing labels on thermal label printers, with a native Linux desktop interface.</p>
+    <p>ThermalPrint is a local workspace for designing, preparing, and printing labels on thermal label printers, with a native Linux desktop interface. It prints through CUPS, so it also works with regular laser and inkjet printers.</p>
     <ul>
       <li>Design labels with text, addresses, logos, shipping symbols, real barcodes (including GS1), and QR codes.</li>
       <li>Import PDF and image labels from carriers and marketplaces, crop them, and print them in order.</li>
