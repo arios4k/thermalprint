@@ -1057,24 +1057,21 @@ impl Designer {
                 ui.text_edit_singleline(data)
                     .accessible_name("Barcode or QR code content");
                 egui::ComboBox::from_id_salt("barcode-kind")
-                    .selected_text(match kind {
-                        BarcodeKind::Code128 => "Code 128", BarcodeKind::Code39 => "Code 39",
-                        BarcodeKind::Ean13 => "EAN-13", BarcodeKind::UpcA => "UPC-A",
-                    })
+                    .selected_text(barcode_name(*kind))
                     .show_ui(ui, |ui| {
                         for k in [
                             BarcodeKind::Code128,
                             BarcodeKind::Code39,
+                            BarcodeKind::Code93,
                             BarcodeKind::Ean13,
+                            BarcodeKind::Ean8,
                             BarcodeKind::UpcA,
+                            BarcodeKind::Itf,
+                            BarcodeKind::Codabar,
+                            BarcodeKind::DataMatrix,
                         ] {
-                            let (name, hint) = match k {
-                                BarcodeKind::Code128 => ("Code 128", "A compact barcode for letters, digits, and product references."),
-                                BarcodeKind::Code39 => ("Code 39", "A barcode for uppercase letters, digits, and a limited set of symbols."),
-                                BarcodeKind::Ean13 => ("EAN-13", crate::help::explanation("EAN")),
-                                BarcodeKind::UpcA => ("UPC-A", crate::help::explanation("UPC")),
-                            };
-                            ui.selectable_value(kind, k, name).on_hover_text(hint);
+                            ui.selectable_value(kind, k, barcode_name(k))
+                                .on_hover_text(barcode_hint(k));
                         }
                     });
                 ui.checkbox(show_text, "Show value below bars");
@@ -1557,6 +1554,42 @@ pub(crate) fn template_button(ui: &mut egui::Ui, name: &str) -> egui::Response {
         visuals.fg_stroke.color,
     );
     response
+}
+
+fn barcode_name(kind: BarcodeKind) -> &'static str {
+    match kind {
+        BarcodeKind::Code128 => "Code 128",
+        BarcodeKind::Code39 => "Code 39",
+        BarcodeKind::Code93 => "Code 93",
+        BarcodeKind::Ean13 => "EAN-13",
+        BarcodeKind::Ean8 => "EAN-8",
+        BarcodeKind::UpcA => "UPC-A",
+        BarcodeKind::Itf => "ITF (Interleaved 2 of 5)",
+        BarcodeKind::Codabar => "Codabar",
+        BarcodeKind::DataMatrix => "Data Matrix",
+    }
+}
+
+fn barcode_hint(kind: BarcodeKind) -> &'static str {
+    match kind {
+        BarcodeKind::Code128 => "A compact barcode for letters, digits, and product references.",
+        BarcodeKind::Code39 => {
+            "A barcode for uppercase letters, digits, and a limited set of symbols."
+        }
+        BarcodeKind::Code93 => "A denser alternative to Code 39 for letters, digits, and symbols.",
+        BarcodeKind::Ean13 => crate::help::explanation("EAN"),
+        BarcodeKind::Ean8 => {
+            "A short retail barcode for small packages. Enter 7 digits, or 8 with the check digit."
+        }
+        BarcodeKind::UpcA => crate::help::explanation("UPC"),
+        BarcodeKind::Itf => "Digits only, in pairs. Common on shipping cartons.",
+        BarcodeKind::Codabar => {
+            "Digits and a few symbols, framed by A–D. Used in libraries and blood banks."
+        }
+        BarcodeKind::DataMatrix => {
+            "A small square 2D symbol for tiny parts and labels. Keep the object roughly square."
+        }
+    }
 }
 
 pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Color32, label: &str) {
