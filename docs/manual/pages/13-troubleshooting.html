@@ -19,6 +19,12 @@ summary: Fixes for printers that are not listed, labels that print wrong, extra 
   <tr><td>CUPS accepted the job, nothing printed</td><td>Check <em>Job status</em>, the printer's power, cable or network, label roll, and the CUPS queue state.</td></tr>
   <tr><td>A barcode will not scan</td><td><a href="#barcodes-that-do-not-scan">See below.</a></td></tr>
   <tr><td>Text is missing or cut off in a design</td><td>Text does not wrap. Make the box bigger, use the <kbd>Enter</kbd> key for new lines, or reduce the font size.</td></tr>
+  <tr><td>Text is cut off even with a big box</td><td>Tick <strong>Wrap long lines</strong> or <strong>Shrink to fit the box</strong> in the text settings.</td></tr>
+  <tr><td>My font is not used on another computer</td><td>A design stores only the font name. Install the same font file there with the <strong>T</strong> button in the text settings.</td></tr>
+  <tr><td>Print sheet is gray</td><td>The selected printer does not list A4 or Letter. Save the sheet as a PDF and print it from another program, or choose a printer that offers the paper.</td></tr>
+  <tr><td>A GS1 barcode is refused</td><td>Read the red message under the barcode settings: a wrong check digit, a bad date, or a variable-length field that is not last in a GS1 Data Matrix. See the <a href="barcodes.html#gs1-barcodes">GS1 section</a>.</td></tr>
+  <tr><td>I closed ThermalPrint by accident</td><td>Start it again: unsaved changes are offered back at the top of the Label Designer. See <a href="designer.html#if-the-app-closes-unexpectedly">the recovery copy</a>.</td></tr>
+  <tr><td><code>.thermalprint</code> files show a generic icon</td><td>Update to 0.6.1 or later. For the Snap, run <a href="snap.html">the register-mime helper</a> again so the icon is copied to your user folder, then log out and in or restart the file manager.</td></tr>
   <tr><td>The watch folder switched itself off</td><td>The folder moved or cannot be read. Choose it again. In the Snap, see <a href="snap.html#folders-and-the-watch-folder">folders</a>.</td></tr>
   <tr><td>F1 or Help does nothing</td><td>ThermalPrint hands the link to your default web browser. Check that one is set, or open the <a href="index.html">manual</a> directly.</td></tr>
 </table>

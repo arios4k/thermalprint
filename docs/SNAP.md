@@ -16,7 +16,7 @@ From a checkout of this repository, run:
 
 ```sh
 sh scripts/build-snap.sh
-python3 scripts/verify-snap.py target/snap/thermalprint_0.6.0_amd64.snap
+python3 scripts/verify-snap.py target/snap/thermalprint_0.6.1_amd64.snap
 ```
 
 Use the version from `Cargo.toml` in the filename. The build adopts that version
@@ -39,7 +39,7 @@ Python packaging checks require PyYAML (`python3-yaml` on Ubuntu).
 ## Install a local build
 
 ```sh
-sudo snap install --dangerous target/snap/thermalprint_0.6.0_amd64.snap
+sudo snap install --dangerous target/snap/thermalprint_0.6.1_amd64.snap
 snap connections thermalprint
 snap run thermalprint
 ```
@@ -158,8 +158,8 @@ Tagged releases publish automatically. One-time setup:
    optionally add a required reviewer there if you want an approval gate.
 
 To release: bump `version` in `Cargo.toml` (and `Cargo.lock`), merge to `main`,
-then push a tag that exactly matches it, for example `git tag v0.6.0 && git push
-origin v0.6.0`. The workflow checks the tag, runs the packaging tests, builds and
+then push a tag that exactly matches it, for example `git tag v0.6.1 && git push
+origin v0.6.1`. The workflow checks the tag, runs the packaging tests, builds and
 inspects the Snap, then releases it to **stable**. The same `v*` tag also
 triggers the APT release ([release-apt.yml](../.github/workflows/release-apt.yml))
 and the Fedora RPM release ([release-rpm.yml](../.github/workflows/release-rpm.yml)),

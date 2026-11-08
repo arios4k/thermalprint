@@ -2072,11 +2072,7 @@ impl Designer {
                 {
                     add = Some(entry.address.clone());
                 }
-                if ui
-                    .small_button("✕")
-                    .on_hover_text(crate::i18n::tr("Remove this address"))
-                    .clicked()
-                {
+                if icon_action(ui, "Delete", "", "Remove this address", true, false).clicked() {
                     remove = Some(entry.name.clone());
                 }
             });
@@ -2130,7 +2126,7 @@ impl Designer {
                 let image = symbols::render(symbol, 96);
                 let texture = ui.ctx().load_texture(
                     format!("symbol-{}", symbol.name()),
-                    egui::ColorImage::from_rgba_unmultiplied([96, 96], image.as_raw()),
+                    on_white(&image),
                     egui::TextureOptions::LINEAR,
                 );
                 self.symbol_textures.push((symbol, texture));
@@ -2177,12 +2173,7 @@ impl Designer {
                 .or_insert_with(|| {
                     let color = image::open(&logo.path)
                         .map(|img| image::imageops::thumbnail(&img.to_rgba8(), 64, 64))
-                        .map(|thumb| {
-                            egui::ColorImage::from_rgba_unmultiplied(
-                                [thumb.width() as usize, thumb.height() as usize],
-                                thumb.as_raw(),
-                            )
-                        })
+                        .map(|thumb| on_white(&thumb))
                         .unwrap_or_else(|_| egui::ColorImage::example());
                     ui.ctx()
                         .load_texture("logo-thumb", color, egui::TextureOptions::LINEAR)
@@ -2196,11 +2187,7 @@ impl Designer {
                 if response.clicked() {
                     add_logo = Some(logo.path.clone());
                 }
-                if ui
-                    .small_button("✕")
-                    .on_hover_text(crate::i18n::tr("Remove this logo"))
-                    .clicked()
-                {
+                if icon_action(ui, "Delete", "", "Remove this logo", true, false).clicked() {
                     remove_logo = Some(logo.path.clone());
                 }
             });
@@ -2387,9 +2374,7 @@ impl Designer {
                         if ui.button(&t.name).clicked() {
                             open = Some(t.path.clone());
                         }
-                        if ui
-                            .small_button("✕")
-                            .on_hover_text(crate::i18n::tr("Remove this template"))
+                        if icon_action(ui, "Delete", "", "Remove this template", true, false)
                             .clicked()
                         {
                             remove = Some(t.path.clone());
@@ -3565,6 +3550,18 @@ fn element_tool(ui: &mut egui::Ui, label: &str) -> egui::Response {
     };
     paint_tool_icon(painter, response.rect.center(), color, label);
     response
+}
+
+/// A picture over white, so black shapes with a see-through background stay visible in dark mode.
+fn on_white(image: &image::RgbaImage) -> egui::ColorImage {
+    let mut rgb = Vec::with_capacity(image.width() as usize * image.height() as usize * 3);
+    for p in image.pixels() {
+        let a = p.0[3] as u16;
+        for c in 0..3 {
+            rgb.push(((p.0[c] as u16 * a + 255 * (255 - a) + 127) / 255) as u8);
+        }
+    }
+    egui::ColorImage::from_rgb([image.width() as usize, image.height() as usize], &rgb)
 }
 
 /// Where a new window opens: near the middle top of the application window.

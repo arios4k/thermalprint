@@ -34,5 +34,16 @@ data_home=${XDG_DATA_HOME:-"$HOME/.local/share"}
 mkdir -p "$data_home/mime/packages"
 cp "$mime_source" "$data_home/mime/packages/org.thermalprint.ThermalPrint.xml"
 update-mime-database "$data_home/mime"
+# The file icon: the Snap's own icon folder is not on the desktop's icon path.
+icon_dir="$data_home/icons/hicolor"
+for icon in scalable/mimetypes/application-x-thermalprint.svg 256x256/mimetypes/application-x-thermalprint.png; do
+    if [ -r "$snap_root/usr/share/icons/hicolor/$icon" ]; then
+        mkdir -p "$icon_dir/$(dirname "$icon")"
+        cp "$snap_root/usr/share/icons/hicolor/$icon" "$icon_dir/$icon"
+    fi
+done
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f -t "$icon_dir" >/dev/null 2>&1 || true
+fi
 xdg-mime default "${snap_instance}_thermalprint.desktop" application/x-thermalprint
 echo 'Saved .thermalprint labels are now associated with ThermalPrint Snap.'
