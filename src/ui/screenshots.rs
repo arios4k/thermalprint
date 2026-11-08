@@ -29,6 +29,10 @@ const MANUAL_SCREENS: &[&str] = &[
     "designer-arrange",
     "designer-printable",
     "designer-image",
+    "designer-gallery",
+    "designer-sheet",
+    "designer-range",
+    "designer-gs1",
 ];
 
 /// The screens to capture: the README set, or the named ones.
@@ -98,7 +102,10 @@ impl Capture {
         if !self.prepared {
             app.area = match scene {
                 "designer" | "rotation" | "save-changes" | "designer-text" | "batch"
-                | "designer-arrange" | "designer-printable" | "designer-image" => Area::Designer,
+                | "designer-arrange" | "designer-printable" | "designer-image"
+                | "designer-gallery" | "designer-sheet" | "designer-range" | "designer-gs1" => {
+                    Area::Designer
+                }
                 "import" | "import-watch" => Area::Import,
                 "print-center" | "print-center-full" => Area::PrintCenter,
                 _ => Area::Home,
@@ -131,6 +138,27 @@ impl Capture {
                     {
                         app.designer.select_object(id);
                     }
+                }
+                "designer-gallery" => app.designer.demo_window("gallery"),
+                "designer-sheet" | "designer-range" => {
+                    app.designer.doc = batch_demo_design();
+                    app.designer
+                        .demo_window(scene.trim_start_matches("designer-"));
+                }
+                "designer-gs1" => {
+                    let mut doc = app.designer.doc.clone();
+                    if let Some(object) = doc
+                        .objects
+                        .iter_mut()
+                        .find(|o| matches!(o.element, Element::Barcode { .. }))
+                    {
+                        object.element = Element::Barcode {
+                            kind: crate::design::BarcodeKind::Gs1128,
+                            data: "(01)0950600013435(10)LOT7".into(),
+                            show_text: true,
+                        };
+                    }
+                    app.designer.doc = doc;
                 }
                 "designer-arrange" => {
                     let ids: Vec<u64> = app

@@ -63,20 +63,19 @@ fn find_file(dir: &Path, name: &str) -> Option<PathBuf> {
 /// Load a font by name. Fonts are kept for the life of the program, so a design with the same
 /// font on many labels reads the file once.
 pub fn load_in(dir: &Path, name: &str) -> Option<&'static Font> {
-    static CACHE: OnceLock<Mutex<HashMap<(PathBuf, String), Option<&'static Font>>>> =
-        OnceLock::new();
+    static CACHE: OnceLock<Mutex<HashMap<(PathBuf, String), &'static Font>>> = OnceLock::new();
     let cache = CACHE.get_or_init(Default::default);
     let key = (dir.to_path_buf(), name.to_string());
-    if let Some(Some(found)) = cache.lock().ok()?.get(&key) {
-        return Some(found);
+    if let Some(found) = cache.lock().ok()?.get(&key) {
+        return Some(*found);
     }
     let loaded = find_file(dir, name)
         .and_then(|path| std::fs::read(path).ok())
         .and_then(|bytes| Font::from_bytes(bytes, FontSettings::default()).ok())
         .map(|font| &*Box::leak(Box::new(font)));
     // A missing font is not remembered, so installing it later takes effect at once.
-    if loaded.is_some() {
-        cache.lock().ok()?.insert(key, loaded);
+    if let Some(font) = loaded {
+        cache.lock().ok()?.insert(key, font);
     }
     loaded
 }

@@ -217,6 +217,9 @@ pub struct Designer {
     batch: Option<BatchState>,
     range: Option<RangeState>,
     sheet: Option<SheetState>,
+    /// The template gallery window: the search text while it is open.
+    gallery: Option<String>,
+    gallery_thumbs: std::collections::HashMap<String, egui::TextureHandle>,
     qr_form: QrForm,
     sscc_form: SsccForm,
     logos: Vec<crate::symbols::Logo>,
@@ -273,6 +276,8 @@ impl Designer {
             batch: None,
             range: None,
             sheet: None,
+            gallery: None,
+            gallery_thumbs: Default::default(),
             qr_form: QrForm::default(),
             sscc_form: SsccForm::default(),
             logos: crate::symbols::logos_dir()
@@ -291,6 +296,34 @@ impl Designer {
     pub(crate) fn select_object(&mut self, id: u64) {
         if self.doc.objects.iter().any(|object| object.id == id) {
             self.selected = vec![id];
+        }
+    }
+    /// Open one of the extra windows (documentation screenshots only).
+    pub(crate) fn demo_window(&mut self, name: &str) {
+        match name {
+            "gallery" => self.gallery = Some(String::new()),
+            "sheet" => {
+                let spec = crate::sheet::SheetSpec::fitting(
+                    crate::sheet::Page::A4,
+                    self.doc.width_mm,
+                    self.doc.effective_height_mm(),
+                    5.,
+                    0.,
+                );
+                self.sheet = Some(SheetState {
+                    count: spec.cells().max(1) as u32,
+                    spec,
+                    dpi: 300,
+                });
+            }
+            "range" => {
+                self.range = Some(RangeState {
+                    start: 100,
+                    step: 5,
+                    count: 20,
+                })
+            }
+            _ => {}
         }
     }
     /// Select several objects at once (documentation screenshots only).
@@ -990,6 +1023,150 @@ impl Designer {
             }
         }
     }
+    /// A small preview of a design for the gallery.
+    fn thumbnail(
+        ctx: &egui::Context,
+        key: &str,
+        doc: &LabelDocument,
+    ) -> Option<egui::TextureHandle> {
+        let output = design_render::render_label(doc, 203).ok()?;
+        let longest = output.image.width().max(output.image.height()).max(1) as f32;
+        let scale = (140. / longest).min(1.);
+        let (w, h) = (
+            ((output.image.width() as f32 * scale) as u32).max(1),
+            ((output.image.height() as f32 * scale) as u32).max(1),
+        );
+        let small =
+            image::imageops::resize(&output.image, w, h, image::imageops::FilterType::Triangle);
+        Some(ctx.load_texture(
+            format!("gallery-{key}"),
+            egui::ColorImage::from_rgb([w as usize, h as usize], small.as_raw()),
+            egui::TextureOptions::LINEAR,
+        ))
+    }
+    fn gallery_window(&mut self, ctx: &egui::Context) {
+        let Some(mut query) = self.gallery.take() else {
+            return;
+        };
+        let mut open = true;
+        let mut open_builtin: Option<usize> = None;
+        let mut open_user: Option<PathBuf> = None;
+        let mut remove_user: Option<PathBuf> = None;
+        // Preview a few more designs each frame so the window opens at once.
+        let mut budget = 4;
+        let mut missing = false;
+        egui::Window::new(crate::i18n::tr("Template gallery"))
+            .pivot(egui::Align2::CENTER_CENTER)
+            .default_pos(ctx.content_rect().center())
+            .open(&mut open)
+            .collapsible(false)
+            .default_width(560.)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Search"));
+                    ui.add(egui::TextEdit::singleline(&mut query))
+                        .accessible_name(crate::i18n::tr("Search templates"));
+                });
+                let needle = query.trim().to_lowercase();
+                egui::ScrollArea::vertical()
+                    .max_height(420.)
+                    .show(ui, |ui| {
+                        ui.label(RichText::new(crate::i18n::tr("Templates")).strong());
+                        ui.horizontal_wrapped(|ui| {
+                            for (i, t) in design::TEMPLATES.iter().enumerate() {
+                                if !needle.is_empty() && !t.name.to_lowercase().contains(&needle) {
+                                    continue;
+                                }
+                                let key = format!("builtin-{i}");
+                                if !self.gallery_thumbs.contains_key(&key) && budget > 0 {
+                                    budget -= 1;
+                                    if let Some(texture) =
+                                        Self::thumbnail(ctx, &key, &design::from_template(i))
+                                    {
+                                        self.gallery_thumbs.insert(key.clone(), texture);
+                                    }
+                                }
+                                missing |= !self.gallery_thumbs.contains_key(&key);
+                                let texture = self.gallery_thumbs.get(&key);
+                                if gallery_card(ui, t.name, texture, t.description).clicked() {
+                                    open_builtin = Some(i);
+                                }
+                            }
+                        });
+                        ui.add_space(6.);
+                        ui.label(RichText::new(crate::i18n::tr("Your templates")).strong());
+                        if self.user_templates.is_empty() {
+                            ui.label(
+                                RichText::new(crate::i18n::tr(
+                                    "Nothing saved yet. Use File → Save as template… to add one.",
+                                ))
+                                .small()
+                                .weak(),
+                            );
+                        }
+                        ui.horizontal_wrapped(|ui| {
+                            for t in self.user_templates.clone() {
+                                if !needle.is_empty() && !t.name.to_lowercase().contains(&needle) {
+                                    continue;
+                                }
+                                let key = format!("user-{}", t.path.display());
+                                if !self.gallery_thumbs.contains_key(&key) && budget > 0 {
+                                    budget -= 1;
+                                    if let Ok(doc) = LabelDocument::load(&t.path)
+                                        && let Some(texture) = Self::thumbnail(ctx, &key, &doc)
+                                    {
+                                        self.gallery_thumbs.insert(key.clone(), texture);
+                                    }
+                                }
+                                missing |= !self.gallery_thumbs.contains_key(&key);
+                                ui.vertical(|ui| {
+                                    let texture = self.gallery_thumbs.get(&key);
+                                    if gallery_card(ui, &t.name, texture, &t.name).clicked() {
+                                        open_user = Some(t.path.clone());
+                                    }
+                                    if icon_action(
+                                        ui,
+                                        "Delete",
+                                        "",
+                                        "Remove this template",
+                                        true,
+                                        false,
+                                    )
+                                    .clicked()
+                                    {
+                                        remove_user = Some(t.path.clone());
+                                    }
+                                });
+                            }
+                        });
+                    });
+            });
+        if missing {
+            ctx.request_repaint();
+        }
+        if let Some(i) = open_builtin {
+            self.request_template(i);
+            open = false;
+        }
+        if let Some(path) = open_user {
+            self.open_user_template(&path);
+            open = false;
+        }
+        if let Some(path) = remove_user {
+            match crate::user_templates::remove(&path) {
+                Ok(()) => self.status = "Template removed".into(),
+                Err(error) => {
+                    self.status = format!("{error:#}");
+                    self.error = true;
+                }
+            }
+            self.user_templates = crate::user_templates::list();
+            self.gallery_thumbs.retain(|k, _| !k.starts_with("user-"));
+        }
+        if open {
+            self.gallery = Some(query);
+        }
+    }
     fn sheet_window(&mut self, ctx: &egui::Context, settings: &Settings, printers: &[Printer]) {
         use crate::sheet::{Page, SheetSpec};
         let Some(mut state) = self.sheet.take() else {
@@ -1000,6 +1177,8 @@ impl Designer {
         let mut action: Option<bool> = None; // Some(true) = print, Some(false) = save PDF
         let printer = printers.iter().find(|p| p.name == settings.printer);
         egui::Window::new(crate::i18n::tr("Print on a sheet"))
+            .pivot(egui::Align2::CENTER_CENTER)
+            .default_pos(ctx.content_rect().center())
             .open(&mut open)
             .collapsible(false)
             .resizable(false)
@@ -1083,7 +1262,7 @@ impl Designer {
                             cells.len(),
                             crate::i18n::tr("labels per page"),
                             sheets,
-                            crate::i18n::tr("pages")
+                            crate::i18n::tr(if sheets == 1 { "page" } else { "pages" })
                         ));
                         let (pw, ph) = state.spec.page.size_mm();
                         let scale = 150. / ph;
@@ -1232,6 +1411,8 @@ impl Designer {
         let mut start = false;
         let printer = printers.iter().find(|p| p.name == settings.printer);
         egui::Window::new(crate::i18n::tr("Print a number range"))
+            .pivot(egui::Align2::CENTER_CENTER)
+            .default_pos(ctx.content_rect().center())
             .open(&mut open)
             .collapsible(false)
             .resizable(false)
@@ -1253,7 +1434,7 @@ impl Designer {
                 });
                 let (first, last) = crate::batch::range_ends(state.start, state.step, state.count);
                 ui.label(
-                    RichText::new(format!("{} {first} → {last}", crate::i18n::tr("Serials")))
+                    RichText::new(format!("{} {first} – {last}", crate::i18n::tr("Serials")))
                         .strong(),
                 );
                 let uses_serial = self.doc.objects.iter().any(|o| match &o.element {
@@ -1605,6 +1786,14 @@ impl Designer {
                         ui.close();
                     }
                     if ui
+                        .button(crate::i18n::tr("Template gallery…"))
+                        .on_hover_text(crate::i18n::tr("Browse the built-in templates and your own with previews"))
+                        .clicked()
+                    {
+                        self.gallery = Some(String::new());
+                        ui.close();
+                    }
+                    if ui
                         .button(crate::i18n::tr("Print on a sheet…"))
                         .on_hover_text(crate::i18n::tr("Place several labels on one A4 or Letter page"))
                         .clicked()
@@ -1768,6 +1957,7 @@ impl Designer {
         self.batch_window(&ctx, settings, printers);
         self.range_window(&ctx, settings, printers);
         self.sheet_window(&ctx, settings, printers);
+        self.gallery_window(&ctx);
         egui::Panel::left("designer-elements")
             .default_size(68.)
             .size_range(68.0..=68.0)
@@ -3380,6 +3570,51 @@ fn element_tool(ui: &mut egui::Ui, label: &str) -> egui::Response {
     response
 }
 
+/// One card of the template gallery: the preview above the name, as a single button.
+fn gallery_card(
+    ui: &mut egui::Ui,
+    name: &str,
+    texture: Option<&egui::TextureHandle>,
+    hover: &str,
+) -> egui::Response {
+    let shown = crate::i18n::tr(name);
+    let response = ui
+        .add(
+            egui::Button::new("")
+                .min_size(Vec2::new(150., 176.))
+                .corner_radius(8.),
+        )
+        .on_hover_text(hover);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, shown));
+    let painter = ui.painter_at(response.rect);
+    let preview = Rect::from_min_size(
+        response.rect.min + Vec2::new(5., 5.),
+        Vec2::new(response.rect.width() - 10., 140.),
+    );
+    painter.rect_filled(preview, 4., Color32::WHITE);
+    if let Some(texture) = texture {
+        let size = texture.size_vec2();
+        let scale = (preview.width() / size.x)
+            .min(preview.height() / size.y)
+            .min(1.);
+        let image_rect = Rect::from_center_size(preview.center(), size * scale);
+        painter.image(
+            texture.id(),
+            image_rect,
+            Rect::from_min_max(Pos2::ZERO, Pos2::new(1., 1.)),
+            Color32::WHITE,
+        );
+    }
+    painter.text(
+        Pos2::new(response.rect.center().x, response.rect.bottom() - 15.),
+        egui::Align2::CENTER_CENTER,
+        shown,
+        egui::TextStyle::Body.resolve(ui.style()),
+        ui.visuals().text_color(),
+    );
+    response
+}
+
 pub(crate) fn template_button(ui: &mut egui::Ui, name: &str) -> egui::Response {
     let (rect, response) = ui.allocate_exact_size(Vec2::new(218., 34.), Sense::click());
     let shown = crate::i18n::tr(name);
@@ -4808,5 +5043,48 @@ mod sheet_window_tests {
         }
         assert!(designer.sheet.is_some());
         assert!(designer.job.is_none());
+    }
+}
+
+#[cfg(test)]
+mod gallery_tests {
+    use super::*;
+
+    #[test]
+    fn the_gallery_previews_every_built_in_template_and_filters_by_name() {
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.gallery = Some(String::new());
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(1000., 800.));
+        for _ in 0..6 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |_| designer.gallery_window(&ctx),
+            );
+            output.textures_delta.clear();
+        }
+        let builtin = designer
+            .gallery_thumbs
+            .keys()
+            .filter(|k| k.starts_with("builtin-"))
+            .count();
+        assert_eq!(builtin, design::TEMPLATES.len());
+        assert!(
+            designer.gallery.is_some(),
+            "stays open until a template is picked"
+        );
+        designer.gallery = Some("zzz-no-match".into());
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |_| designer.gallery_window(&ctx),
+        );
+        output.textures_delta.clear();
+        assert!(designer.gallery.is_some());
     }
 }
