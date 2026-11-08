@@ -29,6 +29,8 @@ enum PendingAction {
     New,
     Open(PathBuf),
     Template(usize),
+    /// A past print reopened as an unsaved copy.
+    Copy(Box<LabelDocument>),
     Close,
 }
 
@@ -275,6 +277,9 @@ impl Designer {
     pub(crate) fn request_template(&mut self, index: usize) {
         self.request_action(PendingAction::Template(index));
     }
+    pub(crate) fn request_copy(&mut self, doc: LabelDocument) {
+        self.request_action(PendingAction::Copy(Box::new(doc)));
+    }
     pub(crate) fn request_open(&mut self, path: PathBuf) {
         self.request_action(PendingAction::Open(path));
     }
@@ -319,6 +324,10 @@ impl Designer {
             PendingAction::Template(index) => {
                 self.replace_document(design::from_template(index), None, false);
                 self.status = "Template opened · save to keep your label".into();
+            }
+            PendingAction::Copy(doc) => {
+                self.replace_document(*doc, None, false);
+                self.status = "Past label opened as a copy · save to keep it".into();
             }
             PendingAction::Open(path) => match LabelDocument::load(&path) {
                 Ok(doc) => {
@@ -510,14 +519,22 @@ impl Designer {
         let doc = self.doc.clone();
         let settings = settings.clone();
         let raw = self.raw_zpl;
+        let path = self.path.clone();
         self.start_job("Submitting design to CUPS…", move || {
-            if raw {
+            let submitted = if raw {
                 let bytes = zpl::encode_design(&doc, settings.dpi)?;
                 printing::submit_raw_zpl(&bytes, &settings, &printer)
             } else {
                 let output = design_render::render_label(&doc, settings.dpi)?;
                 printing::submit(&output, &settings, &printer)
-            }
+            }?;
+            crate::history::record(crate::history::design_entry(
+                &doc,
+                path.as_deref(),
+                &settings.printer,
+                settings.copies,
+            ));
+            Ok(submitted)
         });
     }
     fn batch_choose(state: &mut BatchState) {
@@ -687,6 +704,10 @@ impl Designer {
                         anyhow::anyhow!("Stopped at row {} of {total}: {e:#}", index + 1)
                     })?;
                 }
+                let mut entry =
+                    crate::history::design_entry(&doc, None, &settings.printer, settings.copies);
+                entry.title = format!("{} · batch of {total}", doc.title);
+                crate::history::record(entry);
                 Ok(format!(
                     "Submitted {total} labels. Use Job status to check the queue."
                 ))
@@ -2550,5 +2571,21 @@ mod batch_window_tests {
         let state = designer.batch.as_ref().expect("window stays open");
         assert_eq!(state.preview.as_ref().map(|(row, _)| *row), Some(1));
         assert!(designer.job.is_none(), "nothing prints without a printer");
+    }
+}
+
+#[cfg(test)]
+mod history_reopen_tests {
+    use super::*;
+
+    #[test]
+    fn a_past_print_reopens_as_an_unsaved_copy() {
+        let mut designer = Designer::new();
+        let mut past = LabelDocument::blank(40., 20.);
+        past.title = "Shelf tag".into();
+        designer.request_copy(past.clone());
+        assert_eq!(designer.doc, past);
+        assert!(designer.path.is_none(), "a copy has no file yet");
+        assert!(designer.is_modified(), "so closing it asks to save");
     }
 }

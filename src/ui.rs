@@ -84,6 +84,8 @@ pub struct ThermalPrint {
     drag: Option<Drag>,
     startup_file: Option<PathBuf>,
     watcher: Option<crate::watch::Watcher>,
+    history: Vec<crate::history::Entry>,
+    history_stamp: Option<std::time::SystemTime>,
     last_watch: Instant,
     queue: Vec<QueueItem>,
     selected: Option<usize>,
@@ -187,6 +189,8 @@ impl ThermalPrint {
             drag: None,
             startup_file: std::env::args_os().nth(1).map(PathBuf::from),
             watcher: None,
+            history: vec![],
+            history_stamp: None,
             last_watch: Instant::now(),
             queue: vec![],
             selected: None,
@@ -416,6 +420,12 @@ impl ThermalPrint {
                     };
                     let output = layout::render(&page, crop, &settings)?;
                     printing::submit(&output, &settings, &printer)?;
+                    crate::history::record(crate::history::import_entry(
+                        &item.path,
+                        item.page,
+                        &settings.printer,
+                        settings.copies,
+                    ));
                     Ok(())
                 })();
                 if let Err(e) = result {
@@ -608,11 +618,23 @@ impl ThermalPrint {
         };
         let output = self.output.clone().unwrap();
         let settings = self.settings.clone();
+        let source = self
+            .selected
+            .and_then(|i| self.queue.get(i))
+            .map(|item| (item.path.clone(), item.page));
         self.persist();
         self.task("Submitting to CUPS…", move || {
+            let submitted = printing::submit(&output, &settings, &printer)?;
+            if let Some((path, page)) = source {
+                crate::history::record(crate::history::import_entry(
+                    &path,
+                    page,
+                    &settings.printer,
+                    settings.copies,
+                ));
+            }
             Ok(Message::Done(format!(
-                "Submitted · {}. Use Job status to check the queue.",
-                printing::submit(&output, &settings, &printer)?
+                "Submitted · {submitted}. Use Job status to check the queue."
             )))
         });
     }
@@ -848,8 +870,96 @@ impl ThermalPrint {
             ui.add_space(12.);
             self.print_overview(ui);
         }
+        self.recent_prints(ui);
         if serde_json::to_string(&old).ok() != serde_json::to_string(&self.settings).ok() {
             self.persist();
+        }
+    }
+    /// Reload the history file when another print (including a Designer print) changed it.
+    fn refresh_history(&mut self) {
+        if self.capture.is_some() {
+            return;
+        }
+        let stamp = crate::history::history_path()
+            .and_then(|p| std::fs::metadata(p).ok())
+            .and_then(|m| m.modified().ok());
+        if stamp != self.history_stamp || (stamp.is_none() && !self.history.is_empty()) {
+            self.history_stamp = stamp;
+            self.history = crate::history::load();
+        }
+    }
+    /// Open a past label for review. Nothing is printed until the user presses Print.
+    fn reopen(&mut self, entry: &crate::history::Entry) {
+        use crate::history::Kind;
+        match (entry.kind, &entry.design, &entry.source) {
+            (Kind::Design, Some(doc), _) => {
+                self.area = Area::Designer;
+                self.designer.request_copy(doc.clone());
+            }
+            (Kind::Design, None, Some(path)) if path.is_file() => {
+                self.area = Area::Designer;
+                self.designer.request_open(path.clone());
+            }
+            (Kind::Import, _, Some(path)) if path.is_file() => {
+                self.area = Area::Import;
+                self.append_files(vec![path.clone()]);
+            }
+            _ => {
+                self.status =
+                    "That label is no longer available. Add the file again with Add labels…".into();
+                self.error = true;
+            }
+        }
+    }
+    fn recent_prints(&mut self, ui: &mut egui::Ui) {
+        self.refresh_history();
+        if self.history.is_empty() {
+            return;
+        }
+        ui.add_space(12.);
+        let mut open = None;
+        let mut clear = false;
+        Self::section_frame(ui).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            Self::center_heading(ui, "Recent prints", "Status");
+            ui.label(
+                RichText::new(
+                    "Open a past label to review it. Nothing prints until you press Print.",
+                )
+                .small()
+                .weak(),
+            );
+            for (index, entry) in self.history.iter().take(10).enumerate() {
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button("Open")
+                        .on_hover_text("Open this label for review")
+                        .clicked()
+                    {
+                        open = Some(index);
+                    }
+                    ui.label(RichText::new(&entry.title).strong());
+                    ui.label(
+                        RichText::new(format!(
+                            "{} · {} × {}",
+                            entry.time, entry.printer, entry.copies
+                        ))
+                        .small()
+                        .weak(),
+                    );
+                });
+            }
+            if ui.small_button("Clear history").clicked() {
+                clear = true;
+            }
+        });
+        if clear {
+            crate::history::clear();
+            self.history.clear();
+            self.history_stamp = None;
+        } else if let Some(index) = open {
+            let entry = self.history[index].clone();
+            self.reopen(&entry);
         }
     }
     fn center_heading(ui: &mut egui::Ui, title: &str, icon: &str) {
