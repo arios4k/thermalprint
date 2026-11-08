@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """Build the ThermalPrint user manual (static HTML) from docs/manual/pages.
 
-Standard library only, and compatible with Python 3.8 and newer. Each page is an HTML fragment that starts with a comment holding
-`title`, `group`, and `summary`. Pages are ordered by their filename prefix. Shortcodes:
+The page layout, stylesheet, and search script are the same as the Voltkit and Battery
+Health Center manuals, so the three read as one family. Standard library only, and
+compatible with Python 3.8 and newer (the APT release job runs Python 3.10).
 
-    {{figure:image-name|Alt text|Caption}}   a screenshot (docs/manual/images/image-name.png)
-    {{version}}                              the app version from Cargo.toml
+Each page is an HTML fragment that starts with a comment holding `title`, `group`, and
+`summary`; pages are ordered by filename. Shortcodes:
 
-The build fails on broken internal links, missing images, or images without alt text.
+    {{figure:name|Alt text|Caption}}   a screenshot that follows the reader's light or dark
+                                       theme (img/name-light.png and img/name-dark.png)
+    {{image:name|Alt text|Caption}}    one picture for both themes (img/name.png)
+    {{pages-table}}                    a table of every page with its summary
+
+The build fails on broken links, missing images, or images without alt text.
 """
 import argparse
 import html
@@ -19,12 +25,39 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 MANUAL = ROOT / "docs" / "manual"
+SITE_TITLE = "ThermalPrint Manual"
 REPOSITORY = "https://github.com/arios4k/thermalprint"
-GROUP_ORDER = ["Start here", "Using ThermalPrint", "Reference", "Help"]
+AUTHOR = "https://github.com/arios4k"
+GROUP_ORDER = ["Start here", "The app", "Settings and data", "Reference"]
+
+PAGE = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@TITLE@</title>
+<meta name="description" content="@DESC@">
+<meta name="author" content="Alexis Rios-Negron">
+<link rel="icon" href="img/icon.svg"><link rel="stylesheet" href="style.css"></head>
+<body>
+<header class="top"><button class="menu" aria-label="Open the menu" aria-expanded="false" aria-controls="nav">☰</button>
+<a class="brand" href="index.html"><img src="img/icon.svg" alt="" width="28" height="28"> <span>@SITE@</span></a>
+<button class="find" aria-label="Search the manual" aria-expanded="false">⌕</button>
+<input id="q" type="search" placeholder="Search the manual…" aria-label="Search the manual" autocomplete="off">
+<a class="ghost" href="@REPO@">GitHub</a></header>
+<div id="results" class="results" hidden></div>
+<div class="layout">
+<aside class="side" id="nav" aria-label="Manual pages"><div class="drawer-head"><a class="brand" href="index.html"><img src="img/icon.svg" alt="" width="28" height="28"> <span>@SITE@</span></a><button class="close" aria-label="Close the menu">✕ Close</button></div>@NAV@</aside>
+<main><details class="toc-m"><summary>On this page</summary><ul>@TOC@</ul></details><article>@BODY@</article>@PAGER@
+<footer>Written by Alexis Rios-Negron · ThermalPrint @VERSION@ · <a href="@REPO@/issues">Report a problem with this manual</a> · MIT License</footer></main>
+<aside class="toc" aria-label="On this page"><div class="group-title">On this page</div><ul>@TOC@</ul></aside>
+</div><script src="manual.js"></script></body></html>
+"""
 
 
 class ManualError(Exception):
     pass
+
+
+def esc(text: str) -> str:
+    return html.escape(text, quote=True)
 
 
 def version() -> str:
@@ -60,154 +93,180 @@ def parse_page(path: Path) -> dict:
     return {**meta, "slug": stem, "file": f"{stem}.html", "body": source[match.end():]}
 
 
-def expand_shortcodes(body: str, images: set, page: str) -> str:
-    def figure(match):
-        name, alt, caption = (part.strip() for part in match.group(1).split("|", 2))
-        if name not in images:
-            raise ManualError(f"{page}: unknown image {name!r}")
+def expand_shortcodes(body: str, images: set, page: str, pages: list) -> str:
+    def parts(raw):
+        name, alt, caption = (part.strip() for part in raw.split("|", 2))
         if not alt:
             raise ManualError(f"{page}: image {name!r} needs alt text")
+        return name, alt, caption
+
+    def themed(match):
+        name, alt, caption = parts(match.group(1))
+        for theme in ("light", "dark"):
+            if f"{name}-{theme}" not in images:
+                raise ManualError(f"{page}: missing image img/{name}-{theme}.png")
         return (
-            f'<figure><a href="images/{name}.png" target="_blank" rel="noopener">'
-            f'<img src="images/{name}.png" alt="{html.escape(alt, quote=True)}" loading="lazy"></a>'
-            f"<figcaption>{caption}</figcaption></figure>"
+            "<figure><picture>"
+            f'<source media="(prefers-color-scheme: dark)" srcset="img/{name}-dark.png">'
+            f'<img src="img/{name}-light.png" alt="{esc(alt)}" loading="lazy">'
+            f"</picture><figcaption>{caption}</figcaption></figure>"
         )
 
-    body = re.sub(r"\{\{figure:(.*?)\}\}", figure, body)
-    return body.replace("{{version}}", version())
+    def single(match):
+        name, alt, caption = parts(match.group(1))
+        if name not in images:
+            raise ManualError(f"{page}: missing image img/{name}.png")
+        return f'<figure><img src="img/{name}.png" alt="{esc(alt)}" loading="lazy"><figcaption>{caption}</figcaption></figure>'
+
+    def table(_):
+        rows = "".join(
+            f'<tr><td><a href="{p["file"]}">{esc(p["title"])}</a></td><td>{esc(p["summary"])}</td></tr>'
+            for p in pages
+            if p["slug"] != "index"
+        )
+        return f'<div class="table"><table><thead><tr><th>Page</th><th>What it covers</th></tr></thead><tbody>{rows}</tbody></table></div>'
+
+    body = re.sub(r"\{\{figure:(.*?)\}\}", themed, body)
+    body = re.sub(r"\{\{image:(.*?)\}\}", single, body)
+    return re.sub(r"\{\{pages-table\}\}", table, body)
 
 
-def add_heading_ids(body: str, page: str):
-    """Give every h2/h3 an id and return (body, table of contents entries)."""
-    seen, toc = set(), []
+def convert(body: str):
+    """Give headings ids and anchors, wrap tables, and return (html, headings)."""
+    body = re.sub(r"<table\b", '<div class="table"><table', body)
+    body = body.replace("</table>", "</table></div>")
+    # Tables written by the pages-table shortcode are already wrapped.
+    body = body.replace('<div class="table"><div class="table">', '<div class="table">').replace("</table></div></div>", "</table></div>")
+    heads, seen = [], set()
 
     def heading(match):
-        level, attrs, inner = match.group(1), match.group(2), match.group(3)
+        level, attrs, text = match.group(1), match.group(2), match.group(3)
         found = re.search(r'id="([^"]+)"', attrs)
-        slug = found.group(1) if found else slugify(inner)
-        base, count = slug, 2
-        while slug in seen:
-            slug, count = f"{base}-{count}", count + 1
-        seen.add(slug)
-        toc.append((int(level), slug, re.sub(r"<[^>]+>", "", inner)))
-        attrs = attrs if found else f'{attrs} id="{slug}"'
-        return f'<h{level}{attrs}>{inner} <a class="anchor" href="#{slug}" aria-label="Link to this section">#</a></h{level}>'
+        ident = found.group(1) if found else slugify(text)
+        while ident in seen:
+            ident += "-2"
+        seen.add(ident)
+        if level in "23":
+            heads.append((int(level), ident, re.sub(r"<[^>]+>", "", text)))
+        anchor = f'<a class="anchor" href="#{ident}" aria-label="Link to this section">#</a>' if level != "1" else ""
+        return f'<h{level} id="{ident}">{text}{anchor}</h{level}>'
 
-    return re.sub(r"<h([23])([^>]*)>(.*?)</h\1>", heading, body, flags=re.S), toc
-
-
-def plain_text(body: str) -> str:
-    text = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", body, flags=re.S)
-    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", text))).strip()
-
-
-def render_nav(pages, current):
-    out = []
-    for group in GROUP_ORDER:
-        members = [p for p in pages if p["group"] == group]
-        if not members:
-            continue
-        out.append(f'<div class="nav-group"><p class="nav-title">{html.escape(group)}</p><ul>')
-        for page in members:
-            active = ' aria-current="page"' if page["slug"] == current else ""
-            out.append(f'<li><a href="{page["file"]}"{active}>{html.escape(page["title"])}</a></li>')
-        out.append("</ul></div>")
-    return "\n".join(out)
-
-
-def render_page(template, pages, index, body, toc):
-    page = pages[index]
-    toc_html = ""
-    if len(toc) > 1:
-        items = "".join(
-            f'<li class="l{level}"><a href="#{slug}">{html.escape(text)}</a></li>' for level, slug, text in toc
-        )
-        toc_html = f'<nav class="toc" aria-label="On this page"><p>On this page</p><ul>{items}</ul></nav>'
-    previous = pages[index - 1] if index else None
-    following = pages[index + 1] if index + 1 < len(pages) else None
-    pager = '<nav class="pager" aria-label="Previous and next page">'
-    pager += (
-        f'<a class="prev" href="{previous["file"]}"><span>Previous</span>{html.escape(previous["title"])}</a>'
-        if previous
-        else "<span></span>"
-    )
-    pager += (
-        f'<a class="next" href="{following["file"]}"><span>Next</span>{html.escape(following["title"])}</a>'
-        if following
-        else "<span></span>"
-    )
-    pager += "</nav>"
-    replacements = {
-        "{{title}}": html.escape(page["title"]),
-        "{{summary}}": html.escape(page["summary"], quote=True),
-        "{{nav}}": render_nav(pages, page["slug"]),
-        "{{toc}}": toc_html,
-        "{{content}}": body,
-        "{{pager}}": pager,
-        "{{version}}": version(),
-        "{{repository}}": REPOSITORY,
-        "{{home}}": "index.html",
-    }
-    result = template
-    for key, value in replacements.items():
-        result = result.replace(key, value)
-    return result
-
-
-def check_links(output: Path, pages) -> None:
-    files = {p["file"] for p in pages}
-    for page in pages:
-        text = (output / page["file"]).read_text()
-        for href in re.findall(r'(?:href|src)="([^"]+)"', text):
-            if re.match(r"(https?:|mailto:|#|data:)", href):
-                continue
-            target, _, fragment = href.partition("#")
-            if not target:
-                continue
-            if target in files:
-                if fragment and f'id="{fragment}"' not in (output / target).read_text():
-                    raise ManualError(f"{page['file']}: link to missing section {href}")
-            elif not (output / target).exists():
-                raise ManualError(f"{page['file']}: broken link {href}")
-        for tag in re.findall(r"<img\b[^>]*>", text):
-            if 'alt="' not in tag:
-                raise ManualError(f"{page['file']}: image without alt text: {tag[:80]}")
+    return re.sub(r"<h([1-3])([^>]*)>(.*?)</h\1>", heading, body, flags=re.S), heads
 
 
 def build(output: Path) -> list:
     sources = sorted((MANUAL / "pages").glob("*.html"))
     if not sources:
         raise ManualError("No pages found in docs/manual/pages")
-    images = {p.stem for p in (MANUAL / "images").glob("*.png")}
-    pages = [parse_page(p) for p in sources]
-    pages.sort(key=lambda p: (GROUP_ORDER.index(p["group"]), p["file"] != "index.html"))
-    # Keep the numeric order inside each group: files were sorted by name above.
-    order = {p["file"]: i for i, p in enumerate(parse_page(s) for s in sources)}
-    pages.sort(key=lambda p: (GROUP_ORDER.index(p["group"]), order[p["file"]]))
-    template = (MANUAL / "template.html").read_text()
+    parsed = [parse_page(p) for p in sources]
+    order = {p["file"]: n for n, p in enumerate(parsed)}
+    pages = sorted(parsed, key=lambda p: (GROUP_ORDER.index(p["group"]), order[p["file"]]))
+    images = {p.stem for p in (MANUAL / "img").glob("*.png")}
+    current = version()
+
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)
-    shutil.copytree(MANUAL / "assets", output / "assets")
-    shutil.copytree(MANUAL / "images", output / "images")
-    index_entries = []
-    for number, page in enumerate(pages):
-        body = expand_shortcodes(page["body"], images, page["file"])
-        body, toc = add_heading_ids(body, page["file"])
-        (output / page["file"]).write_text(render_page(template, pages, number, body, toc))
-        index_entries.append(
-            {
-                "title": page["title"],
-                "url": page["file"],
-                "summary": page["summary"],
-                "headings": [text for _, _, text in toc],
-                "text": plain_text(body)[:6000],
-            }
+    shutil.copytree(MANUAL / "img", output / "img")
+    for name in ("style.css", "manual.js"):
+        shutil.copy2(MANUAL / name, output / name)
+
+    for page in pages:
+        body = expand_shortcodes(page["body"], images, page["file"], pages)
+        page["body"], page["heads"] = convert(f"<h1>{esc(page['title'])}</h1>" + body)
+        plain = re.sub(r'<a class="anchor"[^>]*>#</a>', "", page["body"])
+        page["text"] = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", plain))).strip()
+
+    def nav(active):
+        out = ""
+        for group in GROUP_ORDER:
+            members = [p for p in pages if p["group"] == group]
+            if not members:
+                continue
+            out += f'<div class="group"><div class="group-title">{esc(group)}</div><ul>'
+            for p in members:
+                cur = ' aria-current="page"' if p["slug"] == active else ""
+                out += f'<li><a href="{p["file"]}"{cur}>{esc(p["title"])}</a></li>'
+            out += "</ul></div>"
+        return out
+
+    (output / "search.json").write_text(
+        json.dumps(
+            [
+                dict(
+                    url=p["file"],
+                    title=p["title"],
+                    group=p["group"],
+                    text=p["text"][:6000],
+                    heads=[dict(id=i, t=t) for _, i, t in p["heads"]],
+                )
+                for p in pages
+            ],
+            ensure_ascii=False,
         )
-    (output / "assets" / "search-index.json").write_text(json.dumps(index_entries, ensure_ascii=False))
+    )
+
+    byline = f'<p class="byline">By <a href="{AUTHOR}">Alexis Rios-Negron</a> · ThermalPrint {current}</p>'
+    for number, page in enumerate(pages):
+        toc = "".join(f'<li class="l{level}"><a href="#{ident}">{esc(text)}</a></li>' for level, ident, text in page["heads"])
+        previous = pages[number - 1] if number else None
+        following = pages[number + 1] if number + 1 < len(pages) else None
+        pager = '<nav class="pager" aria-label="Previous and next page">'
+        pager += (
+            f'<a class="prev" href="{previous["file"]}"><span>Previous</span>{esc(previous["title"])}</a>'
+            if previous
+            else "<span></span>"
+        )
+        pager += (
+            f'<a class="next" href="{following["file"]}"><span>Next</span>{esc(following["title"])}</a>'
+            if following
+            else "<span></span>"
+        )
+        pager += "</nav>"
+        title = SITE_TITLE if page["title"] == SITE_TITLE else f"{page['title']} · {SITE_TITLE}"
+        text = PAGE
+        for key, value in {
+            "@TITLE@": esc(title),
+            "@SITE@": SITE_TITLE,
+            "@DESC@": esc(page["summary"]),
+            "@REPO@": REPOSITORY,
+            "@NAV@": nav(page["slug"]),
+            "@TOC@": toc,
+            "@PAGER@": pager,
+            "@VERSION@": current,
+        }.items():
+            text = text.replace(key, value)
+        body = page["body"].replace("</h1>", "</h1>" + byline, 1)
+        (output / page["file"]).write_text(text.replace("@BODY@", body))
     (output / ".nojekyll").touch()
-    check_links(output, pages)
+    check(output, pages)
     return pages
+
+
+def check(output: Path, pages: list) -> None:
+    """A broken link, missing image, or image without alt text fails the build."""
+    ids = {p["file"]: set(re.findall(r'id="([^"]+)"', (output / p["file"]).read_text())) for p in pages}
+    bad = []
+    for page in pages:
+        text = (output / page["file"]).read_text()
+        for href in re.findall(r'href="([^"]+)"', text):
+            if re.match(r"(https?:|mailto:|data:)", href):
+                continue
+            target, _, fragment = href.partition("#")
+            target = target or page["file"]
+            if target in ids:
+                if fragment and fragment not in ids[target]:
+                    bad.append(f"{page['file']}: no section {href}")
+            elif not (output / target).exists():
+                bad.append(f"{page['file']}: no page {href}")
+        for source in re.findall(r'(?:src|srcset)="([^"]+)"', text):
+            if not (output / source).exists():
+                bad.append(f"{page['file']}: missing {source}")
+        for tag in re.findall(r"<img\b[^>]*>", text):
+            if 'alt="' not in tag:
+                bad.append(f"{page['file']}: image without alt text: {tag[:70]}")
+    if bad:
+        raise ManualError("Broken links or images in the manual:\n  " + "\n  ".join(bad))
 
 
 def main() -> int:

@@ -1,17 +1,17 @@
 <!--
-title: Batch printing from CSV
-group: Using ThermalPrint
-summary: Merge a spreadsheet into a label design and print one label per row, with a preview and a safety check.
+title: Batch printing
+group: The app
+summary: Merge a spreadsheet into a design and print one label per row, with a preview and a safety check.
 -->
 <p>Batch printing fills one label design with the rows of a spreadsheet and prints one label per row. Use it for customer addresses, product SKUs, asset tags, serial-numbered stickers, or anything where the layout stays the same and the words change.</p>
 
 {{figure:batch|The Batch print from CSV window showing the loaded file, a row preview of a customer label, and the Print 3 labels button|The batch window: the file summary, a live preview of the chosen row, and the Print button.}}
 
 <h2>How it works in three steps</h2>
-<ol class="steps">
+<ol>
   <li><strong>Put placeholders in your design.</strong> In the <a href="designer.html">Label Designer</a>, type <code>${ColumnName}</code> wherever a value should go, in text, barcode, or QR content.</li>
   <li><strong>Prepare a CSV file</strong> whose first row names the columns.</li>
-  <li><strong>Open the batch window</strong> with <span class="ui">File → Batch print from CSV…</span>, choose the file, check the preview, and print.</li>
+  <li><strong>Open the batch window</strong> with <strong>File → Batch print from CSV…</strong>, choose the file, check the preview, and print.</li>
 </ol>
 
 <h2>Step 1: placeholders in the design</h2>
@@ -48,8 +48,8 @@ Alan Turing,Manchester,SKU-1003</code></pre>
 
 <h2>Step 3: the batch window</h2>
 <ol>
-  <li>Open <span class="ui">File → Batch print from CSV…</span> in the Label Designer.</li>
-  <li>Press <span class="ui">Choose CSV file…</span> and pick your file. The window shows <em>customers.csv · 3 rows · 3 columns</em>.</li>
+  <li>Open <strong>File → Batch print from CSV…</strong> in the Label Designer.</li>
+  <li>Press <strong>Choose CSV file…</strong> and pick your file. The window shows <em>customers.csv · 3 rows · 3 columns</em>.</li>
   <li>Read the messages below it:
     <ul>
       <li>A <strong>red</strong> message means the design uses a placeholder the file has no column for, such as <em>The design uses ${Phone} but the file has no column with that name</em>. Printing is disabled until you fix the name.</li>
@@ -57,10 +57,10 @@ Alan Turing,Manchester,SKU-1003</code></pre>
       <li>An orange message says the design has no placeholders yet.</li>
     </ul>
   </li>
-  <li>Change <span class="ui">Preview row</span> to see the finished label for any row.</li>
-  <li>Press <span class="ui">Print N labels</span>. If Print Center asks for more than one copy, the button says so (for example <em>Print 3 labels × 2 copies</em>).</li>
+  <li>Change <strong>Preview row</strong> to see the finished label for any row.</li>
+  <li>Press <strong>Print N labels</strong>. If Print Center asks for more than one copy, the button says so (for example <em>Print 3 labels × 2 copies</em>).</li>
 </ol>
-<div class="note"><p>The <span class="ui">Help</span> button in the batch window opens this page.</p></div>
+<div class="callout note"><p>The <strong>Help</strong> button in the batch window opens this page.</p></div>
 
 <h2>What happens when you print</h2>
 <ul>

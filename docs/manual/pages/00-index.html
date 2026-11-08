@@ -1,66 +1,34 @@
 <!--
-title: Welcome to ThermalPrint
+title: ThermalPrint Manual
 group: Start here
-summary: Design, prepare, and print thermal labels on Linux. Start here for a five-minute tour and a map of this manual.
+summary: Design, prepare, and print thermal labels on Linux: a guide to every feature.
 -->
-<p>ThermalPrint is a desktop app for people who print labels on a thermal label printer: shipping labels downloaded from a carrier or marketplace, price tags, shelf labels, inventory stickers, and anything else that fits on a roll. Everything happens on your computer. Your files are never uploaded, and you do not need an account with anyone.</p>
-
-{{figure:home-light|The ThermalPrint home screen with two large cards, Create a label and Import and convert, above a row of label templates|The Home screen: two ways to start, plus ready-made templates.}}
-
-<div class="cards">
-  <a class="card" href="import.html"><strong>Prepare a downloaded label</strong><span>Open a PDF or image, crop away the instructions, check it, and print.</span></a>
-  <a class="card" href="designer.html"><strong>Design your own label</strong><span>Text, addresses, logos, shapes, barcodes, and QR codes on a precisely sized canvas.</span></a>
-  <a class="card" href="batch.html"><strong>Print from a spreadsheet</strong><span>Merge a CSV file into a design and print one label per row.</span></a>
-  <a class="card" href="print-center.html"><strong>Set up your printer</strong><span>Media, resolution, alignment, and a record of what you printed.</span></a>
-</div>
-
-<h2>Five-minute quick start</h2>
-<p>There are two common ways to begin. Pick the one that matches what you have in front of you.</p>
-
-<h3>A. You have a shipping label file</h3>
-<ol class="steps">
-  <li><strong>Install ThermalPrint and add your printer.</strong> See <a href="install.html">Installing</a>. Add the printer in your desktop's own printer settings first; ThermalPrint prints through the same system.</li>
-  <li><strong>Open the label.</strong> Drag the PDF or image into the window, press <kbd>Ctrl</kbd>+<kbd>O</kbd>, or choose <span class="ui">Add labels…</span> in <span class="ui">Import &amp; Convert</span>.</li>
-  <li><strong>Check the crop.</strong> ThermalPrint proposes the label area. Look at the <span class="ui">Thermal label</span> preview, and tick <span class="ui">I checked the crop and barcode edges</span> when it looks right.</li>
-  <li><strong>Pick the paper.</strong> Choose <span class="ui">4 × 6 in</span> (or your stock size), your printer, and the matching media.</li>
-  <li><strong>Print.</strong> Press <span class="ui">Print label</span> or <kbd>Ctrl</kbd>+<kbd>P</kbd>.</li>
-</ol>
-
-<h3>B. You want to make a label</h3>
-<ol class="steps">
-  <li><strong>Open the Label Designer</strong> and choose a template on the Home screen, or start with a blank label.</li>
-  <li><strong>Edit the objects.</strong> Click text to change it, drag things where you want them, and use the panel on the right for exact sizes.</li>
-  <li><strong>Choose your printer</strong> in <span class="ui">Print Center</span> so the label size matches your stock.</li>
-  <li><strong>Press Print.</strong> Save the design (<kbd>Ctrl</kbd>+<kbd>S</kbd>) if you will use it again.</li>
-</ol>
-
-<div class="tip"><p><strong>Print a test label first.</strong> A successful submission means the printer system accepted the job. It does not prove that a barcode scans. Always check the first physical label before printing a roll.</p></div>
-
-<h2>What ThermalPrint can do</h2>
-<table>
-  <tr><th>Feature</th><th>Where to read about it</th></tr>
-  <tr><td>Import PDFs and images (PNG, JPEG, TIFF, BMP, WebP), crop, review, print in order</td><td><a href="import.html">Import &amp; Convert</a></td></tr>
-  <tr><td>Design labels with text, barcodes, QR codes, shapes, images, and free rotation</td><td><a href="designer.html">Label Designer</a>, <a href="objects.html">Objects</a></td></tr>
-  <tr><td>Nine barcode types plus QR codes, including Data Matrix and EAN-8</td><td><a href="barcodes.html">Barcode reference</a></td></tr>
-  <tr><td>Print one label per spreadsheet row</td><td><a href="batch.html">Batch printing from CSV</a></td></tr>
-  <tr><td>Remember settings per printer, fix off-center printing, print a ruler test label</td><td><a href="print-center.html">Print Center</a></td></tr>
-  <tr><td>Watch a folder, drag and drop, reopen recent prints</td><td><a href="automation.html">Folder watching and history</a></td></tr>
-  <tr><td>Export PDF, PNG, SVG, and ZPL files</td><td><a href="export.html">Exporting</a></td></tr>
-  <tr><td>Light and dark themes; English, Spanish, German, and French</td><td><a href="workspace.html">The workspace</a></td></tr>
-</table>
-
-<h2>About the author</h2>
-<p>ThermalPrint and this manual were created by <strong>Alexis Rios-Negron</strong>. It is free and open source software under the MIT license. The code is on <a href="https://github.com/arios4k/thermalprint">GitHub</a>, where you can also report a problem or suggest an improvement. The same author makes two other free Linux apps: <a href="https://arios4k.github.io/voltkit/manual/">Voltkit</a>, a collection of everyday desktop utilities, and <a href="https://arios4k.github.io/battery-health-center/">Battery Health Center</a>, which shows laptop battery health for GNOME.</p>
-
-<h2>Getting help</h2>
+<p><strong>ThermalPrint</strong> is a native Linux desktop app for people who print labels on a thermal label printer: shipping labels downloaded from a carrier or marketplace, price tags, shelf labels, inventory stickers, and anything else that fits on a roll. Everything happens on your computer; your files are never uploaded, and you do not need an account with anyone. This manual explains every feature of the app, page by page, with screenshots.</p>
+{{figure:home|The ThermalPrint home screen with two large cards, Create a label and Import and convert, above a row of label templates|The Home screen: two ways to start, plus ready-made templates.}}
+<h2 id="how-to-read-this-manual">How to read this manual</h2>
 <ul>
-  <li>Press <kbd>F1</kbd> or the <span class="ui">?</span> button in the title bar at any time. ThermalPrint opens the manual page for the screen you are on.</li>
-  <li>Use the search box at the top of every page, or press <kbd>/</kbd>.</li>
-  <li>Open the main menu (<span class="ui">☰</span>) and choose <span class="ui">Printing terms</span> for a searchable glossary inside the app.</li>
-  <li>Stuck? Try <a href="troubleshooting.html">Troubleshooting</a>, then report a bug on <a href="https://github.com/arios4k/thermalprint/issues">GitHub</a>. Please remove personal addresses and tracking numbers from anything you post.</li>
+<li><strong>New here?</strong> Start with <a href="install.html">Getting started</a>: install, set up your printer, and print your first label.</li>
+<li><strong>Have a shipping label file?</strong> Go to <a href="import.html">Import and Convert</a>.</li>
+<li><strong>Making your own labels?</strong> Go to <a href="designer.html">Label Designer</a> and <a href="objects.html">Objects</a>.</li>
+<li><strong>Printing many labels from a spreadsheet?</strong> See <a href="batch.html">Batch printing</a>.</li>
+<li><strong>Looking for a barcode type, a setting, or a limit?</strong> See the <a href="barcodes.html">Barcode reference</a> and <a href="settings.html">Settings and privacy</a>.</li>
+<li><strong>Something is not working?</strong> See <a href="troubleshooting.html">Troubleshooting</a>.</li>
+<li>Press <kbd>/</kbd> anywhere in the manual to search it.</li>
 </ul>
-
-<div class="pair">
-{{figure:home-light|ThermalPrint home screen in light mode|Light theme.}}
-{{figure:home-dark|ThermalPrint home screen in dark mode|Dark theme.}}
-</div>
+<h2 id="the-pages">The pages of this manual</h2>
+{{pages-table}}
+<h2 id="principles">Principles</h2>
+<ul>
+<li><strong>Free and open source.</strong> ThermalPrint is released under the MIT license. There is no account, no advertising, and no tracking.</li>
+<li><strong>Private by design.</strong> Labels are processed on your computer. The only things that leave it are the print job you send to your printer and the links you click yourself, such as this manual.</li>
+<li><strong>Prints through CUPS.</strong> If your printer works in other Linux programs, it works here. Nothing is installed or changed on your printer.</li>
+<li><strong>Careful before it prints.</strong> A label that would be cut off is blocked, and a batch is checked row by row before anything is sent.</li>
+<li><strong>Accessible.</strong> Every button has a name for screen readers, and everything works from the keyboard.</li>
+<li><strong>In your language.</strong> The app follows your system language: English, Spanish, German, and French. This manual is in English.</li>
+</ul>
+<h2 id="getting-help">Getting help</h2>
+<ul>
+<li>In the app, press <kbd>F1</kbd> or click the <strong>?</strong> button in the title bar to open this manual at the page for the screen you are on.</li>
+<li>Found a bug or have an idea? <a href="https://github.com/arios4k/thermalprint/issues">Open an issue</a>. Please remove personal addresses and tracking numbers from anything you post.</li>
+<li>ThermalPrint's author also makes two other free Linux apps with manuals in this same style: <a href="https://arios4k.github.io/voltkit/manual/">Voltkit</a> and <a href="https://arios4k.github.io/battery-health-center/">Battery Health Center</a>.</li>
+</ul>
