@@ -219,6 +219,7 @@ impl ThermalPrint {
             screenshots::seed(&mut app, &cc.egui_ctx);
             app.capture = Some(screenshots::Capture::new(directory, screenshot_style));
         } else {
+            app.designer.enable_recovery();
             app.refresh_printers();
         }
         app

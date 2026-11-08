@@ -90,6 +90,11 @@ pub struct Designer {
     job: Option<mpsc::Receiver<anyhow::Result<String>>>,
     batch: Option<BatchState>,
     range: Option<RangeState>,
+    /// Crash recovery: a design left over from an unexpected exit, offered at startup.
+    recovered: Option<LabelDocument>,
+    recovery_dir: Option<PathBuf>,
+    recovery_written: Option<LabelDocument>,
+    recovery_at: Option<std::time::Instant>,
 }
 impl Default for Designer {
     fn default() -> Self {
@@ -133,6 +138,10 @@ impl Designer {
             job: None,
             batch: None,
             range: None,
+            recovered: None,
+            recovery_dir: None,
+            recovery_written: None,
+            recovery_at: None,
         }
     }
     pub(crate) fn select_object(&mut self, id: u64) {
@@ -444,8 +453,94 @@ impl Designer {
     pub(crate) fn request_open(&mut self, path: PathBuf) {
         self.request_action(PendingAction::Open(path));
     }
+    /// Turn on crash recovery (not in tests or documentation captures) and look for a copy
+    /// left by an earlier session that ended unexpectedly.
+    pub(crate) fn enable_recovery(&mut self) {
+        if let Some(dir) = crate::recovery::recovery_dir() {
+            self.enable_recovery_in(dir);
+        }
+    }
+    fn enable_recovery_in(&mut self, dir: PathBuf) {
+        self.recovered = crate::recovery::read_in(&dir);
+        self.recovery_dir = Some(dir);
+    }
+    /// Keep a recovery copy of unsaved changes, a few seconds after the last edit.
+    fn autosave(&mut self, ctx: &egui::Context) {
+        let Some(dir) = self.recovery_dir.clone() else {
+            return;
+        };
+        if self.recovered.is_some() {
+            return;
+        }
+        if !self.is_modified() {
+            if self.recovery_written.take().is_some() {
+                crate::recovery::clear_in(&dir);
+            }
+            return;
+        }
+        if self.recovery_written.as_ref() == Some(&self.doc) {
+            return;
+        }
+        let wait = std::time::Duration::from_secs(3);
+        match self.recovery_at {
+            Some(at) if at.elapsed() < wait => {
+                ctx.request_repaint_after(wait - at.elapsed());
+            }
+            _ => {
+                let _ = crate::recovery::write_in(&dir, &self.doc);
+                self.recovery_written = Some(self.doc.clone());
+                self.recovery_at = Some(std::time::Instant::now());
+            }
+        }
+    }
+    fn recovery_banner(&mut self, root: &mut egui::Ui) {
+        let Some(doc) = self.recovered.clone() else {
+            return;
+        };
+        egui::Panel::top("designer-recovery").show(root, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(format!(
+                    "{} {}",
+                    crate::i18n::tr("Unsaved changes from your last session were found:"),
+                    doc.title
+                ));
+                if icon_action(
+                    ui,
+                    "Refresh",
+                    "Restore",
+                    "Reopen the design from your last session as an unsaved copy",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    self.recovered = None;
+                    self.replace_document(doc.clone(), None, false);
+                    self.status = "Design restored · save to keep it".into();
+                }
+                if icon_action(
+                    ui,
+                    "Delete",
+                    "Discard",
+                    "Delete the recovered copy",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    self.recovered = None;
+                    if let Some(dir) = &self.recovery_dir {
+                        crate::recovery::clear_in(dir);
+                    }
+                }
+            });
+        });
+    }
     pub(crate) fn request_close(&mut self) -> bool {
         if self.close_approved || !self.is_modified() {
+            if let (Some(dir), None) = (&self.recovery_dir, &self.recovered) {
+                crate::recovery::clear_in(dir);
+            }
             return true;
         }
         self.pending_action = Some(PendingAction::Close);
@@ -1110,6 +1205,8 @@ impl Designer {
         let ctx = root.ctx().clone();
         self.poll(&ctx);
         self.poll_job(&ctx);
+        self.autosave(&ctx);
+        self.recovery_banner(root);
         egui::Panel::top("designer-toolbar").show(root, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.menu_button(crate::i18n::tr("File"), |ui| {
@@ -3764,5 +3861,81 @@ mod range_window_tests {
         }
         assert!(designer.range.is_some());
         assert!(designer.job.is_none());
+    }
+}
+
+#[cfg(test)]
+mod recovery_flow_tests {
+    use super::*;
+
+    fn frame(designer: &mut Designer, ctx: &egui::Context) {
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(1280., 800.));
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ui| designer.show(ui, &Settings::default(), &[]),
+        );
+        output.textures_delta.clear();
+    }
+
+    #[test]
+    fn unsaved_work_is_kept_then_offered_back_after_a_crash() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.enable_recovery_in(dir.path().to_path_buf());
+        frame(&mut designer, &ctx);
+        assert!(
+            crate::recovery::read_in(dir.path()).is_none(),
+            "nothing to keep yet"
+        );
+        designer.doc.title = "Work in progress".into();
+        frame(&mut designer, &ctx);
+        let kept = crate::recovery::read_in(dir.path()).expect("a copy is written");
+        assert_eq!(kept.title, "Work in progress");
+
+        // A new session finds it and offers it.
+        let mut next = Designer::new();
+        next.enable_recovery_in(dir.path().to_path_buf());
+        assert_eq!(
+            next.recovered.as_ref().map(|d| d.title.as_str()),
+            Some("Work in progress")
+        );
+        frame(&mut next, &ctx);
+        // Edits made while the offer is open never overwrite the recovered copy.
+        next.doc.title = "Something else".into();
+        frame(&mut next, &ctx);
+        assert_eq!(
+            crate::recovery::read_in(dir.path()).unwrap().title,
+            "Work in progress"
+        );
+    }
+
+    #[test]
+    fn saving_or_discarding_removes_the_copy() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.enable_recovery_in(dir.path().to_path_buf());
+        designer.doc.title = "Edited".into();
+        frame(&mut designer, &ctx);
+        assert!(crate::recovery::read_in(dir.path()).is_some());
+        designer.saved_document = designer.doc.clone();
+        frame(&mut designer, &ctx);
+        assert!(
+            crate::recovery::read_in(dir.path()).is_none(),
+            "saved work needs no copy"
+        );
+
+        designer.doc.title = "Edited again".into();
+        frame(&mut designer, &ctx);
+        designer.close_approved = true;
+        assert!(designer.request_close());
+        assert!(
+            crate::recovery::read_in(dir.path()).is_none(),
+            "discarding removes it"
+        );
     }
 }

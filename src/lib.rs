@@ -10,6 +10,7 @@ pub mod history;
 pub mod i18n;
 pub mod layout;
 pub mod printing;
+pub mod recovery;
 pub mod settings;
 pub mod ui;
 pub mod user_templates;
