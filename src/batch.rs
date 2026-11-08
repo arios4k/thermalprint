@@ -175,12 +175,22 @@ pub fn compare(doc: &LabelDocument, table: &Table) -> Match {
 /// Render every row before anything is sent, so one bad row cannot waste a roll of labels.
 /// Returns up to five problems, numbered by data row (1 is the first row after the header).
 pub fn preflight(doc: &LabelDocument, table: &Table, dpi: u32) -> Result<(), Vec<String>> {
+    preflight_with("Row", table.rows.len(), dpi, |index| {
+        apply_row(doc, table, index)
+    })
+}
+
+/// The same check for any run of labels, such as a number range.
+pub fn preflight_with(
+    noun: &str,
+    total: usize,
+    dpi: u32,
+    make: impl Fn(usize) -> LabelDocument,
+) -> Result<(), Vec<String>> {
     let mut problems = Vec::new();
-    let total = table.rows.len();
     for index in 0..total {
-        let label = apply_row(doc, table, index);
-        if let Err(error) = crate::design_render::render_label(&label, dpi) {
-            problems.push(format!("Row {}: {error:#}", index + 1));
+        if let Err(error) = crate::design_render::render_label(&make(index), dpi) {
+            problems.push(format!("{noun} {}: {error:#}", index + 1));
             if problems.len() == 5 {
                 break;
             }
@@ -191,6 +201,21 @@ pub fn preflight(doc: &LabelDocument, table: &Table, dpi: u32) -> Result<(), Vec
     } else {
         Err(problems)
     }
+}
+
+/// A number range: label `index` of the run gets serial `start + index * step`.
+pub const MAX_RANGE: u32 = 10_000;
+
+pub fn apply_range(doc: &LabelDocument, start: u64, step: u64, index: usize) -> LabelDocument {
+    let mut label = doc.clone();
+    label.serial_number = start.saturating_add(step.saturating_mul(index as u64));
+    label
+}
+
+/// The first and last serial of a run, for showing what will print.
+pub fn range_ends(start: u64, step: u64, count: u32) -> (u64, u64) {
+    let last = start.saturating_add(step.saturating_mul(count.saturating_sub(1) as u64));
+    (start, last)
 }
 
 #[cfg(test)]
@@ -326,5 +351,46 @@ mod tests {
         assert!(problems[0].starts_with("Row 2:"), "{problems:?}");
         let good = parse_table(b"Name,City,sku\nAda,Rome,A-1\n").unwrap();
         assert!(preflight(&design(), &good, 203).is_ok());
+    }
+
+    #[test]
+    fn number_ranges_count_by_the_step_and_never_overflow() {
+        let mut doc = LabelDocument::blank(50., 30.);
+        doc.add(
+            Element::Text {
+                text: "No. ${serial:4}".into(),
+                font_pt: 12.,
+                bold: false,
+                align: crate::design::TextAlign::Left,
+            },
+            2.,
+            2.,
+            40.,
+            10.,
+        );
+        assert_eq!(apply_range(&doc, 7, 1, 0).serial_number, 7);
+        assert_eq!(apply_range(&doc, 7, 5, 3).serial_number, 22);
+        assert_eq!(range_ends(100, 10, 4), (100, 130));
+        assert_eq!(range_ends(5, 3, 1), (5, 5));
+        assert_eq!(
+            apply_range(&doc, u64::MAX - 1, 10, 5).serial_number,
+            u64::MAX
+        );
+        assert!(preflight_with("Label", 3, 203, |i| apply_range(&doc, 7, 1, i)).is_ok());
+        let mut bad = doc.clone();
+        bad.add(
+            Element::Barcode {
+                kind: BarcodeKind::Ean13,
+                data: "abc".into(),
+                show_text: true,
+            },
+            2.,
+            14.,
+            40.,
+            10.,
+        );
+        let problems = preflight_with("Label", 2, 203, |i| apply_range(&bad, 1, 1, i)).unwrap_err();
+        assert_eq!(problems.len(), 2);
+        assert!(problems[0].starts_with("Label 1:"));
     }
 }

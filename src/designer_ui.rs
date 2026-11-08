@@ -18,6 +18,7 @@ enum DragKind {
     Resize,
     Rotate,
 }
+type LabelMaker = Arc<dyn Fn(usize) -> LabelDocument + Send + Sync>;
 struct Drag {
     kind: DragKind,
     start: Pos2,
@@ -41,6 +42,14 @@ struct BatchState {
     error: Option<String>,
     row: usize,
     preview: Option<(usize, egui::TextureHandle)>,
+}
+
+/// The number-range window: serials start, step, and how many labels to print.
+#[derive(Clone, Debug)]
+struct RangeState {
+    start: u64,
+    step: u64,
+    count: u32,
 }
 
 pub struct Designer {
@@ -80,6 +89,7 @@ pub struct Designer {
     pub error: bool,
     job: Option<mpsc::Receiver<anyhow::Result<String>>>,
     batch: Option<BatchState>,
+    range: Option<RangeState>,
 }
 impl Default for Designer {
     fn default() -> Self {
@@ -122,6 +132,7 @@ impl Designer {
             error: false,
             job: None,
             batch: None,
+            range: None,
         }
     }
     pub(crate) fn select_object(&mut self, id: u64) {
@@ -740,6 +751,86 @@ impl Designer {
             }
         }
     }
+    fn range_window(&mut self, ctx: &egui::Context, settings: &Settings, printers: &[Printer]) {
+        let Some(mut state) = self.range.take() else {
+            return;
+        };
+        let mut open = true;
+        let mut start = false;
+        let printer = printers.iter().find(|p| p.name == settings.printer);
+        egui::Window::new(crate::i18n::tr("Print a number range"))
+            .open(&mut open)
+            .collapsible(false)
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.label(crate::i18n::tr("Put ${serial} in text, barcode, or QR content. Use ${serial:4} for numbers padded with zeros, like 0007. Add a prefix by typing it before the number, for example INV-${serial:4}."));
+                egui::Grid::new("range-grid").num_columns(2).show(ui, |ui| {
+                    ui.label(crate::i18n::tr("First number"));
+                    ui.add(egui::DragValue::new(&mut state.start).range(0..=999_999_999_999u64))
+                        .accessible_name(crate::i18n::tr("First number"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("Step"));
+                    ui.add(egui::DragValue::new(&mut state.step).range(1..=1_000_000u64))
+                        .accessible_name(crate::i18n::tr("Step between numbers"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("How many labels"));
+                    ui.add(egui::DragValue::new(&mut state.count).range(1..=crate::batch::MAX_RANGE))
+                        .accessible_name(crate::i18n::tr("Number of labels"));
+                    ui.end_row();
+                });
+                let (first, last) = crate::batch::range_ends(state.start, state.step, state.count);
+                ui.label(
+                    RichText::new(format!("{} {first} → {last}", crate::i18n::tr("Serials")))
+                        .strong(),
+                );
+                let uses_serial = self.doc.objects.iter().any(|o| match &o.element {
+                    Element::Text { text, .. } => text.contains("${serial"),
+                    Element::Barcode { data, .. } | Element::Qr { data } => data.contains("${serial"),
+                    _ => false,
+                });
+                if !uses_serial {
+                    ui.colored_label(
+                        Color32::from_rgb(200, 120, 20),
+                        crate::i18n::tr("This design has no ${serial} yet, so every label would be the same."),
+                    );
+                }
+                if printer.is_none() {
+                    ui.label(RichText::new(crate::i18n::tr("Choose a printer in Print Center first.")).weak());
+                }
+                let label = format!("{} {}", crate::i18n::tr("Print labels:"), state.count);
+                if icon_action(
+                    ui,
+                    "Print device",
+                    &label,
+                    "Every label is checked first; nothing prints if one has a problem.",
+                    printer.is_some() && self.job.is_none(),
+                    false,
+                )
+                .clicked()
+                {
+                    start = true;
+                }
+            });
+        if start && let Some(printer) = printer.cloned() {
+            let doc = self.doc.clone();
+            let (first, step, total) = (state.start, state.step, state.count as usize);
+            let make: LabelMaker =
+                Arc::new(move |index| crate::batch::apply_range(&doc, first, step, index));
+            self.run_labels(
+                "Printing number range…",
+                "label",
+                total,
+                make,
+                settings,
+                printer,
+                "numbers",
+            );
+            open = false;
+        }
+        if open {
+            self.range = Some(state);
+        }
+    }
     fn batch_window(&mut self, ctx: &egui::Context, settings: &Settings, printers: &[Printer]) {
         let Some(mut state) = self.batch.take() else {
             return;
@@ -860,39 +951,66 @@ impl Designer {
             });
         if start && let (Some(table), Some(printer)) = (state.table.clone(), printer.cloned()) {
             let doc = self.doc.clone();
-            let settings = settings.clone();
-            let raw = self.raw_zpl;
             let total = table.rows.len();
-            self.start_job("Printing batch…", move || {
-                crate::batch::preflight(&doc, &table, settings.dpi).map_err(|problems| {
-                    anyhow::anyhow!("Nothing was printed. {}", problems.join(" · "))
-                })?;
-                for index in 0..total {
-                    let label = crate::batch::apply_row(&doc, &table, index);
-                    if raw {
-                        let bytes = zpl::encode_design(&label, settings.dpi)?;
-                        printing::submit_raw_zpl(&bytes, &settings, &printer)
-                    } else {
-                        let output = design_render::render_label(&label, settings.dpi)?;
-                        printing::submit(&output, &settings, &printer)
-                    }
-                    .map_err(|e| {
-                        anyhow::anyhow!("Stopped at row {} of {total}: {e:#}", index + 1)
-                    })?;
-                }
-                let mut entry =
-                    crate::history::design_entry(&doc, None, &settings.printer, settings.copies);
-                entry.title = format!("{} · batch of {total}", doc.title);
-                crate::history::record(entry);
-                Ok(format!(
-                    "Submitted {total} labels. Use Job status to check the queue."
-                ))
-            });
+            let make: LabelMaker =
+                Arc::new(move |index| crate::batch::apply_row(&doc, &table, index));
+            self.run_labels(
+                "Printing batch…",
+                "row",
+                total,
+                make,
+                settings,
+                printer,
+                "batch of",
+            );
             open = false;
         }
         if open {
             self.batch = Some(state);
         }
+    }
+    /// Print a run of labels: every label is rendered first, so nothing is sent if one is bad.
+    #[allow(clippy::too_many_arguments)]
+    fn run_labels(
+        &mut self,
+        status: &str,
+        noun: &'static str,
+        total: usize,
+        make: LabelMaker,
+        settings: &Settings,
+        printer: Printer,
+        history_word: &'static str,
+    ) {
+        let settings = settings.clone();
+        let raw = self.raw_zpl;
+        let title = self.doc.title.clone();
+        let original = self.doc.clone();
+        self.start_job(status, move || {
+            let label_noun = if noun == "row" { "Row" } else { "Label" };
+            crate::batch::preflight_with(label_noun, total, settings.dpi, |i| make(i)).map_err(
+                |problems| anyhow::anyhow!("Nothing was printed. {}", problems.join(" · ")),
+            )?;
+            for index in 0..total {
+                let label = make(index);
+                if raw {
+                    let bytes = zpl::encode_design(&label, settings.dpi)?;
+                    printing::submit_raw_zpl(&bytes, &settings, &printer)
+                } else {
+                    let output = design_render::render_label(&label, settings.dpi)?;
+                    printing::submit(&output, &settings, &printer)
+                }
+                .map_err(|e| {
+                    anyhow::anyhow!("Stopped at {noun} {} of {total}: {e:#}", index + 1)
+                })?;
+            }
+            let mut entry =
+                crate::history::design_entry(&original, None, &settings.printer, settings.copies);
+            entry.title = format!("{title} · {history_word} {total}");
+            crate::history::record(entry);
+            Ok(format!(
+                "Submitted {total} labels. Use Job status to check the queue."
+            ))
+        });
     }
     fn start_render(&mut self, dpi: u32) {
         if self.worker.is_some() || self.rendered_revision == Some(self.revision) {
@@ -1009,6 +1127,18 @@ impl Designer {
                         .clicked()
                     {
                         self.save_as_template();
+                        ui.close();
+                    }
+                    if ui
+                        .button(crate::i18n::tr("Print a number range…"))
+                        .on_hover_text(crate::i18n::tr("Print labels numbered by ${serial} with a start, step, and count"))
+                        .clicked()
+                    {
+                        self.range = Some(RangeState {
+                            start: self.doc.serial_number,
+                            step: 1,
+                            count: 10,
+                        });
                         ui.close();
                     }
                     if ui
@@ -1142,6 +1272,7 @@ impl Designer {
             });
         });
         self.batch_window(&ctx, settings, printers);
+        self.range_window(&ctx, settings, printers);
         egui::Panel::left("designer-elements")
             .default_size(68.)
             .size_range(68.0..=68.0)
@@ -3566,5 +3697,47 @@ mod inspector_render_tests {
             ids.len(),
             "locked objects survive delete"
         );
+    }
+}
+
+#[cfg(test)]
+mod range_window_tests {
+    use super::*;
+
+    #[test]
+    fn the_range_window_opens_stays_open_and_never_prints_without_a_printer() {
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(50., 30.);
+        designer.doc.add(
+            Element::Text {
+                text: "No. ${serial:4}".into(),
+                font_pt: 14.,
+                bold: false,
+                align: TextAlign::Left,
+            },
+            2.,
+            2.,
+            40.,
+            10.,
+        );
+        designer.range = Some(RangeState {
+            start: 7,
+            step: 5,
+            count: 3,
+        });
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(900., 700.));
+        for _ in 0..3 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |_| designer.range_window(&ctx, &Settings::default(), &[]),
+            );
+            output.textures_delta.clear();
+        }
+        assert!(designer.range.is_some());
+        assert!(designer.job.is_none());
     }
 }
