@@ -170,6 +170,14 @@ fn qr_builder_ui(ui: &mut egui::Ui, form: &mut QrForm, data: &mut String) -> boo
     applied
 }
 
+/// The sheet window: several labels on one A4 or Letter page.
+#[derive(Clone, Debug)]
+struct SheetState {
+    spec: crate::sheet::SheetSpec,
+    count: u32,
+    dpi: u32,
+}
+
 pub struct Designer {
     pub doc: LabelDocument,
     pub path: Option<PathBuf>,
@@ -208,6 +216,7 @@ pub struct Designer {
     job: Option<mpsc::Receiver<anyhow::Result<String>>>,
     batch: Option<BatchState>,
     range: Option<RangeState>,
+    sheet: Option<SheetState>,
     qr_form: QrForm,
     sscc_form: SsccForm,
     logos: Vec<crate::symbols::Logo>,
@@ -263,6 +272,7 @@ impl Designer {
             job: None,
             batch: None,
             range: None,
+            sheet: None,
             qr_form: QrForm::default(),
             sscc_form: SsccForm::default(),
             logos: crate::symbols::logos_dir()
@@ -980,6 +990,240 @@ impl Designer {
             }
         }
     }
+    fn sheet_window(&mut self, ctx: &egui::Context, settings: &Settings, printers: &[Printer]) {
+        use crate::sheet::{Page, SheetSpec};
+        let Some(mut state) = self.sheet.take() else {
+            return;
+        };
+        let (label_w, label_h) = (self.doc.width_mm, self.doc.effective_height_mm());
+        let mut open = true;
+        let mut action: Option<bool> = None; // Some(true) = print, Some(false) = save PDF
+        let printer = printers.iter().find(|p| p.name == settings.printer);
+        egui::Window::new(crate::i18n::tr("Print on a sheet"))
+            .open(&mut open)
+            .collapsible(false)
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.label(crate::i18n::tr("Place copies of this label on an A4 or Letter page, for an office printer or a sheet of sticky labels. ${serial} counts up from one label to the next."));
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Paper"));
+                    for page in [Page::A4, Page::Letter] {
+                        ui.selectable_value(&mut state.spec.page, page, page.media());
+                    }
+                    ui.label(crate::i18n::tr("Resolution"));
+                    egui::ComboBox::from_id_salt("sheet-dpi")
+                        .selected_text(format!("{} DPI", state.dpi))
+                        .show_ui(ui, |ui| {
+                            for dpi in [203u32, 300, 600] {
+                                ui.selectable_value(&mut state.dpi, dpi, format!("{dpi} DPI"));
+                            }
+                        })
+                        .response
+                        .accessible_name(crate::i18n::tr("Resolution"));
+                });
+                egui::Grid::new("sheet-grid").num_columns(2).show(ui, |ui| {
+                    ui.label(crate::i18n::tr("Columns"));
+                    ui.add(egui::DragValue::new(&mut state.spec.columns).range(1..=50))
+                        .accessible_name(crate::i18n::tr("Columns"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("Rows"));
+                    ui.add(egui::DragValue::new(&mut state.spec.rows).range(1..=50))
+                        .accessible_name(crate::i18n::tr("Rows"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("Page margin"));
+                    ui.add(
+                        egui::DragValue::new(&mut state.spec.margin_mm)
+                            .range(0.0..=50.0)
+                            .speed(0.1)
+                            .suffix(" mm"),
+                    )
+                    .accessible_name(crate::i18n::tr("Page margin in millimeters"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("Gap between labels"));
+                    ui.add(
+                        egui::DragValue::new(&mut state.spec.gap_mm)
+                            .range(0.0..=50.0)
+                            .speed(0.1)
+                            .suffix(" mm"),
+                    )
+                    .accessible_name(crate::i18n::tr("Gap between labels in millimeters"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("How many labels"));
+                    ui.add(egui::DragValue::new(&mut state.count).range(1..=5000))
+                        .accessible_name(crate::i18n::tr("Number of labels"));
+                    ui.end_row();
+                });
+                if icon_action(
+                    ui,
+                    "Fit page",
+                    "Fit as many as possible",
+                    "Choose the most columns and rows of this label size that fit the page",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    let fit = SheetSpec::fitting(
+                        state.spec.page,
+                        label_w,
+                        label_h,
+                        state.spec.margin_mm,
+                        state.spec.gap_mm,
+                    );
+                    state.spec.columns = fit.columns.max(1);
+                    state.spec.rows = fit.rows.max(1);
+                    state.count = state.spec.cells() as u32;
+                }
+                let positions = state.spec.positions(label_w, label_h);
+                match &positions {
+                    Ok(cells) => {
+                        let sheets = crate::sheet::sheets_needed(state.count as usize, &state.spec);
+                        ui.label(format!(
+                            "{} {} · {} {}",
+                            cells.len(),
+                            crate::i18n::tr("labels per page"),
+                            sheets,
+                            crate::i18n::tr("pages")
+                        ));
+                        let (pw, ph) = state.spec.page.size_mm();
+                        let scale = 150. / ph;
+                        let (rect, _) = ui.allocate_exact_size(
+                            Vec2::new(pw * scale, ph * scale),
+                            Sense::hover(),
+                        );
+                        let painter = ui.painter_at(rect);
+                        painter.rect_filled(rect, 2., Color32::WHITE);
+                        painter.rect_stroke(
+                            rect,
+                            2.,
+                            Stroke::new(1., Color32::GRAY),
+                            StrokeKind::Inside,
+                        );
+                        for (i, (x, y)) in cells.iter().enumerate() {
+                            let cell = Rect::from_min_size(
+                                rect.min + Vec2::new(x * scale, y * scale),
+                                Vec2::new(label_w * scale, label_h * scale),
+                            );
+                            let used = (i as u32) < state.count;
+                            painter.rect_filled(
+                                cell,
+                                1.,
+                                if used {
+                                    Color32::from_rgb(120, 160, 230)
+                                } else {
+                                    Color32::from_gray(225)
+                                },
+                            );
+                        }
+                    }
+                    Err(error) => {
+                        ui.colored_label(Color32::from_rgb(200, 60, 60), format!("{error:#}"));
+                    }
+                }
+                let can_print = printer.is_some_and(|p| p.media.iter().any(|m| m == state.spec.page.media()));
+                if printer.is_some() && !can_print {
+                    ui.label(
+                        RichText::new(crate::i18n::tr(
+                            "The selected printer does not list this paper. You can still save a PDF.",
+                        ))
+                        .weak(),
+                    );
+                } else if printer.is_none() {
+                    ui.label(RichText::new(crate::i18n::tr("Choose a printer in Print Center first.")).weak());
+                }
+                ui.horizontal_wrapped(|ui| {
+                    let ready = positions.is_ok() && self.job.is_none();
+                    if icon_action(
+                        ui,
+                        "Export document",
+                        "Save as PDF",
+                        "Save the sheet as a PDF file",
+                        ready,
+                        false,
+                    )
+                    .clicked()
+                    {
+                        action = Some(false);
+                    }
+                    if icon_action(
+                        ui,
+                        "Print device",
+                        "Print sheet",
+                        "Send the sheet to the selected printer",
+                        ready && can_print,
+                        false,
+                    )
+                    .clicked()
+                    {
+                        action = Some(true);
+                    }
+                });
+            });
+        if let Some(print) = action {
+            let doc = self.doc.clone();
+            let spec = state.spec;
+            let (count, dpi) = (state.count as usize, state.dpi);
+            let mut settings = settings.clone();
+            settings.media = spec.page.media().to_string();
+            let target = if print {
+                printer.cloned().map(|p| (p, None))
+            } else {
+                rfd::FileDialog::new()
+                    .add_filter("PDF", &["pdf"])
+                    .set_file_name("labels-sheet.pdf")
+                    .save_file()
+                    .map(|path| (Printer::default(), Some(path)))
+            };
+            if let Some((printer, path)) = target {
+                let first = doc.serial_number;
+                self.start_job("Preparing sheet…", move || {
+                    let outputs = (0..count)
+                        .map(|i| {
+                            let label = crate::batch::apply_range(&doc, first, 1, i);
+                            design_render::render_label(&label, dpi)
+                        })
+                        .collect::<anyhow::Result<Vec<_>>>()?;
+                    let pages = crate::sheet::compose(&outputs, &spec)?;
+                    match path {
+                        Some(path) => {
+                            for (n, page) in pages.iter().enumerate() {
+                                let target = if pages.len() == 1 {
+                                    path.clone()
+                                } else {
+                                    let stem = path
+                                        .file_stem()
+                                        .map(|s| s.to_string_lossy().into_owned())
+                                        .unwrap_or_else(|| "sheet".into());
+                                    path.with_file_name(format!("{stem}-{}.pdf", n + 1))
+                                };
+                                export::save(page, &target)?;
+                            }
+                            Ok(format!("Saved {} sheet(s) as PDF", pages.len()))
+                        }
+                        None => {
+                            for (n, page) in pages.iter().enumerate() {
+                                printing::submit(page, &settings, &printer).map_err(|e| {
+                                    anyhow::anyhow!(
+                                        "Stopped at sheet {} of {}: {e:#}",
+                                        n + 1,
+                                        pages.len()
+                                    )
+                                })?;
+                            }
+                            Ok(format!(
+                                "Submitted {} sheet(s). Use Job status to check the queue.",
+                                pages.len()
+                            ))
+                        }
+                    }
+                });
+                open = false;
+            }
+        }
+        if open {
+            self.sheet = Some(state);
+        }
+    }
     fn range_window(&mut self, ctx: &egui::Context, settings: &Settings, printers: &[Printer]) {
         let Some(mut state) = self.range.take() else {
             return;
@@ -1361,6 +1605,25 @@ impl Designer {
                         ui.close();
                     }
                     if ui
+                        .button(crate::i18n::tr("Print on a sheet…"))
+                        .on_hover_text(crate::i18n::tr("Place several labels on one A4 or Letter page"))
+                        .clicked()
+                    {
+                        let spec = crate::sheet::SheetSpec::fitting(
+                            crate::sheet::Page::A4,
+                            self.doc.width_mm,
+                            self.doc.effective_height_mm(),
+                            5.,
+                            0.,
+                        );
+                        self.sheet = Some(SheetState {
+                            count: spec.cells().max(1) as u32,
+                            spec,
+                            dpi: 300,
+                        });
+                        ui.close();
+                    }
+                    if ui
                         .button(crate::i18n::tr("Print a number range…"))
                         .on_hover_text(crate::i18n::tr("Print labels numbered by ${serial} with a start, step, and count"))
                         .clicked()
@@ -1504,6 +1767,7 @@ impl Designer {
         });
         self.batch_window(&ctx, settings, printers);
         self.range_window(&ctx, settings, printers);
+        self.sheet_window(&ctx, settings, printers);
         egui::Panel::left("designer-elements")
             .default_size(68.)
             .size_range(68.0..=68.0)
@@ -3802,6 +4066,13 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
             path(&[(6., 9.), (18., 9.), (12., 3.), (6., 9.)]);
             path(&[(6., 15.), (18., 15.), (12., 21.), (6., 15.)]);
         }
+        "Fit page" => {
+            outline(3., 3., 18., 18., 2.);
+            outline(6., 6., 5., 5., 1.);
+            outline(13., 6., 5., 5., 1.);
+            outline(6., 13., 5., 5., 1.);
+            outline(13., 13., 5., 5., 1.);
+        }
         "Address book" => {
             outline(5., 3., 15., 18., 2.);
             path(&[(3., 7.), (7., 7.)]);
@@ -4505,5 +4776,37 @@ mod recovery_flow_tests {
             crate::recovery::read_in(dir.path()).is_none(),
             "discarding removes it"
         );
+    }
+}
+
+#[cfg(test)]
+mod sheet_window_tests {
+    use super::*;
+
+    #[test]
+    fn the_sheet_window_opens_and_stays_open_without_printing() {
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(50., 30.);
+        let spec = crate::sheet::SheetSpec::fitting(crate::sheet::Page::A4, 50., 30., 5., 0.);
+        assert_eq!((spec.columns, spec.rows), (4, 9));
+        designer.sheet = Some(SheetState {
+            count: 36,
+            spec,
+            dpi: 300,
+        });
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(900., 800.));
+        for _ in 0..3 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |_| designer.sheet_window(&ctx, &Settings::default(), &[]),
+            );
+            output.textures_delta.clear();
+        }
+        assert!(designer.sheet.is_some());
+        assert!(designer.job.is_none());
     }
 }
