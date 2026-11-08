@@ -54,6 +54,32 @@ class DesktopIntegrationTests(unittest.TestCase):
             detected = subprocess.check_output(['xdg-mime', 'query', 'filetype', str(path)], env=env, text=True).strip()
             self.assertNotEqual(detected, MIME)
 
+    def test_rpm_installs_exactly_the_files_it_lists(self):
+        import re
+        spec = (ROOT / 'packaging/rpm/thermalprint.spec.in').read_text()
+        install = spec.split('%install', 1)[1].split('%check', 1)[0]
+        files = spec.split('%files', 1)[1].split('%changelog', 1)[0]
+        for line in install.splitlines():
+            self.assertFalse(line.startswith('%{'), f'file-list line inside %install: {line}')
+        installed = set(re.findall(r'%\{buildroot\}(\S+)', install))
+        listed = {l.strip() for l in files.splitlines() if l.startswith('%{')}
+        self.assertEqual(installed - listed, set(), 'installed but not listed in %files')
+        self.assertEqual(
+            {l for l in listed if not l.startswith('%{_bindir}')} - installed, set(),
+            'listed in %files but never installed',
+        )
+        for source in re.findall(r'install -\S+ (data/\S+)', install):
+            self.assertTrue((ROOT / source).exists(), source)
+
+    def test_mime_icon_is_shipped_by_every_package_under_its_theme_name(self):
+        name = 'application-x-thermalprint'
+        xml = (ROOT / 'data/org.thermalprint.ThermalPrint.xml').read_text()
+        self.assertIn(f'<icon name="{name}"/>', xml)
+        for package in ('Cargo.toml', 'packaging/rpm/thermalprint.spec.in', 'snap/snapcraft.yaml'):
+            text = (ROOT / package).read_text()
+            self.assertIn(f'mimetypes/{name}.svg', text, package)
+            self.assertIn(f'mimetypes/{name}.png', text, package)
+
 
 if __name__ == '__main__':
     unittest.main()

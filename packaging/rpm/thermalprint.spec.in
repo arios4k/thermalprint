@@ -59,8 +59,6 @@ install -Dpm0644 data/org.thermalprint.ThermalPrint.desktop %{buildroot}%{_datad
 install -Dpm0644 data/org.thermalprint.ThermalPrint.metainfo.xml %{buildroot}%{_metainfodir}/org.thermalprint.ThermalPrint.metainfo.xml
 install -Dpm0644 data/org.thermalprint.ThermalPrint.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/org.thermalprint.ThermalPrint.svg
 install -Dpm0644 data/org.thermalprint.ThermalPrint.png %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/org.thermalprint.ThermalPrint.png
-%{_datadir}/icons/hicolor/scalable/mimetypes/application-x-thermalprint.svg
-%{_datadir}/icons/hicolor/256x256/mimetypes/application-x-thermalprint.png
 install -Dpm0644 data/org.thermalprint.ThermalPrint.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/mimetypes/application-x-thermalprint.svg
 install -Dpm0644 data/org.thermalprint.ThermalPrint.png %{buildroot}%{_datadir}/icons/hicolor/256x256/mimetypes/application-x-thermalprint.png
 
@@ -80,6 +78,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/org.thermalprint.Ther
 %{_metainfodir}/org.thermalprint.ThermalPrint.metainfo.xml
 %{_datadir}/icons/hicolor/scalable/apps/org.thermalprint.ThermalPrint.svg
 %{_datadir}/icons/hicolor/256x256/apps/org.thermalprint.ThermalPrint.png
+%{_datadir}/icons/hicolor/scalable/mimetypes/application-x-thermalprint.svg
+%{_datadir}/icons/hicolor/256x256/mimetypes/application-x-thermalprint.png
 
 %changelog
 * Fri Nov 06 2026 Alexis Rios-Negron <arios4k@gmail.com> - @VERSION@-1
