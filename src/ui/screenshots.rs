@@ -190,6 +190,7 @@ pub(super) fn seed(app: &mut ThermalPrint, ctx: &egui::Context) {
             ("4x4".into(), (101.6, 101.6)),
         ]
         .into(),
+        media_margins: Default::default(),
         resolutions: vec!["203dpi".into(), "300dpi".into()],
         resolution_option: "Resolution".into(),
         custom_media: true,

@@ -290,6 +290,24 @@ impl LabelDocument {
         }
     }
 
+    /// Ids of objects whose outline reaches into the printer's unprintable border, given as
+    /// (left, top, right, bottom) margins in millimeters.
+    pub fn objects_in_margins(&self, margins: (f32, f32, f32, f32)) -> Vec<u64> {
+        let (left, top, right, bottom) = margins;
+        let tolerance = 0.05;
+        self.objects
+            .iter()
+            .filter(|o| {
+                let (x0, y0, x1, y1) = outline(o);
+                x0 < left - tolerance
+                    || y0 < top - tolerance
+                    || x1 > self.width_mm - right + tolerance
+                    || y1 > self.height_mm - bottom + tolerance
+            })
+            .map(|o| o.id)
+            .collect()
+    }
+
     /// Move the chosen unlocked objects by a distance in millimeters.
     pub fn nudge(&mut self, ids: &[u64], dx_mm: f32, dy_mm: f32) {
         for object in self
@@ -895,6 +913,18 @@ mod arrangement_tests {
         let before = doc.clone();
         doc.distribute(&[a, b], Axis::Horizontal);
         assert_eq!(doc, before);
+    }
+
+    #[test]
+    fn objects_touching_the_unprintable_border_are_reported() {
+        let mut doc = LabelDocument::blank(100., 60.);
+        let inside = rect(&mut doc, 5., 5., 10., 10.);
+        let left_edge = rect(&mut doc, 1., 20., 10., 10.);
+        let bottom_edge = rect(&mut doc, 20., 52., 10., 8.);
+        let margins = (2.5, 2.5, 2.5, 2.0);
+        assert_eq!(doc.objects_in_margins(margins), [left_edge, bottom_edge]);
+        assert!(!doc.objects_in_margins(margins).contains(&inside));
+        assert!(doc.objects_in_margins((0., 0., 0., 0.)).is_empty());
     }
 
     #[test]

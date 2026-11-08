@@ -17,11 +17,21 @@ pub struct Printer {
     pub media: Vec<String>,
     pub media_labels: HashMap<String, String>,
     pub media_sizes: HashMap<String, (f32, f32)>,
+    /// Unprintable margins per media in millimeters: (left, bottom, right, top) as the driver
+    /// reports them, measured from the paper edges.
+    pub media_margins: HashMap<String, (f32, f32, f32, f32)>,
     pub resolutions: Vec<String>,
     pub resolution_option: String,
     pub custom_media: bool,
 }
 impl Printer {
+    /// The unprintable border for a media choice as (left, top, right, bottom) in design
+    /// orientation, or None when the driver does not say or the border is negligible.
+    pub fn printable_margins_mm(&self, media: &str) -> Option<(f32, f32, f32, f32)> {
+        let &(left, bottom, right, top) = self.media_margins.get(media)?;
+        let largest = left.max(bottom).max(right).max(top);
+        (largest >= 0.05).then_some((left, top, right, bottom))
+    }
     pub fn matching_media(&self, width_mm: f32, height_mm: f32) -> Option<String> {
         self.media
             .iter()
@@ -117,6 +127,39 @@ fn media_sizes(ppd: &str) -> HashMap<String, (f32, f32)> {
             let height: f32 = values.next()?.parse().ok()?;
             (width.is_finite() && height.is_finite() && width > 0. && height > 0.)
                 .then(|| (code.into(), (width * 25.4 / 72., height * 25.4 / 72.)))
+        })
+        .collect()
+}
+
+/// Unprintable margins from `*ImageableArea` lines, which give the printable rectangle in
+/// points from the lower-left corner of the page.
+fn media_margins(ppd: &str) -> HashMap<String, (f32, f32, f32, f32)> {
+    let sizes = media_sizes(ppd);
+    let to_mm = 25.4 / 72.;
+    ppd.lines()
+        .filter_map(|line| {
+            let (choice, area) = line.strip_prefix("*ImageableArea ")?.split_once(':')?;
+            let code = choice.split('/').next()?.trim();
+            let &(width, height) = sizes.get(code)?;
+            let values: Vec<f32> = area
+                .trim()
+                .trim_matches('"')
+                .split_whitespace()
+                .filter_map(|v| v.parse().ok())
+                .collect();
+            let [llx, lly, urx, ury] = values[..] else {
+                return None;
+            };
+            if !values.iter().all(|v| v.is_finite()) {
+                return None;
+            }
+            let margins = (
+                (llx * to_mm).max(0.),
+                (lly * to_mm).max(0.),
+                (width - urx * to_mm).max(0.),
+                (height - ury * to_mm).max(0.),
+            );
+            Some((code.to_owned(), margins))
         })
         .collect()
 }
@@ -226,6 +269,7 @@ pub fn discover() -> Result<Vec<Printer>> {
         if let Some(ppd) = driver_description(name) {
             p.media_labels = media_labels(&ppd);
             p.media_sizes = media_sizes(&ppd);
+            p.media_margins = media_margins(&ppd);
         }
         list.push(p);
     }
@@ -505,5 +549,52 @@ mod confined_driver_tests {
             driver_description_from("label_printer", Some("print.example:631"), false).is_none()
         );
         assert!(driver_description_from("../private", Some("/missing/cups.sock"), false).is_none());
+    }
+}
+
+#[cfg(test)]
+mod margin_tests {
+    use super::*;
+
+    const PPD: &str = "*PaperDimension w4h6/4 x 6: \"288 432\"\n*ImageableArea w4h6/4 x 6: \"7.2 5.76 280.8 424.8\"\n*PaperDimension A4/A4: \"595 842\"\n*ImageableArea A4/A4: \"0 0 595 842\"\n*ImageableArea Orphan/none: \"1 1 2 2\"\n*PaperDimension Bad/bad: \"100 100\"\n*ImageableArea Bad/bad: \"nonsense\"";
+
+    #[test]
+    fn imageable_areas_become_unprintable_margins_in_millimeters() {
+        let margins = media_margins(PPD);
+        let (left, bottom, right, top) = margins["w4h6"];
+        let near = |a: f32, b: f32| (a - b).abs() < 0.01;
+        assert!(near(left, 2.54) && near(bottom, 2.032) && near(right, 2.54) && near(top, 2.54));
+        assert_eq!(
+            margins["A4"],
+            (0., 0., 0., 0.),
+            "a full-page area has no margin"
+        );
+        assert!(!margins.contains_key("Orphan") && !margins.contains_key("Bad"));
+    }
+
+    #[test]
+    fn printers_report_margins_in_design_orientation_and_ignore_negligible_ones() {
+        let printer = Printer {
+            media_margins: media_margins(PPD),
+            ..Default::default()
+        };
+        let (left, top, right, bottom) = printer.printable_margins_mm("w4h6").unwrap();
+        assert!(
+            (left - 2.54).abs() < 0.01
+                && (bottom - 2.032).abs() < 0.01
+                && (top - 2.54).abs() < 0.01
+                && (right - 2.54).abs() < 0.01
+        );
+        assert_eq!(
+            printer.printable_margins_mm("A4"),
+            None,
+            "a full-page area has nothing to show"
+        );
+        assert_eq!(printer.printable_margins_mm("unknown"), None);
+        let flush = Printer {
+            media_margins: [("m".into(), (0., 0., 0., 0.))].into(),
+            ..Default::default()
+        };
+        assert_eq!(flush.printable_margins_mm("m"), None);
     }
 }
