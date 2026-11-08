@@ -3,7 +3,7 @@
   <mime-type type="application/x-thermalprint">
     <comment>ThermalPrint label design</comment>
     <sub-class-of type="application/json"/>
-    <icon name="org.thermalprint.ThermalPrint"/>
+    <icon name="application-x-thermalprint"/>
     <glob pattern="*.thermalprint" weight="80"/>
   </mime-type>
 </mime-info>
