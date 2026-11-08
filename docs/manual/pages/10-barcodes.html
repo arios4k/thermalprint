@@ -1,0 +1,49 @@
+<!--
+title: Barcode reference
+group: Reference
+summary: The nine barcode types plus QR codes: what each accepts, how to choose, and how to make them scan.
+-->
+<p>ThermalPrint draws real barcodes, not pictures of them. Pick the type your scanner, shop, or carrier expects. If you are not sure, <strong>Code 128</strong> is the safest general-purpose choice.</p>
+
+{{figure:barcode-types|A sheet showing a sample of each barcode type: Code 128, Code 39, Code 93, EAN-13, EAN-8, UPC-A, ITF, Codabar, and Data Matrix|One sample of each type, drawn by ThermalPrint at 300 DPI.}}
+
+<h2>Choosing a type</h2>
+<table>
+  <tr><th>Type</th><th>Accepts</th><th>Typical use</th></tr>
+  <tr><td><strong>Code 128</strong></td><td>Letters, digits, and punctuation: any printable ASCII character (space to <code>~</code>).</td><td>Product references, SKUs, shipping, inventory. Compact and flexible.</td></tr>
+  <tr><td><strong>Code 39</strong></td><td>Capital letters A–Z, digits 0–9, and <code>- . space $ / + %</code>.</td><td>Industrial and government labels, asset tags. Easy to read but wide.</td></tr>
+  <tr><td><strong>Code 93</strong></td><td>The same characters as Code 39.</td><td>A denser alternative to Code 39.</td></tr>
+  <tr><td><strong>EAN-13</strong></td><td>12 digits (the check digit is added for you), or 13 digits with a correct check digit.</td><td>Retail products outside North America.</td></tr>
+  <tr><td><strong>EAN-8</strong></td><td>7 digits, or 8 digits with a correct check digit.</td><td>Retail products too small for EAN-13.</td></tr>
+  <tr><td><strong>UPC-A</strong></td><td>11 or 12 digits.</td><td>Retail products in North America.</td></tr>
+  <tr><td><strong>ITF</strong> (Interleaved 2 of 5)</td><td>Digits only, in an <strong>even</strong> number.</td><td>Shipping cartons and warehouse boxes.</td></tr>
+  <tr><td><strong>Codabar</strong></td><td>Starts and ends with A, B, C, or D; digits and <code>- $ : / . +</code> in between.</td><td>Libraries, blood banks, some parcel systems.</td></tr>
+  <tr><td><strong>Data Matrix</strong></td><td>Any text.</td><td>Very small parts and labels; a square 2D symbol.</td></tr>
+  <tr><td><strong>QR code</strong></td><td>Any text, up to 2,048 characters.</td><td>Web addresses, contact details, longer data.</td></tr>
+</table>
+<div class="note"><p>Some types check themselves. If you give an EAN-13 or EAN-8 its check digit and it is wrong, ThermalPrint refuses it instead of printing a barcode that would not scan. Give 12 (or 7) digits and the correct check digit is added.</p></div>
+
+<h2>Error messages and what they mean</h2>
+<table>
+  <tr><th>Message</th><th>Fix</th></tr>
+  <tr><td>Barcode data is empty</td><td>Type a value.</td></tr>
+  <tr><td>Code 128 currently accepts printable ASCII</td><td>Remove accented or special letters, or use a QR code or Data Matrix, which accept any text.</td></tr>
+  <tr><td>EAN-8 requires 7 digits, or 8 including the check digit</td><td>Use digits only, with the right count.</td></tr>
+  <tr><td>UPC-A requires 11 or 12 digits</td><td>Use digits only, with the right count.</td></tr>
+  <tr><td>ITF requires an even number of digits</td><td>Add a leading zero if you need an even count.</td></tr>
+  <tr><td>Codabar must start and end with A, B, C, or D …</td><td>Frame the value, for example <code>A12345B</code>.</td></tr>
+  <tr><td>Barcode is too narrow at N DPI. Widen it or use a shorter value.</td><td>Make the object wider or the value shorter. Each bar needs at least two printed dots.</td></tr>
+  <tr><td>Data Matrix is too small; enlarge the object or use shorter data</td><td>Make the box bigger. Keep it roughly square.</td></tr>
+  <tr><td>QR code is too small; enlarge the object</td><td>Make the box bigger.</td></tr>
+  <tr><td>Barcode data is too long</td><td>The limit is 2,048 characters.</td></tr>
+</table>
+
+<h2>Making barcodes scan</h2>
+<ul>
+  <li><strong>Leave quiet space.</strong> Keep a blank margin of at least a few millimeters on each side of a barcode. Text or lines touching the bars can stop a scanner reading it.</li>
+  <li><strong>Print large enough.</strong> Thin bars are the usual cause of failed scans. Prefer wider objects, and print at your printer's real DPI (203 DPI is common).</li>
+  <li><strong>Keep it black and white.</strong> Avoid gray fills behind or inside a barcode.</li>
+  <li><strong>Test a real label.</strong> Scan the first label with your phone or a scanner. ThermalPrint cannot test a physical scan or read imported barcodes for you.</li>
+  <li><strong>Data Matrix and QR need to be square-ish.</strong> A symbol is drawn as a square in the middle of its box; a very wide box wastes space.</li>
+</ul>
+<p>You can use <code>${date}</code>, <code>${serial}</code>, and (in a batch) <code>${Column}</code> placeholders inside any barcode value. See <a href="objects.html#dynamic-text-date-and-serial-number">Dynamic text</a> and <a href="batch.html">Batch printing</a>.</p>

@@ -104,6 +104,8 @@ jobs:
         run: |
           mkdir apt-public
           cp -r apt-site/dists apt-site/pool apt-site/key.asc apt-site/index.html apt-site/.nojekyll apt-public/
+      - name: Build the user manual into the site
+        run: python3 source/scripts/build-manual.py --output apt-public/manual
       - uses: actions/upload-pages-artifact@v4
         with:
           path: apt-public

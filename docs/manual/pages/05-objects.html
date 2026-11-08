@@ -1,0 +1,71 @@
+<!--
+title: Objects: text, barcodes, shapes, and images
+group: Using ThermalPrint
+summary: Every kind of object you can place on a label, with all of its settings.
+-->
+<p>A label is made of <strong>objects</strong>. This page covers each kind, then the things they all share: position, size, rotation, and order.</p>
+
+<h2>Settings every object shares</h2>
+<table>
+  <tr><th>Setting</th><th>Meaning</th></tr>
+  <tr><td><span class="ui">X</span>, <span class="ui">Y</span></td><td>Distance of the object's top-left corner from the label's top-left corner, in millimeters.</td></tr>
+  <tr><td><span class="ui">W</span>, <span class="ui">H</span></td><td>Width and height in millimeters.</td></tr>
+  <tr><td><span class="ui">Rotation</span></td><td>Clockwise degrees, any value including fractions. The X and Y of a rotated object describe the box that contains it.</td></tr>
+  <tr><td><span class="ui">Forward</span> / <span class="ui">Backward</span></td><td>Move the object up or down one layer. Objects higher in the stack cover those below.</td></tr>
+  <tr><td><span class="ui">Duplicate</span></td><td>Makes a copy of the object (<kbd>Ctrl</kbd>+<kbd>D</kbd>).</td></tr>
+  <tr><td><span class="ui">Delete</span></td><td>Removes it (<kbd>Delete</kbd>).</td></tr>
+</table>
+<p><strong>Copy and paste</strong> (<kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd>) work on one or several selected objects. Everything can be undone with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</p>
+
+<h2>Text</h2>
+{{figure:designer-text|The Label Designer with an address text object selected and its text settings in the properties panel|A text object selected. The panel shows its text, size, bold, and alignment.}}
+<p>Click the <strong>T</strong> tool to add a text box that says <em>Your text</em>. Edit it in the properties panel. The <strong>address</strong> tool adds a three-line block ready for a name, street, and city.</p>
+<table>
+  <tr><th>Setting</th><th>Meaning</th></tr>
+  <tr><td><span class="ui">Object text</span> box</td><td>The text. It can have several lines; press <kbd>Enter</kbd> for a new line.</td></tr>
+  <tr><td>Font size</td><td>In points, from 3 to 300. Larger numbers make taller letters.</td></tr>
+  <tr><td><span class="ui">Bold</span></td><td>Heavier letters. Good for thermal printing, which can make thin text faint.</td></tr>
+  <tr><td><span class="ui">Left</span> / <span class="ui">Center</span> / <span class="ui">Right</span></td><td>Alignment inside the box.</td></tr>
+</table>
+<p>Text <strong>does not wrap</strong> by itself: each line stays on one line, so press <kbd>Enter</kbd> where you want a new line. Anything that extends past the box is cut off at its edge, so make the box larger or the text smaller if letters disappear. The font is built in and does not depend on the fonts installed on your computer, so labels look the same on every machine.</p>
+
+<h3 id="dynamic-text-date-and-serial-number">Dynamic text: date and serial number</h3>
+<p>Two special words are replaced when the label is drawn, in text, barcodes, and QR codes:</p>
+<table>
+  <tr><th>Write this</th><th>Printed as</th></tr>
+  <tr><td><code>${date}</code></td><td>Today's date, like <code>2026-11-07</code>.</td></tr>
+  <tr><td><code>${serial}</code></td><td>The serial number from <span class="ui">Label setup → Serial variable</span> (1 to start). In a <a href="batch.html">batch</a>, it counts up by one for each row.</td></tr>
+</table>
+<p>For example, a barcode with the value <code>INV-${serial}</code> encodes <code>INV-1</code>. The hint above the text box reminds you: <em>${date} and ${serial} are dynamic</em>. Words in a batch, such as <code>${Name}</code>, are covered in <a href="batch.html">Batch printing</a>.</p>
+
+<h2>Barcodes</h2>
+<p>Click the barcode tool, type the value in <span class="ui">Enter your real product code or reference</span>, and choose the type from the dropdown. Hovering a type explains it.</p>
+<ul>
+  <li><span class="ui">Show value below bars</span> prints the readable text under the bars.</li>
+  <li>Make the object wide enough: if the bars would be too thin to print at the selected resolution, you see <em>Barcode is too narrow</em>. Widen the object or use a shorter value.</li>
+  <li>Values longer than 2,048 characters are refused.</li>
+</ul>
+<p>The nine supported types, what each accepts, and when to use them are in the <a href="barcodes.html">Barcode reference</a>.</p>
+
+<h2>QR codes</h2>
+<p>The QR tool adds a square QR code. Type the content in <span class="ui">QR content</span>; it can be a web address, plain text, or several lines. Keep the object square and at least about 20 mm wide for reliable scanning. If the object is too small for the amount of data, you see <em>QR code is too small; enlarge the object</em>.</p>
+
+<h2>Shapes</h2>
+<table>
+  <tr><th>Shape</th><th>Use</th></tr>
+  <tr><td>Rectangle, ellipse</td><td>Boxes, frames, and highlights. Tick <span class="ui">Filled</span> for a solid black shape.</td></tr>
+  <tr><td>Line</td><td>A straight line across its box.</td></tr>
+  <tr><td>Horizontal and vertical dividers</td><td>Thin rules that separate sections of a label.</td></tr>
+</table>
+<p>The stroke width is set in millimeters (0.05 to 20 mm). Thermal printers print only black, so use a stroke of at least 0.3 mm for lines to print crisply.</p>
+
+<h2>Images and logos</h2>
+<p>The picture tool lets you choose a PNG, JPEG, TIFF, BMP, or WebP file (up to 9 MB). The image is <em>embedded</em> in the design, so you can move the design to another computer without the original file. Resize the object to fit; the image keeps its proportions inside the box. Color images print in black and white on a thermal printer, so a high-contrast logo looks best.</p>
+
+<h2>Layout tips</h2>
+<ul>
+  <li>Leave at least 2 mm between objects and the label edge; many printers cannot print right to the edge.</li>
+  <li>Use <em>Show grid</em> and <em>Snap to grid</em> to line things up quickly.</li>
+  <li>Use <span class="ui">Focus</span> (hide the panels) to see the label larger while you arrange it.</li>
+  <li>Select several objects with <kbd>Shift</kbd>+click and press <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> to copy a whole group.</li>
+</ul>

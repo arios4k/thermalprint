@@ -1,0 +1,80 @@
+<!--
+title: Troubleshooting
+group: Help
+summary: Fixes for printers that are not listed, labels that print wrong, extra blank labels, Snap permissions, and more.
+-->
+<p>Find your symptom in the table, or jump to a detailed section below. If nothing here helps, <a href="https://github.com/arios4k/thermalprint/issues">open an issue</a> and include your ThermalPrint version (click it in <em>About</em> to copy it), your package type, and your printer model. Leave out personal addresses and tracking numbers.</p>
+
+<h2>Quick table</h2>
+<table>
+  <tr><th>Symptom</th><th>What to check</th></tr>
+  <tr><td>No printers are listed</td><td><a href="#no-printers-are-listed">See below.</a></td></tr>
+  <tr><td>The Print button is gray</td><td><a href="#the-print-button-is-disabled">See below.</a></td></tr>
+  <tr><td>A PDF will not open</td><td>Install PDFium or Poppler's <code>pdfinfo</code> and <code>pdftoppm</code> (the packages include Poppler). Re-export encrypted or damaged PDFs.</td></tr>
+  <tr><td>Print all is blocked</td><td>Select and review each label in the queue. Every entry needs its own review.</td></tr>
+  <tr><td>The label is too small</td><td>Crop away empty space first, then compare <em>Fit within paper</em> and <em>Actual size</em>. Check the paper size.</td></tr>
+  <tr><td>Edges are cut off</td><td>Check the printer media matches the labels, try a small margin, and use the <a href="print-center.html#alignment-and-printer-profiles">alignment offset</a>.</td></tr>
+  <tr><td>Everything is shifted to one side</td><td>Use the <a href="print-center.html#alignment-and-printer-profiles">alignment test</a> and offset.</td></tr>
+  <tr><td>Extra blank labels or a banner page</td><td><a href="#extra-labels-or-banner-pages">See below.</a></td></tr>
+  <tr><td>CUPS accepted the job, nothing printed</td><td>Check <em>Job status</em>, the printer's power, cable or network, label roll, and the CUPS queue state.</td></tr>
+  <tr><td>A barcode will not scan</td><td><a href="#barcodes-that-do-not-scan">See below.</a></td></tr>
+  <tr><td>Text is missing or cut off in a design</td><td>Text does not wrap. Make the box bigger, use the <kbd>Enter</kbd> key for new lines, or reduce the font size.</td></tr>
+  <tr><td>The watch folder switched itself off</td><td>The folder moved or cannot be read. Choose it again. In the Snap, see <a href="snap.html#folders-and-the-watch-folder">folders</a>.</td></tr>
+  <tr><td>F1 or Help does nothing</td><td>ThermalPrint hands the link to your default web browser. Check that one is set, or open the <a href="index.html">manual</a> directly.</td></tr>
+</table>
+
+<h2 id="no-printers-are-listed">No printers are listed</h2>
+<ol>
+  <li>Make sure the printer is on and connected, and that it appears in your desktop's printer settings.</li>
+  <li>In a terminal, run <code>lpstat -p</code>. If it lists your printer, press <span class="ui">Refresh printers</span> in ThermalPrint.</li>
+  <li>If <code>lpstat</code> says it cannot connect, the CUPS service is not running. Start it with <code>sudo systemctl enable --now cups</code>.</li>
+  <li><strong>Snap:</strong> check <code>snap connections thermalprint</code> and see <a href="snap.html#if-printing-is-not-connected">If printing is not connected</a>.</li>
+</ol>
+<p>You can still export files with no printer; see <a href="export.html">Exporting</a>.</p>
+
+<h2 id="the-print-button-is-disabled">The Print button is disabled</h2>
+<p>Printing needs all of these. The status notice in Print Center tells you which one is missing:</p>
+<ul>
+  <li>The label has finished rendering.</li>
+  <li>A label with a changed crop has been <strong>reviewed</strong> (<em>I checked the crop and barcode edges</em>).</li>
+  <li>A <strong>printer</strong> is chosen.</li>
+  <li>A <strong>media size</strong> the printer offers is chosen. If the driver offers none, set the printer up for label stock in your system's printer settings.</li>
+  <li>Nothing is <strong>clipped</strong>: the content fits the paper.</li>
+</ul>
+
+<h2 id="extra-labels-or-banner-pages">Extra labels or banner pages</h2>
+<p>Some printer systems can print a <em>banner</em> or <em>job sheet</em> before and after each job. On a label roll each banner uses up a label. ThermalPrint turns banner pages off for every job it sends. If you still get extra labels:</p>
+<ul>
+  <li>Check whether the labels are really blank pages from the printer's own settings, such as a "gap detect" or "page length" option set for a different label size. Run the printer's calibration (usually a button or a button combination on the printer).</li>
+  <li>Check that the printer media matches the label size. A taller media size than the label feeds extra labels.</li>
+  <li>Print one label and look at the CUPS job in your printer settings to see how many pages it has. A single page means the printer feed is the cause.</li>
+</ul>
+
+<h2 id="barcodes-that-do-not-scan">Barcodes that do not scan</h2>
+<ul>
+  <li>Turn off <em>Black-and-white threshold</em> in Import &amp; Convert unless you really need it.</li>
+  <li>Check the print is dark enough: raise the printer's darkness or speed setting in its own driver.</li>
+  <li>Widen the barcode. Thin bars are the usual cause.</li>
+  <li>Leave empty space on both sides.</li>
+  <li>Use the right type for your scanner; see the <a href="barcodes.html">Barcode reference</a>.</li>
+</ul>
+
+<h2>Content looks blurry or jagged</h2>
+<p>Set <span class="ui">Rendering DPI</span> to the printer's real resolution (usually 203 or 300). If you enlarged a small low-resolution image, ThermalPrint warns that detail cannot be recovered; use a bigger source.</p>
+
+<h2>Messages you may see</h2>
+<table>
+  <tr><th>Message</th><th>Meaning</th></tr>
+  <tr><td>Printing blocked: content would be clipped</td><td>The label does not fit the paper. Use Fit, rotate, a smaller scale, or larger paper.</td></tr>
+  <tr><td>Select an advertised printer media size</td><td>Pick one of the media choices the printer offers.</td></tr>
+  <tr><td>Printer selection has changed. Refresh printers and try again.</td><td>Press Refresh printers and choose the printer again.</td></tr>
+  <tr><td>CUPS rejected the job: …</td><td>The printer system refused the job. The text after the colon comes from CUPS and usually says why.</td></tr>
+  <tr><td>Output is … mm; printer media is … mm</td><td>The label size differs from the media. Use <em>Match output to printer media</em> or choose matching media.</td></tr>
+  <tr><td>Printing is not connected. In a terminal run: sudo snap connect …</td><td>Run that command. See <a href="snap.html">Using the Snap</a>.</td></tr>
+  <tr><td>Watch folder is off · …</td><td>The reason follows the dot. Choose a readable folder.</td></tr>
+</table>
+
+<h2>Getting diagnostic details</h2>
+<p>Start ThermalPrint from a terminal with extra logging:</p>
+<pre><code>RUST_LOG=thermalprint=debug thermalprint</code></pre>
+<p>For the Snap, use <code>RUST_LOG=thermalprint=debug snap run thermalprint</code>. Logs may include file paths, so read them before posting.</p>

@@ -16,7 +16,7 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 [![Snap Store](https://snapcraft.io/thermalprint/badge.svg)](https://snapcraft.io/thermalprint)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3187e7)](LICENSE)
 
-[Install on Fedora](#fedora) · [Install on Debian / Ubuntu](#debian--ubuntu) · [See the app](#screenshots) · [Download packages](https://github.com/arios4k/thermalprint/releases/latest)
+[User manual](https://arios4k.github.io/thermalprint/manual/) · [Install on Fedora](#fedora) · [Install on Debian / Ubuntu](#debian--ubuntu) · [See the app](#screenshots) · [Download packages](https://github.com/arios4k/thermalprint/releases/latest)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/designer-dark.png">
@@ -36,7 +36,7 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 - **Print many at once.** Merge a spreadsheet into a design: put `${column}` placeholders in text, barcode, and QR content, choose a CSV file, preview any row, and print one label per row. Every row is checked before anything is sent.
 - **Fit your printer.** Each printer remembers its media, resolution, size, and copies, plus a small alignment offset. Print a ruler test label to measure how far your printer is off-center.
 - **Save clicks.** Watch a folder such as Downloads and new PDF and image labels join the queue on their own. Recent prints are listed in Print Center so a label can be reopened and printed again after you review it.
-- **Stay comfortable.** A single title bar with the app menu and window controls; light, dark, and system themes; English, Spanish, German, and French (set in the main menu); consistent icon tools; keyboard shortcuts; and a searchable guide explaining printing terminology.
+- **Stay comfortable.** A single title bar with the app menu and window controls; light, dark, and system themes; English, Spanish, German, and French (following your system language); consistent icon tools; keyboard shortcuts; and a searchable guide explaining printing terminology.
 
 Document processing happens on your computer. ThermalPrint works with local files from carriers and marketplaces, including Vinted, eBay, Etsy, Shopify, USPS, UPS, and FedEx, without connecting to their accounts.
 
@@ -209,7 +209,7 @@ cargo run --release --locked
 
 PDFium is optional. To use a custom installation, set `THERMALPRINT_PDFIUM_DIR` to the directory containing `libpdfium.so`.
 
-[Snap packaging](docs/SNAP.md) · [Development and tests](docs/DEVELOPMENT.md) · [Fedora packaging / Copr setup](packaging/rpm/README.md) · [APT release maintenance](docs/RELEASING.md) · [Regenerate screenshots](docs/screenshots/README.md)
+[User manual](https://arios4k.github.io/thermalprint/manual/) · [Snap packaging](docs/SNAP.md) · [Development and tests](docs/DEVELOPMENT.md) · [Fedora packaging / Copr setup](packaging/rpm/README.md) · [APT release maintenance](docs/RELEASING.md) · [Regenerate screenshots](docs/screenshots/README.md)
 
 ## Support ThermalPrint
 

@@ -227,8 +227,13 @@ fn encoded(kind: BarcodeKind, data: &str) -> Result<Vec<u8>> {
     }
 }
 fn draw_data_matrix(im: &mut RgbaImage, data: &str) -> Result<()> {
-    let code = datamatrix::DataMatrix::encode_str(data, datamatrix::SymbolList::default())
-        .map_err(|e| anyhow::anyhow!("Data Matrix data cannot be encoded: {e:?}"))?;
+    // Label objects are boxes, so only square symbols are used; the default list
+    // would pick a thin rectangle for short text.
+    let code = datamatrix::DataMatrix::encode_str(
+        data,
+        datamatrix::SymbolList::default().enforce_square(),
+    )
+    .map_err(|e| anyhow::anyhow!("Data Matrix data cannot be encoded: {e:?}"))?;
     let bitmap = code.bitmap();
     // Two quiet-zone modules on every side keep the symbol scannable.
     let modules = bitmap.width().max(bitmap.height()) as u32 + 4;
@@ -610,6 +615,19 @@ mod barcode_kind_tests {
         );
         let mut tiny = RgbaImage::new(12, 12);
         assert!(draw_barcode(&mut tiny, BarcodeKind::DataMatrix, "ABC", false, 203, 1).is_err());
+    }
+
+    #[test]
+    fn data_matrix_is_always_square_even_for_short_text() {
+        let im = draws(BarcodeKind::DataMatrix, "TP-1048-DEMO").unwrap();
+        let (mut min_x, mut max_x, mut min_y, mut max_y) = (u32::MAX, 0, u32::MAX, 0);
+        for (x, y, pixel) in im.enumerate_pixels() {
+            if pixel.0[3] > 0 {
+                (min_x, max_x) = (min_x.min(x), max_x.max(x));
+                (min_y, max_y) = (min_y.min(y), max_y.max(y));
+            }
+        }
+        assert_eq!(max_x - min_x, max_y - min_y, "symbol is a square");
     }
 
     #[test]

@@ -213,7 +213,7 @@ impl ThermalPrint {
                     }),
             );
         } else {
-            crate::i18n::set(app.settings.language);
+            crate::i18n::init();
         }
         if let Some(directory) = screenshot_directory {
             screenshots::seed(&mut app, &cc.egui_ctx);
@@ -322,7 +322,10 @@ impl ThermalPrint {
         }
     }
     fn watch_controls(&mut self, ui: &mut egui::Ui) {
-        ui.collapsing(crate::i18n::tr("Watch a folder"), |ui| {
+        let capturing = self.capture.is_some();
+        egui::CollapsingHeader::new(crate::i18n::tr("Watch a folder"))
+            .default_open(capturing)
+            .show(ui, |ui| {
             ui.label(RichText::new(crate::i18n::tr("Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there are ignored.")).small().weak());
             let folder = self.settings.watch_folder.clone();
             ui.horizontal_wrapped(|ui| {
@@ -649,6 +652,16 @@ impl ThermalPrint {
                 "Submitted · {submitted}. Use Job status to check the queue."
             )))
         });
+    }
+    /// Open the manual page that explains the screen you are on.
+    fn open_manual(&self, ctx: &egui::Context) {
+        let page = match self.area {
+            Area::Home => "",
+            Area::Designer => "designer.html",
+            Area::Import => "import.html",
+            Area::PrintCenter => "print-center.html",
+        };
+        ctx.open_url(egui::OpenUrl::new_tab(crate::help::manual_page(page)));
     }
     fn print_alignment_test(&mut self) {
         let Some(printer) = self
@@ -1892,6 +1905,10 @@ impl eframe::App for ThermalPrint {
                 self.print();
             }
         }
+        // F1 works everywhere, including while a dialog is open.
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::F1)) {
+            self.open_manual(&ctx);
+        }
         egui::Panel::top("header").show(ui, |ui| {
             ui.horizontal(|ui| {
                 window_chrome::title(ui, &self.icon_texture);
@@ -1954,21 +1971,10 @@ impl eframe::App for ThermalPrint {
                             }
                         });
                         ui.separator();
-                        ui.label(RichText::new(crate::i18n::tr("Language")).small().weak());
-                        for language in crate::i18n::Language::ALL {
-                            if ui
-                                .selectable_label(
-                                    self.settings.language == language,
-                                    crate::i18n::tr(language.name()),
-                                )
-                                .clicked()
-                            {
-                                self.settings.language = language;
-                                crate::i18n::set(language);
-                                self.persist();
-                            }
+                        if ui.button(crate::i18n::tr("User manual")).clicked() {
+                            self.open_manual(&ctx);
+                            ui.close();
                         }
-                        ui.separator();
                         if ui.button(crate::i18n::tr("Printing terms")).clicked() {
                             self.terms_open = true;
                             ui.close();
@@ -1988,6 +1994,21 @@ impl eframe::App for ThermalPrint {
                             ThemeChoice::Dark => egui::ThemePreference::Dark,
                         });
                         self.persist();
+                    }
+                    // In a right-to-left row, this button lands just left of the main menu.
+                    let help = ui
+                        .add(
+                            egui::Button::new(RichText::new("?").size(18.).strong())
+                                .min_size(Vec2::splat(38.)),
+                        )
+                        .on_hover_text(crate::i18n::tr(
+                            "Open the user manual in your browser (F1)",
+                        ));
+                    help.widget_info(|| {
+                        egui::WidgetInfo::labeled(egui::Role::Button, true, "Help")
+                    });
+                    if help.clicked() {
+                        self.open_manual(&ctx);
                     }
                 });
             });

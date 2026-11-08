@@ -1,0 +1,50 @@
+<!--
+title: Glossary
+group: Help
+summary: Plain-language explanations of the printing and barcode terms used in ThermalPrint.
+-->
+<p>The same terms are also explained inside the app: open the main menu (<span class="ui">☰</span>) and choose <span class="ui">Printing terms</span>.</p>
+
+<table>
+  <tr><th>Term</th><th>Meaning</th></tr>
+  <tr><td><strong>Alignment offset</strong></td><td>A small shift, in millimeters, that moves printed content to correct a printer that feeds labels off-center.</td></tr>
+  <tr><td><strong>Banner page</strong></td><td>A page some print systems add before or after a job. ThermalPrint turns it off.</td></tr>
+  <tr><td><strong>Batch</strong></td><td>Printing many labels in one go, either from a queue of files or from a spreadsheet merged into a design.</td></tr>
+  <tr><td><strong>Clipping</strong></td><td>Content that would be cut off at the paper edge. ThermalPrint blocks printing when it happens.</td></tr>
+  <tr><td><strong>Code 128, Code 39, EAN, UPC, ITF, Codabar</strong></td><td>Linear barcode types. See the <a href="barcodes.html">Barcode reference</a>.</td></tr>
+  <tr><td><strong>Confinement</strong></td><td>The sandbox a Snap runs in, which limits what files and devices it can reach.</td></tr>
+  <tr><td><strong>Copies</strong></td><td>How many identical labels to print for each label.</td></tr>
+  <tr><td><strong>CSV</strong></td><td>A plain text table with values separated by commas (or semicolons or tabs). Spreadsheet programs export it.</td></tr>
+  <tr><td><strong>CUPS</strong></td><td>The Common UNIX Printing System: the standard Linux service that manages printers and print jobs. ThermalPrint prints through it.</td></tr>
+  <tr><td><strong>Data Matrix</strong></td><td>A small square 2D barcode, good for tiny labels.</td></tr>
+  <tr><td><strong>Design</strong></td><td>A label you created in the Label Designer, saved as a <code>.thermalprint</code> file.</td></tr>
+  <tr><td><strong>DPI</strong></td><td>Dots per inch: how many printed dots fit in an inch. Common thermal printers are 203 or 300 DPI.</td></tr>
+  <tr><td><strong>Driver</strong></td><td>The software that translates a print job into commands your printer understands.</td></tr>
+  <tr><td><strong>Media</strong></td><td>The paper (here, label) size the printer driver offers, such as 4 × 6 in.</td></tr>
+  <tr><td><strong>Object</strong></td><td>One item on a label: a text box, barcode, QR code, shape, or image.</td></tr>
+  <tr><td><strong>Placeholder</strong></td><td>A <code>${name}</code> marker in a design that is replaced with a value when the label is drawn.</td></tr>
+  <tr><td><strong>Portal</strong></td><td>A desktop service that lets a sandboxed app open or save files you choose, such as the file chooser.</td></tr>
+  <tr><td><strong>PPD</strong></td><td>A file that describes a printer's features and paper sizes to CUPS.</td></tr>
+  <tr><td><strong>Profile</strong></td><td>The settings ThermalPrint remembers for one printer.</td></tr>
+  <tr><td><strong>QR code</strong></td><td>A square 2D barcode that can hold web addresses and text.</td></tr>
+  <tr><td><strong>Quiet zone</strong></td><td>The blank margin around a barcode that a scanner needs to find its edges.</td></tr>
+  <tr><td><strong>Queue (print queue)</strong></td><td>The list of labels waiting to print in Import &amp; Convert. Also, a printer's name in CUPS.</td></tr>
+  <tr><td><strong>Raw queue</strong></td><td>A CUPS queue that passes data straight to the printer without a driver. Needed for raw ZPL.</td></tr>
+  <tr><td><strong>Serial number</strong></td><td>A counting number printed with <code>${serial}</code>.</td></tr>
+  <tr><td><strong>Thermal printer</strong></td><td>A printer that makes marks with heat on special paper, so it needs no ink or toner.</td></tr>
+  <tr><td><strong>Threshold</strong></td><td>Turning every pixel fully black or white. It can harm thin barcode bars.</td></tr>
+  <tr><td><strong>Watch folder</strong></td><td>A folder ThermalPrint checks for new label files to add to the queue.</td></tr>
+  <tr><td><strong>ZPL</strong></td><td>Zebra Programming Language: commands that some label printers understand directly.</td></tr>
+</table>
+
+<h2>Frequently asked questions</h2>
+<h3>Does ThermalPrint work with my printer?</h3>
+<p>If CUPS can print to it and its driver advertises your label size, yes. Zebra, Rollo, Brother, ORGSTA, Dymo, Munbyn, Phomemo, and many other label printers work this way. Raw ZPL needs a printer that understands ZPL.</p>
+<h3>Can it print postage?</h3>
+<p>No. ThermalPrint prepares and prints labels. It does not buy postage or create tracking numbers, and it does not connect to carrier or marketplace accounts.</p>
+<h3>Why does the preview differ from my printed label?</h3>
+<p>The preview shows exactly what is sent. Differences come from the printer: its calibration, darkness, margins, or the loaded roll. Use the <a href="print-center.html#alignment-and-printer-profiles">alignment test</a> and print one label before a roll.</p>
+<h3>Is it free?</h3>
+<p>Yes. ThermalPrint is open source under the MIT license. If it is useful to you, you can <a href="https://paypal.me/AlexisRios">support its development</a>, star it on <a href="https://github.com/arios4k/thermalprint">GitHub</a>, or report a bug.</p>
+<h3>How do I change the language?</h3>
+<p>ThermalPrint follows your system language (Spanish, German, or French; otherwise English). Change your system language and restart the app.</p>

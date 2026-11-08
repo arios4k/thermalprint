@@ -1,0 +1,66 @@
+<!--
+title: Settings, files, and privacy
+group: Reference
+summary: What ThermalPrint remembers, where it is stored, the built-in limits, and how your data is handled.
+-->
+<p>ThermalPrint has no settings window. It remembers your choices as you make them, in small text files in your home folder. You can read or delete them at any time.</p>
+
+<h2>What is remembered</h2>
+<table>
+  <tr><th>What</th><th>Remembered?</th></tr>
+  <tr><td>Selected printer, media, resolution, size, DPI, rotation, margin, scale, copies</td><td>Yes, and kept separately for each printer.</td></tr>
+  <tr><td>Alignment offsets</td><td>Yes, per printer.</td></tr>
+  <tr><td>Theme (System, Light, Dark)</td><td>Yes.</td></tr>
+  <tr><td>Sidebar collapsed or expanded</td><td>Yes.</td></tr>
+  <tr><td>Watch folder and whether it is on</td><td>Yes.</td></tr>
+  <tr><td>Recent documents (up to 8 file locations)</td><td>Yes.</td></tr>
+  <tr><td>Recent prints (up to 50)</td><td>Yes, in a separate file.</td></tr>
+  <tr><td>Window size and position</td><td>Yes.</td></tr>
+  <tr><td>The print queue in Import &amp; Convert</td><td>No. It is empty each time you start.</td></tr>
+  <tr><td>Your label designs</td><td>Only as the <code>.thermalprint</code> files you save yourself.</td></tr>
+</table>
+
+<h2 id="where-your-data-lives">Where your data lives</h2>
+<table>
+  <tr><th>File</th><th>Holds</th><th>Normal install</th><th>Snap</th></tr>
+  <tr><td><code>settings.json</code></td><td>Preferences and printer profiles</td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
+  <tr><td><code>history.json</code></td><td>Recent prints</td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
+  <tr><td><code>app.ron</code></td><td>Window state</td><td><code>~/.local/share/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.local/share/</code></td></tr>
+</table>
+<p>To start fresh, quit ThermalPrint and delete these files. A damaged or hand-edited settings file is checked when it is read: impossible values are corrected, and an unreadable file is ignored.</p>
+<div class="note"><p>Recent documents and recent prints contain <strong>file names and locations</strong>, and a printed design's contents. Use <span class="ui">Clear history</span> in Print Center before sharing your settings folder.</p></div>
+
+<h2>Privacy</h2>
+<ul>
+  <li><strong>Your labels stay on your computer.</strong> Documents are processed locally. ThermalPrint does not upload anything and does not connect to any marketplace or carrier account.</li>
+  <li>There is <strong>no tracking, analytics, or account</strong>.</li>
+  <li>The app opens your web browser only when you press a link or the Help button.</li>
+  <li>When printing, labels go to the printer system on your computer (or the network printer you chose).</li>
+</ul>
+
+<h2>Built-in limits</h2>
+<table>
+  <tr><th>Limit</th><th>Value</th></tr>
+  <tr><td>Imported file size</td><td>256 MB</td></tr>
+  <tr><td>Imported page or image size</td><td>45 megapixels</td></tr>
+  <tr><td>Output size</td><td>36 megapixels (lower the DPI or label size if you reach it)</td></tr>
+  <tr><td>Label size</td><td>10 to 500 mm per side in Import &amp; Convert; 1 to 2,000 mm in the Designer canvas</td></tr>
+  <tr><td>Copies</td><td>1 to 999</td></tr>
+  <tr><td>Alignment offset</td><td>−10 to +10 mm</td></tr>
+  <tr><td>Batch CSV</td><td>500 rows, 64 columns, 2 MB</td></tr>
+  <tr><td>Barcode or QR content</td><td>2,048 characters</td></tr>
+  <tr><td>Image inside a design</td><td>9 MB</td></tr>
+  <tr><td>Objects in one design</td><td>1,000</td></tr>
+  <tr><td>Font size / line width</td><td>3 to 300 pt / 0.05 to 20 mm</td></tr>
+  <tr><td>Watch folder</td><td>Files up to 50 MB; up to 20 new files per check; a check every 2 seconds</td></tr>
+</table>
+<p>These limits protect against accidental memory exhaustion. They are not a security sandbox for untrusted files; open labels only from sources you trust.</p>
+
+<h2>Environment variables</h2>
+<table>
+  <tr><th>Variable</th><th>Effect</th></tr>
+  <tr><td><code>THERMALPRINT_PDFIUM_DIR</code></td><td>Folder containing <code>libpdfium.so</code>, to use PDFium instead of Poppler.</td></tr>
+  <tr><td><code>CUPS_SERVER</code></td><td>Use a different CUPS server. A path to a socket is supported; remote servers are not used for reading printer details.</td></tr>
+  <tr><td><code>RUST_LOG=thermalprint=debug</code></td><td>Print diagnostic details to the terminal. Keep logs private; they can include file paths.</td></tr>
+  <tr><td><code>LC_ALL</code>, <code>LC_MESSAGES</code>, <code>LANGUAGE</code>, <code>LANG</code></td><td>Your system language, which ThermalPrint follows (Spanish, German, French; otherwise English).</td></tr>
+</table>

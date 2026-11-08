@@ -265,3 +265,24 @@ pub fn external_link(ui: &mut egui::Ui, label: &str, url: &str) {
             .on_hover_text(format!("Open in your browser: {url}"));
     });
 }
+
+/// The published user manual, and the page that explains each part of the app.
+pub const MANUAL_URL: &str = "https://arios4k.github.io/thermalprint/manual/";
+
+pub fn manual_page(page: &str) -> String {
+    format!("{MANUAL_URL}{page}")
+}
+
+#[cfg(test)]
+mod manual_link_tests {
+    use super::*;
+
+    #[test]
+    fn manual_links_point_into_the_published_manual() {
+        assert_eq!(manual_page(""), MANUAL_URL);
+        assert_eq!(
+            manual_page("designer.html"),
+            "https://arios4k.github.io/thermalprint/manual/designer.html"
+        );
+    }
+}
