@@ -48,9 +48,11 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
   <tr><td>Rectangle, ellipse, line</td><td>Basic shapes.</td></tr>
   <tr><td>Two divider icons</td><td>A horizontal or vertical divider line.</td></tr>
   <tr><td>Picture</td><td>An image or logo from a file.</td></tr>
+  <tr><td>Address book (card with a person)</td><td>A menu of saved addresses to add as text. See <a href="objects.html#address-book">Address book</a>.</td></tr>
+  <tr><td>Warning triangle</td><td>Shipping symbols and your saved logos. See <a href="objects.html#symbols-and-logos">Symbols and logos</a>.</td></tr>
   <tr><td>Last icon</td><td>The template menu.</td></tr>
 </table>
-<p>Each object type has its own page section in <a href="objects.html">Objects</a>.</p>
+<p>Each object type has its own page section in <a href="objects.html">Objects</a>. Every palette and properties button is an icon with an accessible name: hover over it to read the name, and screen readers announce the same text.</p>
 
 <h2>Working on the canvas</h2>
 <ul>
@@ -93,11 +95,11 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <p>If a save fails or you cancel the file chooser, your design stays open and unchanged.</p>
 
 <h2>The template gallery</h2>
-<p><strong>File → Template gallery…</strong> shows every built-in template and every template you saved as a small preview, with a search box. Click a card to open it as an unsaved copy; the <strong>✕</strong> button under one of your own templates removes it.</p>
+<p><strong>File → Template gallery…</strong> shows every built-in template and every template you saved as a small preview, with a search box. Click a card to open it as an unsaved copy; the trash button under one of your own templates removes it.</p>
 {{figure:designer-gallery|The Template gallery window with previews of the built-in templates|The template gallery. Previews appear a few at a time so the window opens at once.}}
 
 <h2>Your own templates</h2>
-<p>When you reuse a design, choose <strong>File → Save as template…</strong>. The design is stored in a <code>templates</code> folder inside ThermalPrint's settings folder, named after the label, and appears under <em>Your templates</em> in the template menu next to the built-in ones. Choosing one opens an unsaved copy, so the template itself never changes. Saving a template under a name you already used replaces it, and the <strong>✕</strong> beside a template removes it. You can keep up to 100.</p>
+<p>When you reuse a design, choose <strong>File → Save as template…</strong>. The design is stored in a <code>templates</code> folder inside ThermalPrint's settings folder, named after the label, and appears under <em>Your templates</em> in the template menu next to the built-in ones. Choosing one opens an unsaved copy, so the template itself never changes. Saving a template under a name you already used replaces it, and the trash button beside a template removes it. You can keep up to 100.</p>
 
 <h2>Labels with no fixed length</h2>
 <p>On a continuous roll the label should be as long as its content. In <strong>Label setup</strong> tick <strong>Auto-length (continuous roll)</strong>: the printed length becomes the lowest edge of any object plus the <strong>Bottom margin</strong> (2 mm to start), and the status bar and <em>Printed length</em> show the result. Use it with <em>Custom</em> media in <a href="print-center.html">Print Center</a>. The canvas keeps the height you set for editing.</p>
