@@ -10,6 +10,7 @@ pub mod layout;
 pub mod printing;
 pub mod settings;
 pub mod ui;
+pub mod watch;
 pub mod zpl;
 
 pub mod help;

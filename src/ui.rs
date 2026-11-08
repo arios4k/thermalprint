@@ -16,7 +16,7 @@ use eframe::egui::{self, Color32, Pos2, Rect, RichText, Sense, Stroke, StrokeKin
 use std::{
     path::PathBuf,
     sync::{Arc, mpsc},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -83,6 +83,8 @@ pub struct ThermalPrint {
     reviewed: bool,
     drag: Option<Drag>,
     startup_file: Option<PathBuf>,
+    watcher: Option<crate::watch::Watcher>,
+    last_watch: Instant,
     queue: Vec<QueueItem>,
     selected: Option<usize>,
     pending_files: std::collections::VecDeque<PathBuf>,
@@ -184,6 +186,8 @@ impl ThermalPrint {
             reviewed: false,
             drag: None,
             startup_file: std::env::args_os().nth(1).map(PathBuf::from),
+            watcher: None,
+            last_watch: Instant::now(),
             queue: vec![],
             selected: None,
             pending_files: std::collections::VecDeque::new(),
@@ -194,6 +198,7 @@ impl ThermalPrint {
             terms_search: String::new(),
             capture: None,
         };
+        app.sync_watcher();
         if let Some(directory) = screenshot_directory {
             screenshots::seed(&mut app, &cc.egui_ctx);
             app.capture = Some(screenshots::Capture::new(directory, screenshot_style));
@@ -242,6 +247,104 @@ impl ThermalPrint {
                 )
                 .pick_files();
             Ok(files.map(Message::Files).unwrap_or(Message::Cancelled))
+        });
+    }
+    /// Start or stop the folder watcher to match the saved settings.
+    fn sync_watcher(&mut self) {
+        let wanted = self
+            .settings
+            .watch_enabled
+            .then(|| self.settings.watch_folder.clone())
+            .flatten();
+        let Some(folder) = wanted else {
+            self.watcher = None;
+            return;
+        };
+        if self.watcher.as_ref().is_some_and(|w| w.dir() == folder) {
+            return;
+        }
+        match crate::watch::check(&folder).and_then(|()| crate::watch::Watcher::new(&folder)) {
+            Ok(watcher) => self.watcher = Some(watcher),
+            Err(error) => {
+                self.watcher = None;
+                self.settings.watch_enabled = false;
+                self.status = format!("Watch folder is off · {error:#}");
+                self.error = true;
+            }
+        }
+    }
+    fn watch_tick(&mut self, ctx: &egui::Context) {
+        let Some(watcher) = self.watcher.as_mut() else {
+            return;
+        };
+        ctx.request_repaint_after(Duration::from_secs(2));
+        if self.busy || self.last_watch.elapsed() < Duration::from_secs(2) {
+            return;
+        }
+        self.last_watch = Instant::now();
+        match watcher.scan() {
+            Ok(files) if files.is_empty() => {}
+            Ok(files) => {
+                let count = files.len();
+                let visible = matches!(self.area, Area::Home | Area::Import);
+                if visible {
+                    self.area = Area::Import;
+                }
+                self.append_files(files);
+                if !visible {
+                    self.status = format!(
+                        "{count} new label(s) from the watch folder are waiting in Import & Convert"
+                    );
+                }
+            }
+            Err(error) => {
+                self.watcher = None;
+                self.settings.watch_enabled = false;
+                self.status = format!("Watch folder is off · {error:#}");
+                self.error = true;
+            }
+        }
+    }
+    fn watch_controls(&mut self, ui: &mut egui::Ui) {
+        ui.collapsing("Watch a folder", |ui| {
+            ui.label(RichText::new("Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there are ignored.").small().weak());
+            let folder = self.settings.watch_folder.clone();
+            ui.horizontal_wrapped(|ui| {
+                if ui.button("Choose folder…").clicked()
+                    && let Some(picked) = rfd::FileDialog::new().pick_folder()
+                {
+                    self.settings.watch_folder = Some(picked);
+                    self.settings.watch_enabled = true;
+                    self.sync_watcher();
+                    self.persist();
+                }
+                if folder.is_some() && ui.button("Clear").clicked() {
+                    self.settings.watch_folder = None;
+                    self.settings.watch_enabled = false;
+                    self.sync_watcher();
+                    self.persist();
+                }
+            });
+            match &folder {
+                Some(folder) => {
+                    ui.label(RichText::new(folder.display().to_string()).small());
+                    if let Some(hint) = crate::watch::current_snap_hint(folder) {
+                        ui.label(RichText::new(hint).small().weak());
+                    }
+                }
+                None => {
+                    ui.label(RichText::new("No folder chosen").small().weak());
+                }
+            }
+            let mut enabled = self.settings.watch_enabled;
+            if ui
+                .add_enabled(folder.is_some(), egui::Checkbox::new(&mut enabled, "Watch for new labels"))
+                .changed()
+            {
+                self.settings.watch_enabled = enabled;
+                self.sync_watcher();
+                self.persist();
+            }
         });
     }
     fn save_selection(&mut self) {
@@ -1097,6 +1200,7 @@ impl ThermalPrint {
         {
             self.open();
         }
+        self.watch_controls(ui);
         if !self.queue.is_empty() {
             ui.add_space(8.);
             ui.label(RichText::new(format!("Print queue · {} labels", self.queue.len())).strong());
@@ -1588,6 +1692,7 @@ impl eframe::App for ThermalPrint {
     fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         self.poll(&ctx);
+        self.watch_tick(&ctx);
         if let Some(mut capture) = self.capture.take() {
             capture.tick(self, &ctx);
             self.capture = Some(capture);

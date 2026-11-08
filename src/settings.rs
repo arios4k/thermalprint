@@ -78,6 +78,9 @@ pub struct Settings {
     pub offset_x_mm: f32,
     pub offset_y_mm: f32,
     pub profiles: BTreeMap<String, PrinterProfile>,
+    /// A folder to watch for new label files, and whether watching is on.
+    pub watch_folder: Option<PathBuf>,
+    pub watch_enabled: bool,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -102,6 +105,8 @@ impl Default for Settings {
             offset_x_mm: 0.,
             offset_y_mm: 0.,
             profiles: BTreeMap::new(),
+            watch_folder: None,
+            watch_enabled: false,
         }
     }
 }
