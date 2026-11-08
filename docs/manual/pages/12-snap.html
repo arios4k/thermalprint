@@ -26,7 +26,7 @@ summary: What the Snap package can reach, the optional connections, and double-c
 <h2 id="saved-designs-and-double-click-opening">Saved designs and double-click opening</h2>
 <p>A Snap cannot register a new file type with your desktop. If you only have the Snap installed (no APT or Fedora package), run this <strong>once from a normal terminal</strong>, not from inside the Snap, to make <code>.thermalprint</code> files open in ThermalPrint when you double-click them:</p>
 <pre><code>/snap/thermalprint/current/usr/share/doc/thermalprint/register-mime.sh</code></pre>
-<p>It claims only <code>.thermalprint</code> files, never PDFs, images, or other JSON files. It needs <code>shared-mime-info</code> and <code>xdg-utils</code>, which most desktops already have. The script refuses to run if started inside the Snap.</p>
+<p>The helper also copies the file icon into your user icon folders, including the folder of your current icon theme, so themes such as Zorin show it. Restart your file manager afterward (<code>nautilus -q</code>). A Snap cannot install a preview thumbnailer, so Snap-only installs show the icon, not a picture of the label. It claims only <code>.thermalprint</code> files, never PDFs, images, or other JSON files. It needs <code>shared-mime-info</code> and <code>xdg-utils</code>, which most desktops already have. The script refuses to run if started inside the Snap.</p>
 
 <h2 id="folders-and-the-watch-folder">Folders and the watch folder</h2>
 <table>

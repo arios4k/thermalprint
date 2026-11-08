@@ -45,6 +45,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.6.2" date="2026-11-08">
+      <description>
+        <p>File previews and icon fixes.</p>
+        <ul>
+          <li>Saved .thermalprint files show a preview picture of the label in file managers (Debian and Fedora packages).</li>
+          <li>The Snap's helper now installs the file icon for your current icon theme, fixing a generic icon on themes such as Zorin.</li>
+          <li>ThermalPrint is made for thermal printers and also works with regular laser and inkjet printers.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.1" date="2026-11-08">
       <description>
         <p>Fixes found after 0.6.0.</p>

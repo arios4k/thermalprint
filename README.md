@@ -174,7 +174,7 @@ The searchable **Printing terms** window explains CUPS, DPI, document formats, a
 3. **Match the paper.** Select the loaded stock and its matching printer media. The default label size is 4 × 6 inches; saved user choices are preserved.
 4. **Print or save.** Print the label, arrange a batch, or export a PDF/PNG.
 
-Double-click a saved `.thermalprint` file to open it directly in Label Designer. Before replacing a modified design or closing the app, choose **Save**, **Discard**, or **Cancel**.
+Double-click a saved `.thermalprint` file to open it directly in Label Designer. The Debian and Fedora packages also give these files a preview picture of the label in your file manager. Before replacing a modified design or closing the app, choose **Save**, **Discard**, or **Cancel**.
 
 Select an object and drag its round handle to rotate freely, including fractional angles. Hold **Shift** to snap to 15° increments, or enter an exact **Rotation** value in Properties.
 
