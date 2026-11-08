@@ -16,6 +16,7 @@ pub mod recovery;
 pub mod settings;
 pub mod sheet;
 pub mod symbols;
+pub mod thumbnail;
 pub mod ui;
 pub mod user_templates;
 pub mod watch;

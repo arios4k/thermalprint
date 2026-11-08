@@ -80,6 +80,17 @@ class DesktopIntegrationTests(unittest.TestCase):
             self.assertIn(f'mimetypes/{name}.svg', text, package)
             self.assertIn(f'mimetypes/{name}.png', text, package)
 
+    def test_deb_and_rpm_ship_a_thumbnailer_for_the_design_type(self):
+        thumbnailer = configparser.ConfigParser(interpolation=None)
+        thumbnailer.read(ROOT / 'data/thermalprint.thumbnailer')
+        entry = thumbnailer['Thumbnailer Entry']
+        self.assertEqual(entry['MimeType'], MIME + ';')
+        self.assertEqual(entry['Exec'], 'thermalprint --thumbnail %i %o %s')
+        assets = tomllib.loads((ROOT / 'Cargo.toml').read_text())['package']['metadata']['deb']['assets']
+        self.assertIn(['data/thermalprint.thumbnailer', 'usr/share/thumbnailers/', '644'], assets)
+        rpm = (ROOT / 'packaging/rpm/thermalprint.spec.in').read_text()
+        self.assertIn('%{_datadir}/thumbnailers/thermalprint.thumbnailer', rpm)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,4 @@
+[Thumbnailer Entry]
+TryExec=thermalprint
+Exec=thermalprint --thumbnail %i %o %s
+MimeType=application/x-thermalprint;

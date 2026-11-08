@@ -1,5 +1,10 @@
 use thermalprint::ui::ThermalPrint;
 fn main() -> eframe::Result {
+    // File managers start `thermalprint --thumbnail IN OUT SIZE`: no window, no logging setup.
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(code) = thermalprint::thumbnail::run_from_args(&args) {
+        std::process::exit(code);
+    }
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
