@@ -9,7 +9,7 @@ The package name and executable are both `thermalprint`. The APT repository live
 To install a downloaded `.deb` directly, use APT so package dependencies are installed:
 
 ```sh
-sudo apt install ./thermalprint_0.5.1-1_amd64.deb
+sudo apt install ./thermalprint_0.5.2-1_amd64.deb
 ```
 
 Replace the filename with the version you downloaded. The application appears as **ThermalPrint** in the desktop launcher, using the bundled color icon. You can also run `thermalprint` from a terminal.

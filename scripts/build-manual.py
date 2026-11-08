@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the ThermalPrint user manual (static HTML) from docs/manual/pages.
 
-Standard library only. Each page is an HTML fragment that starts with a comment holding
+Standard library only, and compatible with Python 3.8 and newer. Each page is an HTML fragment that starts with a comment holding
 `title`, `group`, and `summary`. Pages are ordered by their filename prefix. Shortcodes:
 
     {{figure:image-name|Alt text|Caption}}   a screenshot (docs/manual/images/image-name.png)
@@ -16,7 +16,6 @@ from pathlib import Path
 import re
 import shutil
 import sys
-import tomllib
 
 ROOT = Path(__file__).resolve().parent.parent
 MANUAL = ROOT / "docs" / "manual"
@@ -29,7 +28,13 @@ class ManualError(Exception):
 
 
 def version() -> str:
-    return tomllib.loads((ROOT / "Cargo.toml").read_text())["package"]["version"]
+    """The crate version. Read without tomllib so old Pythons (Ubuntu 22.04 has 3.10) work."""
+    manifest = (ROOT / "Cargo.toml").read_text()
+    package = re.search(r"^\[package\]\s*$(.*?)(?=^\[|\Z)", manifest, re.S | re.M)
+    found = re.search(r'^version\s*=\s*"([^"]+)"', package.group(1) if package else "", re.M)
+    if not found:
+        raise ManualError("Cargo.toml has no [package] version")
+    return found.group(1)
 
 
 def slugify(text: str) -> str:
