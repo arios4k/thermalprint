@@ -747,6 +747,45 @@ const ES: &[(&str, &str)] = &[
     ),
     ("Invert black and white", "Invertir blanco y negro"),
     ("Reset image adjustments", "Restablecer ajustes de imagen"),
+    (
+        "Spacing of the guide grid. Snapping moves in steps of a fifth of it.",
+        "Separación de la cuadrícula guía. El ajuste se mueve en pasos de un quinto.",
+    ),
+    (
+        "Align the selected objects with each other",
+        "Alinea entre sí los objetos seleccionados",
+    ),
+    (
+        "Make the gaps between three or more objects equal",
+        "Iguala los espacios entre tres o más objetos",
+    ),
+    (
+        "Center the selected objects as a group on the label",
+        "Centra los objetos seleccionados como grupo en la etiqueta",
+    ),
+    (
+        "A locked object cannot be moved, resized, rotated, or deleted from the canvas",
+        "Un objeto bloqueado no se puede mover, redimensionar, girar ni borrar desde el lienzo",
+    ),
+    (
+        "Break lines at spaces so they fit the box width",
+        "Divide las líneas en los espacios para que quepan en el ancho del recuadro",
+    ),
+    (
+        "Make the text smaller until all of it fits inside the box",
+        "Reduce el texto hasta que quepa entero en el recuadro",
+    ),
+    (
+        "More error correction survives more damage but makes a denser code",
+        "Más corrección de errores resiste más daño pero crea un código más denso",
+    ),
+    (
+        "How the image is reduced to black and white",
+        "Cómo se reduce la imagen a blanco y negro",
+    ),
+    ("Top", "Arriba"),
+    ("Middle", "Centro"),
+    ("Bottom", "Abajo"),
 ];
 const DE: &[(&str, &str)] = &[
     ("About ThermalPrint", "Über ThermalPrint"),
@@ -1384,6 +1423,45 @@ const DE: &[(&str, &str)] = &[
     ),
     ("Invert black and white", "Schwarz und Weiß vertauschen"),
     ("Reset image adjustments", "Bildanpassungen zurücksetzen"),
+    (
+        "Spacing of the guide grid. Snapping moves in steps of a fifth of it.",
+        "Abstand des Hilfsrasters. Das Einrasten erfolgt in Schritten von einem Fünftel.",
+    ),
+    (
+        "Align the selected objects with each other",
+        "Die ausgewählten Objekte aneinander ausrichten",
+    ),
+    (
+        "Make the gaps between three or more objects equal",
+        "Die Abstände zwischen drei oder mehr Objekten angleichen",
+    ),
+    (
+        "Center the selected objects as a group on the label",
+        "Die ausgewählten Objekte als Gruppe auf der Etikette zentrieren",
+    ),
+    (
+        "A locked object cannot be moved, resized, rotated, or deleted from the canvas",
+        "Ein gesperrtes Objekt kann auf der Fläche nicht verschoben, skaliert, gedreht oder gelöscht werden",
+    ),
+    (
+        "Break lines at spaces so they fit the box width",
+        "Zeilen an Leerzeichen umbrechen, damit sie in die Rahmenbreite passen",
+    ),
+    (
+        "Make the text smaller until all of it fits inside the box",
+        "Den Text verkleinern, bis er vollständig in den Rahmen passt",
+    ),
+    (
+        "More error correction survives more damage but makes a denser code",
+        "Mehr Fehlerkorrektur übersteht mehr Schäden, ergibt aber einen dichteren Code",
+    ),
+    (
+        "How the image is reduced to black and white",
+        "Wie das Bild auf Schwarzweiß reduziert wird",
+    ),
+    ("Top", "Oben"),
+    ("Middle", "Mitte"),
+    ("Bottom", "Unten"),
 ];
 const FR: &[(&str, &str)] = &[
     ("About ThermalPrint", "À propos de ThermalPrint"),
@@ -2060,6 +2138,45 @@ const FR: &[(&str, &str)] = &[
         "Reset image adjustments",
         "Réinitialiser les réglages de l'image",
     ),
+    (
+        "Spacing of the guide grid. Snapping moves in steps of a fifth of it.",
+        "Espacement de la grille. L'aimantation avance par pas d'un cinquième.",
+    ),
+    (
+        "Align the selected objects with each other",
+        "Aligne les objets sélectionnés entre eux",
+    ),
+    (
+        "Make the gaps between three or more objects equal",
+        "Égalise les espaces entre trois objets ou plus",
+    ),
+    (
+        "Center the selected objects as a group on the label",
+        "Centre les objets sélectionnés en groupe sur l'étiquette",
+    ),
+    (
+        "A locked object cannot be moved, resized, rotated, or deleted from the canvas",
+        "Un objet verrouillé ne peut pas être déplacé, redimensionné, pivoté ni supprimé depuis le canevas",
+    ),
+    (
+        "Break lines at spaces so they fit the box width",
+        "Coupe les lignes aux espaces pour qu'elles tiennent dans la largeur du cadre",
+    ),
+    (
+        "Make the text smaller until all of it fits inside the box",
+        "Réduit le texte jusqu'à ce qu'il tienne entièrement dans le cadre",
+    ),
+    (
+        "More error correction survives more damage but makes a denser code",
+        "Plus de correction d'erreurs résiste à plus de dégâts mais donne un code plus dense",
+    ),
+    (
+        "How the image is reduced to black and white",
+        "Comment l'image est réduite en noir et blanc",
+    ),
+    ("Top", "Haut"),
+    ("Middle", "Milieu"),
+    ("Bottom", "Bas"),
 ];
 
 #[cfg(test)]

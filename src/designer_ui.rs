@@ -3330,3 +3330,92 @@ mod smart_guide_tests {
         assert!(guides.contains(&(true, 50.)));
     }
 }
+
+#[cfg(test)]
+mod inspector_render_tests {
+    use super::*;
+
+    fn frames(designer: &mut Designer) {
+        let ctx = egui::Context::default();
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(1280., 800.));
+        for _ in 0..3 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |ui| designer.show(ui, &Settings::default(), &[]),
+            );
+            output.textures_delta.clear();
+        }
+    }
+
+    fn sample() -> Vec<Element> {
+        vec![
+            Element::Text {
+                text: "A long line of text ${date:%d/%m/%Y} ${serial:4}".into(),
+                font_pt: 12.,
+                bold: false,
+                align: TextAlign::Left,
+            },
+            Element::Barcode {
+                kind: design::BarcodeKind::Ean13,
+                data: "590123412345".into(),
+                show_text: true,
+            },
+            Element::Qr {
+                data: "https://example.com".into(),
+            },
+            Element::Shape {
+                kind: design::ShapeKind::Rectangle,
+                stroke_mm: 0.4,
+                filled: false,
+            },
+            Element::Image {
+                data_base64: String::new(),
+            },
+        ]
+    }
+
+    #[test]
+    fn every_kind_of_object_shows_its_inspector_without_panicking() {
+        for element in sample() {
+            for locked in [false, true] {
+                let mut designer = Designer::new();
+                designer.doc = LabelDocument::blank(60., 40.);
+                let id = designer.doc.add(element.clone(), 2., 2., 40., 12.);
+                designer.doc.objects[0].locked = locked;
+                designer.selected = vec![id];
+                frames(&mut designer);
+                assert_eq!(designer.selected, vec![id]);
+            }
+        }
+    }
+
+    #[test]
+    fn a_multi_selection_shows_the_arrange_panel() {
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(80., 50.);
+        let mut ids = Vec::new();
+        for (i, element) in sample().into_iter().enumerate() {
+            ids.push(
+                designer
+                    .doc
+                    .add(element, 2. + i as f32 * 3., 2. + i as f32 * 5., 20., 8.),
+            );
+        }
+        designer.selected = ids.clone();
+        frames(&mut designer);
+        designer.arrange(design::Alignment::Left, design::AlignTo::Selection);
+        designer.distribute(design::Axis::Horizontal);
+        designer.set_lock(true);
+        assert!(designer.doc.objects.iter().all(|o| o.locked));
+        frames(&mut designer);
+        designer.delete();
+        assert_eq!(
+            designer.doc.objects.len(),
+            ids.len(),
+            "locked objects survive delete"
+        );
+    }
+}
