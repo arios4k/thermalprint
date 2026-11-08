@@ -45,6 +45,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.6.1" date="2026-11-08">
+      <description>
+        <p>Fixes found after 0.6.0.</p>
+        <ul>
+          <li>The delete buttons in the address book, logo, and template lists now show a trash icon.</li>
+          <li>Symbol and logo previews are visible in dark mode.</li>
+          <li>Saved .thermalprint files now show the ThermalPrint icon in file managers.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.0" date="2026-11-08">
       <description>
         <p>More control in the Label Designer.</p>
