@@ -1,3 +1,4 @@
+pub mod calibration;
 pub mod design;
 pub mod design_render;
 pub mod designer_ui;

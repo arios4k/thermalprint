@@ -432,15 +432,17 @@ impl ThermalPrint {
                         .iter()
                         .any(|p| p.name == self.settings.printer)
                     {
-                        self.settings.printer = self
+                        let chosen = self
                             .printers
                             .iter()
                             .find(|p| p.is_default)
                             .or(self.printers.first())
                             .map(|p| p.name.clone())
                             .unwrap_or_default();
-                        self.settings.media.clear();
-                        self.settings.resolution.clear();
+                        if !self.settings.switch_printer(&chosen) {
+                            self.settings.media.clear();
+                            self.settings.resolution.clear();
+                        }
                     }
                     self.status = if self.printers.is_empty() {
                         printing::snap_connection_hint()
@@ -475,6 +477,7 @@ impl ThermalPrint {
         if self.capture.is_some() {
             return;
         }
+        self.settings.store_profile();
         if let Err(e) = self.settings.save() {
             self.status = format!("Could not save preferences: {e}");
             self.error = true;
@@ -506,6 +509,31 @@ impl ThermalPrint {
         self.task("Submitting to CUPS…", move || {
             Ok(Message::Done(format!(
                 "Submitted · {}. Use Job status to check the queue.",
+                printing::submit(&output, &settings, &printer)?
+            )))
+        });
+    }
+    fn print_alignment_test(&mut self) {
+        let Some(printer) = self
+            .printers
+            .iter()
+            .find(|p| p.name == self.settings.printer)
+            .cloned()
+        else {
+            self.status = "Select a CUPS printer".into();
+            self.error = true;
+            return;
+        };
+        let settings = self.settings.clone();
+        self.persist();
+        self.task("Submitting alignment test…", move || {
+            let output = crate::calibration::alignment_test(
+                settings.width_mm,
+                settings.height_mm,
+                settings.dpi,
+            );
+            Ok(Message::Done(format!(
+                "Alignment test submitted · {}",
                 printing::submit(&output, &settings, &printer)?
             )))
         });
@@ -736,25 +764,29 @@ impl ThermalPrint {
     }
     fn print_settings(&mut self, ui: &mut egui::Ui) {
         let previous_printer = self.settings.printer.clone();
+        let mut chosen_printer = previous_printer.clone();
         Self::section_frame(ui).show(ui, |ui| {
             ui.set_width(ui.available_width());
             Self::center_heading(ui, "Printer & media", "Print device");
             ui.label("Printer queue");
             egui::ComboBox::from_id_salt("center-printer")
-                .selected_text(if self.settings.printer.is_empty() {
+                .selected_text(if chosen_printer.is_empty() {
                     "Choose printer"
                 } else {
-                    &self.settings.printer
+                    &chosen_printer
                 })
                 .show_ui(ui, |ui| {
                     for p in &self.printers {
-                        ui.selectable_value(&mut self.settings.printer, p.name.clone(), &p.name);
+                        ui.selectable_value(&mut chosen_printer, p.name.clone(), &p.name);
                     }
                 });
-            if previous_printer != self.settings.printer {
-                self.settings.media.clear();
-                self.settings.resolution.clear();
-                self.select_default_media();
+            if previous_printer != chosen_printer {
+                // Each printer keeps its own media, resolution, size, copies, and alignment.
+                if !self.settings.switch_printer(&chosen_printer) {
+                    self.settings.media.clear();
+                    self.settings.resolution.clear();
+                    self.select_default_media();
+                }
             }
             if self.printers.is_empty() {
                 ui.label(
@@ -857,6 +889,46 @@ impl ThermalPrint {
                 std::mem::swap(&mut self.settings.width_mm, &mut self.settings.height_mm);
             }
             ui.label(RichText::new("These dimensions control the output and stock preview. Match them to the printer media size above.").small().weak());
+            ui.separator();
+            ui.label(RichText::new("Alignment").strong());
+            ui.label(RichText::new("Settings above are remembered for each printer. Use the offset if labels print slightly off-center.").small().weak());
+            ui.horizontal(|ui| {
+                ui.label("Horizontal");
+                ui.add(
+                    egui::DragValue::new(&mut self.settings.offset_x_mm)
+                        .range(-crate::settings::MAX_OFFSET_MM..=crate::settings::MAX_OFFSET_MM)
+                        .speed(0.1)
+                        .suffix(" mm"),
+                )
+                .accessible_name("Horizontal print offset in millimeters");
+                ui.label("Vertical");
+                ui.add(
+                    egui::DragValue::new(&mut self.settings.offset_y_mm)
+                        .range(-crate::settings::MAX_OFFSET_MM..=crate::settings::MAX_OFFSET_MM)
+                        .speed(0.1)
+                        .suffix(" mm"),
+                )
+                .accessible_name("Vertical print offset in millimeters");
+            });
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(!self.busy && !self.settings.printer.is_empty(), egui::Button::new("Print alignment test"))
+                    .on_hover_text("Prints a ruler label with a 1 mm border so you can measure the offset")
+                    .clicked()
+                {
+                    self.print_alignment_test();
+                }
+                if ui
+                    .add_enabled(
+                        self.settings.offset_x_mm != 0. || self.settings.offset_y_mm != 0.,
+                        egui::Button::new("Reset offset"),
+                    )
+                    .clicked()
+                {
+                    self.settings.offset_x_mm = 0.;
+                    self.settings.offset_y_mm = 0.;
+                }
+            });
         });
     }
     fn print_overview(&mut self, ui: &mut egui::Ui) {
