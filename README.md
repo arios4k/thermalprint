@@ -36,7 +36,7 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 - **Print many at once.** Merge a spreadsheet into a design: put `${column}` placeholders in text, barcode, and QR content, choose a CSV file, preview any row, and print one label per row. Every row is checked before anything is sent.
 - **Fit your printer.** Each printer remembers its media, resolution, size, and copies, plus a small alignment offset. Print a ruler test label to measure how far your printer is off-center.
 - **Save clicks.** Watch a folder such as Downloads and new PDF and image labels join the queue on their own. Recent prints are listed in Print Center so a label can be reopened and printed again after you review it.
-- **Stay comfortable.** A single title bar with the app menu and window controls; light, dark, and system themes; English, Spanish, German, and French (set in the main menu); consistent icon tools; keyboard shortcuts; and a searchable guide explaining printing terminology.
+- **Stay comfortable.** A single title bar with the app menu and window controls; light, dark, and system themes; English, Spanish, German, and French (following your system language); consistent icon tools; keyboard shortcuts; and a searchable guide explaining printing terminology.
 
 Document processing happens on your computer. ThermalPrint works with local files from carriers and marketplaces, including Vinted, eBay, Etsy, Shopify, USPS, UPS, and FedEx, without connecting to their accounts.
 

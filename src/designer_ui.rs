@@ -615,9 +615,18 @@ impl Designer {
             .show(ctx, |ui| {
                 ui.label(crate::i18n::tr("Put ${column} placeholders in text, barcode, and QR content. Each row of your spreadsheet becomes one label."));
                 ui.label(RichText::new(crate::i18n::tr("Export a CSV from your spreadsheet. Column names are not case-sensitive; ${serial} counts up from the design's serial number.")).small().weak());
-                if ui.button(crate::i18n::tr("Choose CSV file…")).clicked() {
-                    Self::batch_choose(&mut state);
-                }
+                ui.horizontal(|ui| {
+                    if ui.button(crate::i18n::tr("Choose CSV file…")).clicked() {
+                        Self::batch_choose(&mut state);
+                    }
+                    if ui
+                        .button(crate::i18n::tr("Help"))
+                        .on_hover_text(crate::i18n::tr("Open the user manual in your browser (F1)"))
+                        .clicked()
+                    {
+                        ctx.open_url(egui::OpenUrl::new_tab(crate::help::manual_page("batch.html")));
+                    }
+                });
                 if let Some(error) = &state.error {
                     ui.colored_label(Color32::RED, error);
                 }

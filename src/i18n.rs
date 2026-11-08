@@ -1,8 +1,8 @@
 //! Interface translations. The app is written in English; each translation maps an
 //! exact English string to its Spanish, German, or French text. A string with no
 //! entry is shown in English, so missing translations never break the interface.
+//! The language follows the operating system (`LC_ALL`, `LC_MESSAGES`, `LANGUAGE`, `LANG`).
 //! Only static labels are translated; status messages and file names are not.
-use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     sync::{
@@ -11,38 +11,7 @@ use std::{
     },
 };
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Language {
-    /// Follow the system language.
-    #[default]
-    Auto,
-    English,
-    Spanish,
-    German,
-    French,
-}
-
-impl Language {
-    pub const ALL: [Language; 5] = [
-        Language::Auto,
-        Language::English,
-        Language::Spanish,
-        Language::German,
-        Language::French,
-    ];
-    /// Each language's own name; "Automatic" is translated like any other label.
-    pub fn name(self) -> &'static str {
-        match self {
-            Language::Auto => "Automatic",
-            Language::English => "English",
-            Language::Spanish => "Español",
-            Language::German => "Deutsch",
-            Language::French => "Français",
-        }
-    }
-}
-
-/// A concrete language, after "Automatic" has been resolved.
+/// The languages the interface is translated into.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Resolved {
     English = 0,
@@ -64,16 +33,6 @@ pub fn detect(locale: &str) -> Resolved {
     }
 }
 
-pub fn resolve(language: Language, locale: &str) -> Resolved {
-    match language {
-        Language::Auto => detect(locale),
-        Language::English => Resolved::English,
-        Language::Spanish => Resolved::Spanish,
-        Language::German => Resolved::German,
-        Language::French => Resolved::French,
-    }
-}
-
 /// The first usable locale variable. Snap and desktop sessions pass these through.
 fn system_locale() -> String {
     ["LC_ALL", "LC_MESSAGES", "LANGUAGE", "LANG"]
@@ -83,9 +42,10 @@ fn system_locale() -> String {
         .unwrap_or_default()
 }
 
-/// Apply the saved language choice to the whole interface.
-pub fn set(language: Language) {
-    ACTIVE.store(resolve(language, &system_locale()) as u8, Ordering::Relaxed);
+/// Use the system language when it is translated, and English otherwise. There is no
+/// in-app language choice: the language always follows the operating system.
+pub fn init() {
+    ACTIVE.store(detect(&system_locale()) as u8, Ordering::Relaxed);
 }
 
 /// Used by the screenshot tool to render a specific language.
@@ -640,9 +600,7 @@ const ES: &[(&str, &str)] = &[
         "Herramientas potentes para tu escritorio",
     ),
     ("Battery health for GNOME", "Salud de la batería para GNOME"),
-    ("Language", "Idioma"),
     ("Version", "Versión"),
-    ("Automatic", "Automático"),
     ("Batch print from CSV", "Imprimir por lotes desde CSV"),
     ("Batch print from CSV…", "Imprimir por lotes desde CSV…"),
     ("Preparing", "Preparando"),
@@ -710,6 +668,12 @@ const ES: &[(&str, &str)] = &[
     ("Price tag", "Etiqueta de precio"),
     ("Name label", "Etiqueta de nombre"),
     ("Fragile", "Frágil"),
+    ("Help", "Ayuda"),
+    ("User manual", "Manual de usuario"),
+    (
+        "Open the user manual in your browser (F1)",
+        "Abre el manual de usuario en tu navegador (F1)",
+    ),
 ];
 const DE: &[(&str, &str)] = &[
     ("About ThermalPrint", "Über ThermalPrint"),
@@ -1206,9 +1170,7 @@ const DE: &[(&str, &str)] = &[
         "Leistungsstarke Werkzeuge für Ihren Desktop",
     ),
     ("Battery health for GNOME", "Akkugesundheit für GNOME"),
-    ("Language", "Sprache"),
     ("Version", "Version"),
-    ("Automatic", "Automatisch"),
     ("Batch print from CSV", "Stapeldruck aus CSV"),
     ("Batch print from CSV…", "Stapeldruck aus CSV…"),
     ("Preparing", "Vorbereitung"),
@@ -1276,6 +1238,12 @@ const DE: &[(&str, &str)] = &[
     ("Price tag", "Preisschild"),
     ("Name label", "Namensschild"),
     ("Fragile", "Zerbrechlich"),
+    ("Help", "Hilfe"),
+    ("User manual", "Benutzerhandbuch"),
+    (
+        "Open the user manual in your browser (F1)",
+        "Benutzerhandbuch im Browser öffnen (F1)",
+    ),
 ];
 const FR: &[(&str, &str)] = &[
     ("About ThermalPrint", "À propos de ThermalPrint"),
@@ -1802,9 +1770,7 @@ const FR: &[(&str, &str)] = &[
         "Battery health for GNOME",
         "Santé de la batterie pour GNOME",
     ),
-    ("Language", "Langue"),
     ("Version", "Version"),
-    ("Automatic", "Automatique"),
     ("Batch print from CSV", "Impression par lot depuis un CSV"),
     ("Batch print from CSV…", "Impression par lot depuis un CSV…"),
     ("Preparing", "Préparation"),
@@ -1872,6 +1838,12 @@ const FR: &[(&str, &str)] = &[
     ("Price tag", "Étiquette de prix"),
     ("Name label", "Étiquette de nom"),
     ("Fragile", "Fragile"),
+    ("Help", "Aide"),
+    ("User manual", "Manuel d'utilisation"),
+    (
+        "Open the user manual in your browser (F1)",
+        "Ouvre le manuel d'utilisation dans votre navigateur (F1)",
+    ),
 ];
 
 #[cfg(test)]
@@ -1902,8 +1874,6 @@ mod tests {
         for other in ["en_US.UTF-8", "pt_BR", "zh_CN", "C", ""] {
             assert_eq!(detect(other), Resolved::English, "{other}");
         }
-        assert_eq!(resolve(Language::German, "es_ES"), Resolved::German);
-        assert_eq!(resolve(Language::Auto, "es_ES"), Resolved::Spanish);
     }
 
     #[test]

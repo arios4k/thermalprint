@@ -81,8 +81,6 @@ pub struct Settings {
     /// A folder to watch for new label files, and whether watching is on.
     pub watch_folder: Option<PathBuf>,
     pub watch_enabled: bool,
-    /// The interface language; Automatic follows the system.
-    pub language: crate::i18n::Language,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -109,7 +107,6 @@ impl Default for Settings {
             profiles: BTreeMap::new(),
             watch_folder: None,
             watch_enabled: false,
-            language: crate::i18n::Language::Auto,
         }
     }
 }
