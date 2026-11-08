@@ -219,6 +219,7 @@ fn layout_text(text: &str, font: &Font, px: f32, width: f32, wrap: bool) -> Vec<
 fn text_height(lines: usize, px: f32, line_height: i32) -> f32 {
     lines.saturating_sub(1) as f32 * line_height as f32 + px * 1.2
 }
+#[allow(clippy::too_many_arguments)]
 fn draw_text(
     im: &mut RgbaImage,
     text: &str,

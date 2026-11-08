@@ -57,6 +57,14 @@ pub struct Designer {
     show_properties: bool,
     pub grid: bool,
     pub snap: bool,
+    /// Snap to other objects' edges and centers while dragging, and show guide lines.
+    pub smart_guides: bool,
+    /// Draw the printer's unprintable border on the canvas when it is known.
+    pub show_printable: bool,
+    /// Guide lines to draw during a drag: (is_vertical, position in mm).
+    guides: Vec<(bool, f32)>,
+    /// The printer's unprintable border as (left, top, right, bottom) in mm for this label.
+    printable: Option<(f32, f32, f32, f32)>,
     pub raw_zpl: bool,
     pub zoom: f32,
     pub pan: Vec2,
@@ -94,6 +102,10 @@ impl Designer {
             show_properties: true,
             grid: false,
             snap: true,
+            smart_guides: true,
+            show_printable: true,
+            guides: Vec::new(),
+            printable: None,
             raw_zpl: false,
             zoom: 1.,
             pan: Vec2::ZERO,
@@ -193,9 +205,93 @@ impl Designer {
         if self.selected.is_empty() {
             return;
         }
+        let locked = self
+            .doc
+            .objects
+            .iter()
+            .filter(|o| self.selected.contains(&o.id) && o.locked)
+            .count();
+        if locked == self.selected.len() {
+            self.status = "Locked objects cannot be deleted. Unlock them first.".into();
+            self.error = true;
+            return;
+        }
         self.checkpoint();
-        self.doc.objects.retain(|o| !self.selected.contains(&o.id));
-        self.selected.clear();
+        self.doc
+            .objects
+            .retain(|o| !self.selected.contains(&o.id) || o.locked);
+        self.selected
+            .retain(|id| self.doc.objects.iter().any(|o| o.id == *id));
+        self.changed();
+    }
+    /// Move the selection with the arrow keys; locked objects stay where they are.
+    fn nudge(&mut self, dx_mm: f32, dy_mm: f32) {
+        if self.selected.is_empty()
+            || self
+                .doc
+                .objects
+                .iter()
+                .all(|o| !self.selected.contains(&o.id) || o.locked)
+        {
+            return;
+        }
+        self.checkpoint();
+        let ids = self.selected.clone();
+        self.doc.nudge(&ids, dx_mm, dy_mm);
+        self.changed();
+    }
+    fn arrange(&mut self, alignment: design::Alignment, to: design::AlignTo) {
+        self.checkpoint();
+        let ids = self.selected.clone();
+        self.doc.align(&ids, alignment, to);
+        self.changed();
+    }
+    /// Center the selection as one group on the label, keeping the objects' arrangement.
+    fn arrange_group_on_label(&mut self, alignment: design::Alignment) {
+        let moving: Vec<&DesignObject> = self
+            .doc
+            .objects
+            .iter()
+            .filter(|o| self.selected.contains(&o.id) && !o.locked)
+            .collect();
+        if moving.is_empty() {
+            return;
+        }
+        let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+        for object in &moving {
+            let (w, h) = object.rotated_size_mm();
+            x0 = x0.min(object.x_mm);
+            y0 = y0.min(object.y_mm);
+            x1 = x1.max(object.x_mm + w);
+            y1 = y1.max(object.y_mm + h);
+        }
+        let (dx, dy) = match alignment {
+            design::Alignment::CenterHorizontally => {
+                ((self.doc.width_mm - (x1 - x0)) / 2. - x0, 0.)
+            }
+            _ => (0., (self.doc.height_mm - (y1 - y0)) / 2. - y0),
+        };
+        self.checkpoint();
+        let ids = self.selected.clone();
+        self.doc.nudge(&ids, dx, dy);
+        self.changed();
+    }
+    fn set_lock(&mut self, locked: bool) {
+        self.checkpoint();
+        for object in self
+            .doc
+            .objects
+            .iter_mut()
+            .filter(|o| self.selected.contains(&o.id))
+        {
+            object.locked = locked;
+        }
+        self.changed();
+    }
+    fn distribute(&mut self, axis: design::Axis) {
+        self.checkpoint();
+        let ids = self.selected.clone();
+        self.doc.distribute(&ids, axis);
         self.changed();
     }
     fn duplicate(&mut self) {
@@ -834,6 +930,19 @@ impl Designer {
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Delete)) {
             self.delete();
         }
+        // Arrow keys nudge by 0.1 mm, or 1 mm with Shift.
+        for (key, dx, dy) in [
+            (egui::Key::ArrowLeft, -1., 0.),
+            (egui::Key::ArrowRight, 1., 0.),
+            (egui::Key::ArrowUp, 0., -1.),
+            (egui::Key::ArrowDown, 0., 1.),
+        ] {
+            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, key)) {
+                self.nudge(dx, dy);
+            } else if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, key)) {
+                self.nudge(dx * 0.1, dy * 0.1);
+            }
+        }
     }
     pub fn show(&mut self, root: &mut egui::Ui, settings: &Settings, printers: &[Printer]) {
         let ctx = root.ctx().clone();
@@ -936,6 +1045,10 @@ impl Designer {
                 ui.menu_button(crate::i18n::tr("View"), |ui| {
                     ui.checkbox(&mut self.grid, crate::i18n::tr("Show grid"));
                     ui.checkbox(&mut self.snap, crate::i18n::tr("Snap to grid"));
+                    ui.checkbox(&mut self.smart_guides, crate::i18n::tr("Smart guides"))
+                        .on_hover_text(crate::i18n::tr("Snap to other objects' edges and centers while dragging"));
+                    ui.checkbox(&mut self.show_printable, crate::i18n::tr("Show printable area"))
+                        .on_hover_text(crate::i18n::tr("Shade the border your printer cannot print on"));
                     ui.checkbox(&mut self.show_properties, crate::i18n::tr("Properties panel"));
                     ui.checkbox(&mut self.focus_canvas, crate::i18n::tr("Focus canvas"));
                 });
@@ -1037,6 +1150,15 @@ impl Designer {
                 ui.label(crate::i18n::tr("Choose a printer in Print Center to print this design. Export is available without a printer."));
             }
         });
+        self.printable = printers
+            .iter()
+            .find(|p| p.name == settings.printer)
+            .filter(|p| {
+                p.media_sizes.get(&settings.media).is_some_and(|&(w, h)| {
+                    (w - self.doc.width_mm).abs() < 0.5 && (h - self.doc.height_mm).abs() < 0.5
+                })
+            })
+            .and_then(|p| p.printable_margins_mm(&settings.media));
         egui::CentralPanel::default().show(root, |ui| self.canvas(ui));
         self.shortcut(&ctx);
         self.start_render(settings.dpi);
@@ -1213,10 +1335,94 @@ impl Designer {
                     ui.add(egui::DragValue::new(&mut self.doc.serial_number))
                         .accessible_name(crate::i18n::tr("Serial variable"));
                 });
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Grid size"));
+                    ui.add(
+                        egui::DragValue::new(&mut self.doc.grid_mm)
+                            .range(0.5..=50.0)
+                            .speed(0.1)
+                            .suffix(" mm"),
+                    )
+                    .on_hover_text(crate::i18n::tr(
+                        "Spacing of the guide grid. Snapping moves in steps of a fifth of it.",
+                    ))
+                    .accessible_name(crate::i18n::tr("Grid size in millimeters"));
+                });
             });
         ui.separator();
         if self.selected.len() > 1 {
             ui.label(format!("{} objects selected", self.selected.len()));
+            let unlocked = self
+                .doc
+                .objects
+                .iter()
+                .filter(|o| self.selected.contains(&o.id) && !o.locked)
+                .count();
+            ui.add_space(4.);
+            ui.label(RichText::new(crate::i18n::tr("Align")).strong());
+            ui.horizontal_wrapped(|ui| {
+                for (name, alignment) in [
+                    ("Left", design::Alignment::Left),
+                    ("Center", design::Alignment::CenterHorizontally),
+                    ("Right", design::Alignment::Right),
+                    ("Top", design::Alignment::Top),
+                    ("Middle", design::Alignment::CenterVertically),
+                    ("Bottom", design::Alignment::Bottom),
+                ] {
+                    if ui
+                        .add_enabled(unlocked > 1, egui::Button::new(crate::i18n::tr(name)))
+                        .on_hover_text(crate::i18n::tr(
+                            "Align the selected objects with each other",
+                        ))
+                        .clicked()
+                    {
+                        self.arrange(alignment, design::AlignTo::Selection);
+                    }
+                }
+            });
+            ui.label(RichText::new(crate::i18n::tr("Distribute evenly")).strong());
+            ui.horizontal_wrapped(|ui| {
+                for (name, axis) in [
+                    ("Horizontally", design::Axis::Horizontal),
+                    ("Vertically", design::Axis::Vertical),
+                ] {
+                    if ui
+                        .add_enabled(unlocked > 2, egui::Button::new(crate::i18n::tr(name)))
+                        .on_hover_text(crate::i18n::tr(
+                            "Make the gaps between three or more objects equal",
+                        ))
+                        .clicked()
+                    {
+                        self.distribute(axis);
+                    }
+                }
+            });
+            ui.label(RichText::new(crate::i18n::tr("Center on label")).strong());
+            ui.horizontal_wrapped(|ui| {
+                for (name, alignment) in [
+                    ("Horizontally", design::Alignment::CenterHorizontally),
+                    ("Vertically", design::Alignment::CenterVertically),
+                ] {
+                    if ui
+                        .add_enabled(unlocked > 0, egui::Button::new(crate::i18n::tr(name)))
+                        .on_hover_text(crate::i18n::tr(
+                            "Center the selected objects as a group on the label",
+                        ))
+                        .clicked()
+                    {
+                        self.arrange_group_on_label(alignment);
+                    }
+                }
+            });
+            ui.horizontal_wrapped(|ui| {
+                if ui.button(crate::i18n::tr("Lock all")).clicked() {
+                    self.set_lock(true);
+                }
+                if ui.button(crate::i18n::tr("Unlock all")).clicked() {
+                    self.set_lock(false);
+                }
+            });
+            ui.separator();
             if icon_action(
                 ui,
                 "Delete",
@@ -1245,49 +1451,74 @@ impl Designer {
             return;
         };
         ui.heading(format!("{} #{}", o.label(), id));
-        ui.horizontal(|ui| {
-            ui.label("X");
-            ui.add(egui::DragValue::new(&mut o.x_mm).speed(0.1).suffix(" mm"))
-                .accessible_name(crate::i18n::tr("Object horizontal position in millimeters"));
-            ui.label("Y");
-            ui.add(egui::DragValue::new(&mut o.y_mm).speed(0.1).suffix(" mm"))
-                .accessible_name(crate::i18n::tr("Object vertical position in millimeters"));
-        });
-        ui.horizontal(|ui| {
-            ui.label(crate::i18n::tr("W"));
-            ui.add(
-                egui::DragValue::new(&mut o.width_mm)
-                    .range(1.0..=2000.0)
-                    .speed(0.1)
-                    .suffix(" mm"),
-            )
-            .accessible_name(crate::i18n::tr("Object width in millimeters"));
-            ui.label(crate::i18n::tr("H"));
-            ui.add(
-                egui::DragValue::new(&mut o.height_mm)
-                    .range(1.0..=2000.0)
-                    .speed(0.1)
-                    .suffix(" mm"),
-            )
-            .accessible_name(crate::i18n::tr("Object height in millimeters"));
-        });
-        ui.horizontal(|ui| {
-            let label = ui.label(crate::i18n::tr("Rotation"));
-            let mut angle = o.rotation;
-            if ui
-                .add(
-                    egui::DragValue::new(&mut angle)
-                        .speed(0.5)
-                        .range(-360.0..=360.0)
-                        .max_decimals(2)
-                        .suffix("°"),
+        let locked = o.locked;
+        let mut center = (false, false);
+        ui.add_enabled_ui(!locked, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("X");
+                ui.add(egui::DragValue::new(&mut o.x_mm).speed(0.1).suffix(" mm"))
+                    .accessible_name(crate::i18n::tr("Object horizontal position in millimeters"));
+                ui.label("Y");
+                ui.add(egui::DragValue::new(&mut o.y_mm).speed(0.1).suffix(" mm"))
+                    .accessible_name(crate::i18n::tr("Object vertical position in millimeters"));
+            });
+            ui.horizontal(|ui| {
+                ui.label(crate::i18n::tr("W"));
+                ui.add(
+                    egui::DragValue::new(&mut o.width_mm)
+                        .range(1.0..=2000.0)
+                        .speed(0.1)
+                        .suffix(" mm"),
                 )
-                .labelled_by(label.id)
-                .changed()
-            {
-                o.rotate_to(angle);
-            }
+                .accessible_name(crate::i18n::tr("Object width in millimeters"));
+                ui.label(crate::i18n::tr("H"));
+                ui.add(
+                    egui::DragValue::new(&mut o.height_mm)
+                        .range(1.0..=2000.0)
+                        .speed(0.1)
+                        .suffix(" mm"),
+                )
+                .accessible_name(crate::i18n::tr("Object height in millimeters"));
+            });
+            ui.horizontal(|ui| {
+                let label = ui.label(crate::i18n::tr("Rotation"));
+                let mut angle = o.rotation;
+                if ui
+                    .add(
+                        egui::DragValue::new(&mut angle)
+                            .speed(0.5)
+                            .range(-360.0..=360.0)
+                            .max_decimals(2)
+                            .suffix("°"),
+                    )
+                    .labelled_by(label.id)
+                    .changed()
+                {
+                    o.rotate_to(angle);
+                }
+            });
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .button(crate::i18n::tr("Rotate 90°"))
+                    .on_hover_text(crate::i18n::tr("Turn the object a quarter turn clockwise"))
+                    .clicked()
+                {
+                    let angle = o.rotation + 90.;
+                    o.rotate_to(angle);
+                }
+                ui.checkbox(&mut o.flip_x, crate::i18n::tr("Flip horizontally"));
+                ui.checkbox(&mut o.flip_y, crate::i18n::tr("Flip vertically"));
+            });
+            ui.horizontal_wrapped(|ui| {
+                ui.label(crate::i18n::tr("Center on label"));
+                center.0 = ui.small_button(crate::i18n::tr("Horizontally")).clicked();
+                center.1 = ui.small_button(crate::i18n::tr("Vertically")).clicked();
+            });
         });
+        ui.checkbox(&mut o.locked, crate::i18n::tr("Lock position and size"))
+            .on_hover_text(crate::i18n::tr(
+                "A locked object cannot be moved, resized, rotated, or deleted from the canvas",
+            ));
         match &mut o.element {
             Element::Text {
                 text,
@@ -1304,11 +1535,35 @@ impl Designer {
                         .suffix(" pt"),
                 )
                 .accessible_name(crate::i18n::tr("Font size in points"));
-                ui.checkbox(bold, crate::i18n::tr("Bold"));
+                ui.horizontal_wrapped(|ui| {
+                    ui.checkbox(bold, crate::i18n::tr("Bold"));
+                    ui.checkbox(&mut o.options.italic, crate::i18n::tr("Italic"));
+                    ui.checkbox(&mut o.options.inverse, crate::i18n::tr("Inverse"))
+                        .on_hover_text(crate::i18n::tr("White letters on a black box"));
+                });
                 ui.horizontal(|ui| {
                     ui.selectable_value(align, TextAlign::Left, crate::i18n::tr("Left"));
                     ui.selectable_value(align, TextAlign::Center, crate::i18n::tr("Center"));
                     ui.selectable_value(align, TextAlign::Right, crate::i18n::tr("Right"));
+                });
+                ui.checkbox(&mut o.options.wrap, crate::i18n::tr("Wrap long lines"))
+                    .on_hover_text(crate::i18n::tr(
+                        "Break lines at spaces so they fit the box width",
+                    ));
+                ui.checkbox(&mut o.options.fit, crate::i18n::tr("Shrink to fit the box"))
+                    .on_hover_text(crate::i18n::tr(
+                        "Make the text smaller until all of it fits inside the box",
+                    ));
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Line spacing"));
+                    ui.add(
+                        egui::DragValue::new(&mut o.options.line_spacing)
+                            .range(0.5..=3.0)
+                            .speed(0.02)
+                            .max_decimals(2)
+                            .suffix(" ×"),
+                    )
+                    .accessible_name(crate::i18n::tr("Line spacing multiplier"));
                 });
             }
             Element::Barcode {
@@ -1338,12 +1593,65 @@ impl Designer {
                         }
                     });
                 ui.checkbox(show_text, crate::i18n::tr("Show value below bars"));
+                if *show_text {
+                    ui.horizontal(|ui| {
+                        ui.label(crate::i18n::tr("Text size"));
+                        ui.add(
+                            egui::DragValue::new(&mut o.options.barcode_text_pt)
+                                .range(0.0..=60.0)
+                                .speed(0.2)
+                                .custom_formatter(|value, _| {
+                                    if value == 0. {
+                                        "Auto".to_owned()
+                                    } else {
+                                        format!("{value:.1} pt")
+                                    }
+                                })
+                                .custom_parser(|text| {
+                                    let text = text.trim().trim_end_matches("pt").trim();
+                                    if text.eq_ignore_ascii_case("auto") {
+                                        Some(0.)
+                                    } else {
+                                        text.parse().ok()
+                                    }
+                                }),
+                        )
+                        .accessible_name(crate::i18n::tr("Readable text size in points"));
+                    });
+                    if o.options.barcode_text_pt > 0. && o.options.barcode_text_pt < 2. {
+                        o.options.barcode_text_pt = 2.;
+                    }
+                    ui.checkbox(
+                        &mut o.options.text_above,
+                        crate::i18n::tr("Text above the bars"),
+                    );
+                }
+                if let Some(hint) = check_digit_hint(*kind, data) {
+                    ui.label(RichText::new(hint).small().weak());
+                }
             }
             Element::Qr { data } => {
                 ui.label(crate::i18n::tr("QR content"))
                     .on_hover_text(crate::help::explanation("QR"));
                 ui.add(egui::TextEdit::multiline(data).desired_rows(4))
                     .accessible_name(crate::i18n::tr("QR code content"));
+                egui::ComboBox::from_id_salt("qr-level")
+                    .selected_text(qr_level_name(o.options.qr_level))
+                    .show_ui(ui, |ui| {
+                        for level in [
+                            design::QrLevel::Low,
+                            design::QrLevel::Medium,
+                            design::QrLevel::Quartile,
+                            design::QrLevel::High,
+                        ] {
+                            ui.selectable_value(&mut o.options.qr_level, level, qr_level_name(level))
+                                .on_hover_text(crate::i18n::tr(
+                                    "More error correction survives more damage but makes a denser code",
+                                ));
+                        }
+                    })
+                    .response
+                    .accessible_name(crate::i18n::tr("QR error correction level"));
             }
             Element::Shape {
                 kind,
@@ -1382,7 +1690,73 @@ impl Designer {
                 ui.label(crate::i18n::tr(
                     "Embedded image. Resize with W/H or the canvas handle.",
                 ));
+                egui::ComboBox::from_id_salt("image-mode")
+                    .selected_text(image_mode_name(o.options.image_mode))
+                    .show_ui(ui, |ui| {
+                        for mode in [
+                            design::ImageMode::Original,
+                            design::ImageMode::Threshold,
+                            design::ImageMode::Dither,
+                        ] {
+                            ui.selectable_value(
+                                &mut o.options.image_mode,
+                                mode,
+                                image_mode_name(mode),
+                            )
+                            .on_hover_text(crate::i18n::tr(image_mode_hint(mode)));
+                        }
+                    })
+                    .response
+                    .accessible_name(crate::i18n::tr(
+                        "How the image is reduced to black and white",
+                    ));
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Contrast"));
+                    let mut percent = o.options.contrast * 100.;
+                    if ui
+                        .add(
+                            egui::DragValue::new(&mut percent)
+                                .range(-100.0..=100.0)
+                                .speed(1.)
+                                .suffix(" %"),
+                        )
+                        .accessible_name(crate::i18n::tr("Image contrast in percent"))
+                        .changed()
+                    {
+                        o.options.contrast = percent / 100.;
+                    }
+                });
+                if o.options.image_mode == design::ImageMode::Threshold {
+                    ui.horizontal(|ui| {
+                        ui.label(crate::i18n::tr("Cut-off"));
+                        ui.add(egui::Slider::new(&mut o.options.threshold, 1..=254))
+                            .on_hover_text(crate::i18n::tr("Pixels darker than this print black"));
+                    });
+                }
+                ui.checkbox(
+                    &mut o.options.invert,
+                    crate::i18n::tr("Invert black and white"),
+                );
+                if ui
+                    .small_button(crate::i18n::tr("Reset image adjustments"))
+                    .clicked()
+                {
+                    let keep = o.options.clone();
+                    o.options = design::ObjectOptions {
+                        wrap: keep.wrap,
+                        ..Default::default()
+                    };
+                }
             }
+        }
+        if center.0 {
+            self.arrange(
+                design::Alignment::CenterHorizontally,
+                design::AlignTo::Label,
+            );
+        }
+        if center.1 {
+            self.arrange(design::Alignment::CenterVertically, design::AlignTo::Label);
         }
         ui.horizontal_wrapped(|ui| {
             if icon_action(
@@ -1479,7 +1853,7 @@ impl Designer {
                 );
                 if self.grid {
                     let color = Color32::from_rgba_unmultiplied(90, 110, 130, 45);
-                    let step = (size.x / self.doc.width_mm * 5.).max(5.);
+                    let step = (size.x / self.doc.width_mm * self.doc.grid_mm).max(4.);
                     let mut x = paper.left();
                     while x < paper.right() {
                         ui.painter().line_segment(
@@ -1494,14 +1868,47 @@ impl Designer {
                             [Pos2::new(paper.left(), y), Pos2::new(paper.right(), y)],
                             Stroke::new(1., color),
                         );
-                        y += (size.y / self.doc.height_mm * 5.).max(5.);
+                        y += (size.y / self.doc.height_mm * self.doc.grid_mm).max(4.);
                     }
+                }
+                if self.show_printable
+                    && let Some((left, top, right, bottom)) = self.printable
+                {
+                    let (sx, sy) = (
+                        paper.width() / self.doc.width_mm,
+                        paper.height() / self.doc.height_mm,
+                    );
+                    let amber = Color32::from_rgba_unmultiplied(235, 150, 20, 60);
+                    let inner = Rect::from_min_max(
+                        Pos2::new(paper.left() + left * sx, paper.top() + top * sy),
+                        Pos2::new(paper.right() - right * sx, paper.bottom() - bottom * sy),
+                    );
+                    for band in [
+                        Rect::from_min_max(paper.min, Pos2::new(paper.right(), inner.top())),
+                        Rect::from_min_max(Pos2::new(paper.left(), inner.bottom()), paper.max),
+                        Rect::from_min_max(
+                            Pos2::new(paper.left(), inner.top()),
+                            Pos2::new(inner.left(), inner.bottom()),
+                        ),
+                        Rect::from_min_max(
+                            Pos2::new(inner.right(), inner.top()),
+                            Pos2::new(paper.right(), inner.bottom()),
+                        ),
+                    ] {
+                        ui.painter().rect_filled(band, 0., amber);
+                    }
+                    ui.painter().rect_stroke(
+                        inner,
+                        0.,
+                        Stroke::new(1., Color32::from_rgb(210, 120, 10)),
+                        StrokeKind::Inside,
+                    );
                 }
                 let single = if self.selected.len() == 1 {
                     self.doc
                         .objects
                         .iter()
-                        .find(|object| self.selected.contains(&object.id))
+                        .find(|object| self.selected.contains(&object.id) && !object.locked)
                 } else {
                     None
                 };
@@ -1551,6 +1958,23 @@ impl Designer {
                             }
                         }
                     }
+                }
+                for &(vertical, position) in &self.guides {
+                    let magenta = Color32::from_rgb(220, 50, 160);
+                    let points = if vertical {
+                        let x = paper.left() + position / self.doc.width_mm * paper.width();
+                        [
+                            Pos2::new(x, paper.top() - 4.),
+                            Pos2::new(x, paper.bottom() + 4.),
+                        ]
+                    } else {
+                        let y = paper.top() + position / self.doc.height_mm * paper.height();
+                        [
+                            Pos2::new(paper.left() - 4., y),
+                            Pos2::new(paper.right() + 4., y),
+                        ]
+                    };
+                    ui.painter().line_segment(points, Stroke::new(1., magenta));
                 }
                 let mut response = ui.interact(
                     outer,
@@ -1613,19 +2037,23 @@ impl Designer {
                     } else {
                         None
                     };
-                    if let Some(kind) = kind {
+                    // Locked objects never move, resize, or rotate from the canvas.
+                    let initial: Vec<DesignObject> = self
+                        .doc
+                        .objects
+                        .iter()
+                        .filter(|object| self.selected.contains(&object.id) && !object.locked)
+                        .cloned()
+                        .collect();
+                    if let Some(kind) = kind
+                        && !initial.is_empty()
+                    {
                         self.checkpoint();
                         self.drag = Some(Drag {
                             kind,
                             start,
                             center: handles.map_or(start, |geometry| geometry.center),
-                            initial: self
-                                .doc
-                                .objects
-                                .iter()
-                                .filter(|object| self.selected.contains(&object.id))
-                                .cloned()
-                                .collect(),
+                            initial,
                         });
                     }
                 }
@@ -1637,7 +2065,19 @@ impl Designer {
                         (pointer.x - drag.start.x) / size.x * self.doc.width_mm,
                         (pointer.y - drag.start.y) / size.y * self.doc.height_mm,
                     );
-                    let step = if self.snap { 1. } else { 0.1 };
+                    let step = if self.snap {
+                        (self.doc.grid_mm / 5.).max(0.1)
+                    } else {
+                        0.1
+                    };
+                    let (guided_x, guided_y, guides) =
+                        if matches!(drag.kind, DragKind::Move) && self.smart_guides {
+                            let threshold = 6. / (size.x / self.doc.width_mm);
+                            smart_snap(&self.doc, &drag.initial, delta, threshold)
+                        } else {
+                            (None, None, Vec::new())
+                        };
+                    self.guides = guides;
                     let angle_delta = vector_angle(pointer - drag.center)
                         - vector_angle(drag.start - drag.center);
                     let snap_angle = ui.input(|input| input.modifiers.shift);
@@ -1650,8 +2090,14 @@ impl Designer {
                         {
                             match drag.kind {
                                 DragKind::Move => {
-                                    object.x_mm = ((initial.x_mm + delta.x) / step).round() * step;
-                                    object.y_mm = ((initial.y_mm + delta.y) / step).round() * step;
+                                    object.x_mm = match guided_x {
+                                        Some(dx) => initial.x_mm + dx,
+                                        None => ((initial.x_mm + delta.x) / step).round() * step,
+                                    };
+                                    object.y_mm = match guided_y {
+                                        Some(dy) => initial.y_mm + dy,
+                                        None => ((initial.y_mm + delta.y) / step).round() * step,
+                                    };
                                 }
                                 DragKind::Resize => resize_rotated(object, initial, delta, step),
                                 DragKind::Rotate => {
@@ -1673,6 +2119,7 @@ impl Designer {
                 }
                 if response.drag_stopped() {
                     self.drag = None;
+                    self.guides.clear();
                 }
                 if response.dragged_by(egui::PointerButton::Middle) {
                     self.pan += response.drag_delta();
@@ -1825,6 +2272,108 @@ pub(crate) fn template_button(ui: &mut egui::Ui, name: &str) -> egui::Response {
         visuals.fg_stroke.color,
     );
     response
+}
+
+fn qr_level_name(level: design::QrLevel) -> &'static str {
+    match level {
+        design::QrLevel::Low => "Low (7%)",
+        design::QrLevel::Medium => "Medium (15%)",
+        design::QrLevel::Quartile => "Quartile (25%)",
+        design::QrLevel::High => "High (30%)",
+    }
+}
+fn image_mode_name(mode: design::ImageMode) -> &'static str {
+    match mode {
+        design::ImageMode::Original => "Original",
+        design::ImageMode::Threshold => "Black and white",
+        design::ImageMode::Dither => "Dithered",
+    }
+}
+fn image_mode_hint(mode: design::ImageMode) -> &'static str {
+    match mode {
+        design::ImageMode::Original => "Draw the picture as it is and let the printer convert it",
+        design::ImageMode::Threshold => {
+            "Every pixel becomes black or white. Good for logos and line art"
+        }
+        design::ImageMode::Dither => "Shading made of black dots. Good for photos",
+    }
+}
+/// What to tell the user about the check digit of an EAN or UPC value.
+fn check_digit_hint(kind: BarcodeKind, data: &str) -> Option<String> {
+    let body = match kind {
+        BarcodeKind::Ean13 => 12,
+        BarcodeKind::Ean8 => 7,
+        BarcodeKind::UpcA => 11,
+        _ => return None,
+    };
+    let digit = design_render::check_digit(kind, data)?;
+    if data.len() == body {
+        Some(format!("Check digit {digit} is added when printed"))
+    } else if data.len() == body + 1 {
+        if data.ends_with(digit) {
+            Some("The check digit is correct".into())
+        } else {
+            Some(format!("Wrong check digit: it should be {digit}"))
+        }
+    } else {
+        None
+    }
+}
+
+/// Snap a move to the edges and centers of other objects and of the label. Returns the offset
+/// to use on each axis when something was close enough, and the guide lines that were hit.
+fn smart_snap(
+    doc: &LabelDocument,
+    moving: &[DesignObject],
+    delta: Vec2,
+    threshold_mm: f32,
+) -> (Option<f32>, Option<f32>, Vec<(bool, f32)>) {
+    let outline = |o: &DesignObject| {
+        let (w, h) = o.rotated_size_mm();
+        (o.x_mm, o.y_mm, o.x_mm + w, o.y_mm + h)
+    };
+    let bounds = moving
+        .iter()
+        .map(outline)
+        .fold((f32::MAX, f32::MAX, f32::MIN, f32::MIN), |a, b| {
+            (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))
+        });
+    let ids: Vec<u64> = moving.iter().map(|o| o.id).collect();
+    let mut xs = vec![0., doc.width_mm / 2., doc.width_mm];
+    let mut ys = vec![0., doc.height_mm / 2., doc.height_mm];
+    for other in doc.objects.iter().filter(|o| !ids.contains(&o.id)) {
+        let (x0, y0, x1, y1) = outline(other);
+        xs.extend([x0, (x0 + x1) / 2., x1]);
+        ys.extend([y0, (y0 + y1) / 2., y1]);
+    }
+    let best = |anchors: [f32; 3], candidates: &[f32]| {
+        let mut best: Option<(f32, f32)> = None;
+        for anchor in anchors {
+            for &candidate in candidates {
+                let gap = candidate - anchor;
+                if gap.abs() <= threshold_mm && best.is_none_or(|(g, _)| gap.abs() < g.abs()) {
+                    best = Some((gap, candidate));
+                }
+            }
+        }
+        best
+    };
+    let (nx0, ny0) = (bounds.0 + delta.x, bounds.1 + delta.y);
+    let (nx1, ny1) = (bounds.2 + delta.x, bounds.3 + delta.y);
+    let horizontal = best([nx0, (nx0 + nx1) / 2., nx1], &xs);
+    let vertical = best([ny0, (ny0 + ny1) / 2., ny1], &ys);
+    let mut guides = Vec::new();
+    if let Some((_, at)) = horizontal {
+        guides.push((true, at));
+    }
+    if let Some((_, at)) = vertical {
+        guides.push((false, at));
+    }
+    (
+        horizontal.map(|(gap, _)| delta.x + gap),
+        vertical.map(|(gap, _)| delta.y + gap),
+        guides,
+    )
 }
 
 fn barcode_name(kind: BarcodeKind) -> &'static str {
@@ -2635,5 +3184,50 @@ mod history_reopen_tests {
         assert_eq!(designer.doc, past);
         assert!(designer.path.is_none(), "a copy has no file yet");
         assert!(designer.is_modified(), "so closing it asks to save");
+    }
+}
+
+#[cfg(test)]
+mod smart_guide_tests {
+    use super::*;
+
+    fn square(doc: &mut LabelDocument, x: f32, y: f32) -> DesignObject {
+        let id = doc.add(
+            Element::Shape {
+                kind: design::ShapeKind::Rectangle,
+                stroke_mm: 0.4,
+                filled: false,
+            },
+            x,
+            y,
+            10.,
+            10.,
+        );
+        doc.objects.iter().find(|o| o.id == id).unwrap().clone()
+    }
+
+    #[test]
+    fn a_move_snaps_to_a_nearby_edge_and_reports_the_guide() {
+        let mut doc = LabelDocument::blank(100., 100.);
+        let mover = square(&mut doc, 10., 10.);
+        let _anchor = square(&mut doc, 50., 60.);
+        // Moving right by 39.6 puts the mover's right edge (49.6) next to the other's left edge (50).
+        let (x, y, guides) =
+            smart_snap(&doc, std::slice::from_ref(&mover), Vec2::new(39.6, 0.), 1.);
+        assert!((x.unwrap() - 40.).abs() < 1e-4, "{x:?}");
+        assert_eq!(y, None);
+        assert_eq!(guides, [(true, 50.)]);
+        // Too far away: nothing snaps.
+        assert_eq!(smart_snap(&doc, &[mover], Vec2::new(25., 0.), 1.).0, None);
+    }
+
+    #[test]
+    fn moves_snap_to_the_label_center_and_ignore_the_moving_objects_themselves() {
+        let mut doc = LabelDocument::blank(100., 100.);
+        let mover = square(&mut doc, 10., 10.);
+        // Centered horizontally would be x = 45; moving by 34.8 lands at 44.8.
+        let (x, _, guides) = smart_snap(&doc, &[mover], Vec2::new(34.8, 0.), 1.);
+        assert!((x.unwrap() - 35.).abs() < 1e-4);
+        assert!(guides.contains(&(true, 50.)));
     }
 }
