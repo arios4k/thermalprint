@@ -390,6 +390,21 @@ pub struct LabelDocument {
     /// Spacing of the guide grid in millimeters; snapping moves in steps of a fifth of it.
     #[serde(default = "default_grid")]
     pub grid_mm: f32,
+    /// For continuous rolls: print only as long as the content, plus a bottom margin.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub auto_length: bool,
+    #[serde(
+        default = "default_auto_margin",
+        skip_serializing_if = "is_default_auto_margin"
+    )]
+    pub auto_margin_mm: f32,
+}
+pub const DEFAULT_AUTO_MARGIN_MM: f32 = 2.;
+fn default_auto_margin() -> f32 {
+    DEFAULT_AUTO_MARGIN_MM
+}
+fn is_default_auto_margin(value: &f32) -> bool {
+    (*value - DEFAULT_AUTO_MARGIN_MM).abs() < f32::EPSILON
 }
 pub const DEFAULT_GRID_MM: f32 = 5.;
 fn default_grid() -> f32 {
@@ -406,7 +421,18 @@ impl LabelDocument {
             objects: vec![],
             next_id: 1,
             grid_mm: DEFAULT_GRID_MM,
+            auto_length: false,
+            auto_margin_mm: DEFAULT_AUTO_MARGIN_MM,
         }
+    }
+    /// The length that is printed: the set height, or with auto-length the lowest edge of
+    /// any object plus the bottom margin (never less than 5 mm).
+    pub fn effective_height_mm(&self) -> f32 {
+        if !self.auto_length {
+            return self.height_mm;
+        }
+        let lowest = self.objects.iter().map(|o| outline(o).3).fold(0., f32::max);
+        (lowest + self.auto_margin_mm).clamp(5., 2000.)
     }
     pub fn add(
         &mut self,
@@ -448,6 +474,9 @@ impl LabelDocument {
         }
         if !self.grid_mm.is_finite() || !(0.5..=50.).contains(&self.grid_mm) {
             bail!("Invalid grid size");
+        }
+        if !self.auto_margin_mm.is_finite() || !(0. ..=50.).contains(&self.auto_margin_mm) {
+            bail!("Invalid bottom margin");
         }
         let mut seen = std::collections::HashSet::new();
         for o in &self.objects {

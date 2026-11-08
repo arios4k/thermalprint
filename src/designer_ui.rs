@@ -1296,7 +1296,7 @@ impl Designer {
                     self.doc.title,
                     if self.is_modified() { " · Unsaved" } else { "" },
                     self.doc.width_mm,
-                    self.doc.height_mm,
+                    self.doc.effective_height_mm(),
                     (self.zoom * 100.) as u32,
                     self.doc.objects.len()
                 ));
@@ -1331,7 +1331,7 @@ impl Designer {
                 if self.raw_zpl {
                     ui.label(crate::i18n::tr("Raw ZPL: verify printer compatibility and loaded label size."))
                         .on_hover_text(crate::help::explanation("ZPL"));
-                } else if let Some(warning) = printer.media_mismatch(&settings.media, self.doc.width_mm, self.doc.height_mm) {
+                } else if let Some(warning) = printer.media_mismatch(&settings.media, self.doc.width_mm, self.doc.effective_height_mm()) {
                     let color = if ui.visuals().dark_mode { Color32::from_rgb(245, 193, 99) }
                         else { Color32::from_rgb(132, 83, 10) };
                     ui.colored_label(color, warning);
@@ -1573,6 +1573,31 @@ impl Designer {
                     ui.add(egui::DragValue::new(&mut self.doc.serial_number))
                         .accessible_name(crate::i18n::tr("Serial variable"));
                 });
+                ui.checkbox(&mut self.doc.auto_length, crate::i18n::tr("Auto-length (continuous roll)"))
+                    .on_hover_text(crate::i18n::tr(
+                        "Print only as long as the content needs, plus a bottom margin. Use it with continuous label rolls.",
+                    ));
+                if self.doc.auto_length {
+                    ui.horizontal(|ui| {
+                        ui.label(crate::i18n::tr("Bottom margin"));
+                        ui.add(
+                            egui::DragValue::new(&mut self.doc.auto_margin_mm)
+                                .range(0.0..=50.0)
+                                .speed(0.1)
+                                .suffix(" mm"),
+                        )
+                        .accessible_name(crate::i18n::tr("Bottom margin in millimeters"));
+                    });
+                    ui.label(
+                        RichText::new(format!(
+                            "{}: {:.1} mm",
+                            crate::i18n::tr("Printed length"),
+                            self.doc.effective_height_mm()
+                        ))
+                        .small()
+                        .weak(),
+                    );
+                }
                 ui.horizontal(|ui| {
                     ui.label(crate::i18n::tr("Grid size"));
                     ui.add(

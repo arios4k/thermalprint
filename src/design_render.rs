@@ -715,7 +715,7 @@ pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
         bail!("Choose 203, 300, or 600 DPI");
     }
     let w = dots(doc.width_mm, dpi).max(1);
-    let h = dots(doc.height_mm, dpi).max(1);
+    let h = dots(doc.effective_height_mm(), dpi).max(1);
     if w as u64 * h as u64 > 36_000_000 {
         bail!("Label exceeds 36 megapixels at {dpi} DPI");
     }
@@ -754,9 +754,57 @@ pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
         warnings,
         clipped,
         width_mm: doc.width_mm,
-        height_mm: doc.height_mm,
+        height_mm: doc.effective_height_mm(),
         dpi,
     })
+}
+#[cfg(test)]
+mod auto_length_tests {
+    use super::*;
+    use crate::design::LabelDocument;
+
+    #[test]
+    fn auto_length_prints_only_as_long_as_the_content() {
+        let mut doc = LabelDocument::blank(50., 200.);
+        doc.add(
+            Element::Text {
+                text: "Hello".into(),
+                font_pt: 12.,
+                bold: false,
+                align: crate::design::TextAlign::Left,
+            },
+            2.,
+            10.,
+            40.,
+            8.,
+        );
+        assert_eq!(render_label(&doc, 203).unwrap().height_mm, 200.);
+        doc.auto_length = true;
+        doc.auto_margin_mm = 3.;
+        assert!((doc.effective_height_mm() - 21.).abs() < 0.01);
+        let out = render_label(&doc, 203).unwrap();
+        assert!((out.height_mm - 21.).abs() < 0.01);
+        assert_eq!(out.image.height(), dots(21., 203));
+        assert!(!out.clipped);
+        doc.objects.clear();
+        assert_eq!(
+            doc.effective_height_mm(),
+            5.,
+            "an empty label is not zero-length"
+        );
+        doc.auto_margin_mm = f32::NAN;
+        assert!(doc.validate().is_err());
+    }
+
+    #[test]
+    fn older_files_without_the_new_fields_still_load() {
+        let json = r#"{"version":1,"title":"Old","width_mm":50.0,"height_mm":30.0,"serial_number":1,"objects":[],"next_id":1}"#;
+        let doc: LabelDocument = serde_json::from_str(json).unwrap();
+        assert!(!doc.auto_length);
+        assert_eq!(doc.effective_height_mm(), 30.);
+        let saved = serde_json::to_string(&doc).unwrap();
+        assert!(!saved.contains("auto_length") && !saved.contains("auto_margin"));
+    }
 }
 #[cfg(test)]
 mod tests {
