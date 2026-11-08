@@ -1,0 +1,24 @@
+name: Manual
+
+# Checks the user manual. It runs on every change (it takes seconds), so a manual-only
+# change is still verified even though the slower Rust checks are skipped for it.
+on: [push, pull_request]
+
+jobs:
+  build:
+    # The APT release job runs on Ubuntu 22.04 (Python 3.10), so build the manual there.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the user manual with the release job's Python
+        run: |
+          python3 --version
+          python3 scripts/build-manual.py --output target/manual
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test the manual generator and build the site
+        run: |
+          python3 -m unittest discover -s scripts -p test_build_manual.py
+          python3 scripts/build-manual.py --output target/manual
