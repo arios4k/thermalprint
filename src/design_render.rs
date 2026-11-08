@@ -230,7 +230,7 @@ fn draw_text(
     serial: u64,
     options: &ObjectOptions,
 ) -> Result<()> {
-    let f = font(bold);
+    let f = crate::fonts::lookup(&options.font).unwrap_or_else(|| font(bold));
     let expanded = expand(text, serial);
     let width = im.width() as f32;
     let spacing = options.line_spacing.clamp(0.5, 3.);
@@ -361,16 +361,28 @@ fn encoded(kind: BarcodeKind, data: &str) -> Result<Vec<u8>> {
         BarcodeKind::Code93 => Ok(Code93::new(data)
             .map_err(|e| anyhow::anyhow!("Code 93: {e:?}"))?
             .encode()),
-        BarcodeKind::DataMatrix => bail!("Data Matrix is a 2D symbol"),
+        BarcodeKind::Gs1128 => {
+            let fields = crate::gs1::parse(data)?;
+            Ok(Code128::new(crate::gs1::code128_symbol(&fields)?)
+                .map_err(|e| anyhow::anyhow!("GS1-128: {e:?}"))?
+                .encode())
+        }
+        BarcodeKind::DataMatrix | BarcodeKind::Gs1DataMatrix => {
+            bail!("Data Matrix is a 2D symbol")
+        }
     }
 }
-fn draw_data_matrix(im: &mut RgbaImage, data: &str) -> Result<()> {
+fn draw_data_matrix(im: &mut RgbaImage, data: &str, gs1: bool) -> Result<()> {
     // Label objects are boxes, so only square symbols are used; the default list
     // would pick a thin rectangle for short text.
-    let code = datamatrix::DataMatrix::encode_str(
-        data,
-        datamatrix::SymbolList::default().enforce_square(),
-    )
+    let squares = datamatrix::SymbolList::default().enforce_square();
+    let code = if gs1 {
+        let fields = crate::gs1::parse(data)?;
+        let payload = crate::gs1::data_matrix_payload(&fields)?;
+        datamatrix::DataMatrix::encode_gs1(payload.as_bytes(), squares)
+    } else {
+        datamatrix::DataMatrix::encode_str(data, squares)
+    }
     .map_err(|e| anyhow::anyhow!("Data Matrix data cannot be encoded: {e:?}"))?;
     let bitmap = code.bitmap();
     // Two quiet-zone modules on every side keep the symbol scannable.
@@ -420,6 +432,11 @@ pub fn check_digit(kind: BarcodeKind, data: &str) -> Option<char> {
 }
 /// The value as printed under the bars: retail codes show their check digit.
 fn readable_value(kind: BarcodeKind, data: &str) -> String {
+    if kind == BarcodeKind::Gs1128
+        && let Ok(fields) = crate::gs1::parse(data)
+    {
+        return crate::gs1::human(&fields);
+    }
     let body_len = match kind {
         BarcodeKind::Ean13 => 12,
         BarcodeKind::Ean8 => 7,
@@ -441,11 +458,11 @@ fn draw_barcode(
     options: &ObjectOptions,
 ) -> Result<()> {
     let data = expand(data, serial);
-    if kind == BarcodeKind::DataMatrix {
+    if matches!(kind, BarcodeKind::DataMatrix | BarcodeKind::Gs1DataMatrix) {
         if data.is_empty() {
             bail!("Barcode data is empty");
         }
-        return draw_data_matrix(im, &data);
+        return draw_data_matrix(im, &data, kind == BarcodeKind::Gs1DataMatrix);
     }
     let bits = encoded(kind, &data)?;
     let module = (im.width() / (bits.len() as u32 + 20)).min(12);
@@ -715,7 +732,7 @@ pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
         bail!("Choose 203, 300, or 600 DPI");
     }
     let w = dots(doc.width_mm, dpi).max(1);
-    let h = dots(doc.height_mm, dpi).max(1);
+    let h = dots(doc.effective_height_mm(), dpi).max(1);
     if w as u64 * h as u64 > 36_000_000 {
         bail!("Label exceeds 36 megapixels at {dpi} DPI");
     }
@@ -754,9 +771,104 @@ pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
         warnings,
         clipped,
         width_mm: doc.width_mm,
-        height_mm: doc.height_mm,
+        height_mm: doc.effective_height_mm(),
         dpi,
     })
+}
+#[cfg(test)]
+mod font_option_tests {
+    use super::*;
+    use crate::design::LabelDocument;
+
+    fn doc_with_font(font: &str) -> LabelDocument {
+        let mut doc = LabelDocument::blank(50., 20.);
+        let id = doc.add(
+            Element::Text {
+                text: "Hello".into(),
+                font_pt: 14.,
+                bold: false,
+                align: crate::design::TextAlign::Left,
+            },
+            2.,
+            2.,
+            40.,
+            10.,
+        );
+        doc.objects
+            .iter_mut()
+            .find(|o| o.id == id)
+            .unwrap()
+            .options
+            .font = font.into();
+        doc
+    }
+
+    #[test]
+    fn a_font_that_is_not_installed_falls_back_to_the_built_in_one() {
+        let plain = render_label(&doc_with_font(""), 203).unwrap();
+        let missing = render_label(&doc_with_font("No Such Font 123"), 203).unwrap();
+        assert_eq!(plain.image.as_raw(), missing.image.as_raw());
+    }
+
+    #[test]
+    fn font_names_cannot_point_outside_the_fonts_folder() {
+        assert!(doc_with_font("../../etc/passwd").validate().is_err());
+        assert!(doc_with_font("Open Sans").validate().is_ok());
+        let json = serde_json::to_string(&doc_with_font("")).unwrap();
+        assert!(
+            !json.contains("\"font\":"),
+            "the default adds nothing to a saved file"
+        );
+    }
+}
+
+#[cfg(test)]
+mod auto_length_tests {
+    use super::*;
+    use crate::design::LabelDocument;
+
+    #[test]
+    fn auto_length_prints_only_as_long_as_the_content() {
+        let mut doc = LabelDocument::blank(50., 200.);
+        doc.add(
+            Element::Text {
+                text: "Hello".into(),
+                font_pt: 12.,
+                bold: false,
+                align: crate::design::TextAlign::Left,
+            },
+            2.,
+            10.,
+            40.,
+            8.,
+        );
+        assert_eq!(render_label(&doc, 203).unwrap().height_mm, 200.);
+        doc.auto_length = true;
+        doc.auto_margin_mm = 3.;
+        assert!((doc.effective_height_mm() - 21.).abs() < 0.01);
+        let out = render_label(&doc, 203).unwrap();
+        assert!((out.height_mm - 21.).abs() < 0.01);
+        assert_eq!(out.image.height(), dots(21., 203));
+        assert!(!out.clipped);
+        doc.objects.clear();
+        assert_eq!(
+            doc.effective_height_mm(),
+            5.,
+            "an empty label is not zero-length"
+        );
+        doc.auto_margin_mm = f32::NAN;
+        assert!(doc.validate().is_err());
+    }
+
+    #[test]
+    fn older_files_without_the_new_fields_still_load() {
+        let json = r#"{"version":1,"title":"Old","width_mm":50.0,"height_mm":30.0,"serial_number":1,"objects":[],"next_id":1}"#;
+        let doc: LabelDocument = serde_json::from_str(json).unwrap();
+        assert!(!doc.auto_length);
+        assert_eq!(doc.effective_height_mm(), 30.);
+        let saved = serde_json::to_string(&doc).unwrap();
+        assert!(!saved.contains("auto_length") && !saved.contains("auto_margin"));
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -869,6 +981,29 @@ mod barcode_kind_tests {
     }
     fn has_ink(im: &RgbaImage) -> bool {
         im.pixels().any(|p| p.0[3] > 0)
+    }
+
+    #[test]
+    fn gs1_barcodes_draw_valid_data_and_refuse_bad_data() {
+        let linear = draws(BarcodeKind::Gs1128, "(01)0950600013435(10)LOT7").unwrap();
+        assert!(has_ink(&linear));
+        // Serial numbers can still be filled in.
+        assert!(draws(BarcodeKind::Gs1128, "(00)10614141123456789${serial}").is_err());
+        assert!(draws(BarcodeKind::Gs1128, "(21)${serial}").is_ok());
+        let square = draws(BarcodeKind::Gs1DataMatrix, "(01)95012345678903(10)LOT7").unwrap();
+        assert!(has_ink(&square));
+        for (kind, bad) in [
+            (BarcodeKind::Gs1128, "09506000134352"),
+            (BarcodeKind::Gs1128, "(01)09506000134353"),
+            (BarcodeKind::Gs1DataMatrix, "(10)LOT7(01)95012345678903"),
+            (BarcodeKind::Gs1DataMatrix, ""),
+        ] {
+            assert!(draws(kind, bad).is_err(), "{bad:?}");
+        }
+        assert_eq!(
+            readable_value(BarcodeKind::Gs1128, "(01)0950600013435(10)LOT7"),
+            "(01)09506000134352(10)LOT7"
+        );
     }
 
     #[test]

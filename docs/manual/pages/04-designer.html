@@ -27,7 +27,7 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <h2>The toolbar</h2>
 <table>
   <tr><th>Control</th><th>What it does</th></tr>
-  <tr><td><strong>File</strong></td><td><em>New label</em>, <em>Save as…</em>, <em>Save as template…</em>, and <em>Batch print from CSV…</em> (see <a href="batch.html">Batch printing</a>).</td></tr>
+  <tr><td><strong>File</strong></td><td><em>New label</em>, <em>Save as…</em>, <em>Save as template…</em>, <em>Template gallery…</em>, <em>Print on a sheet…</em>, <em>Print a number range…</em>, and <em>Batch print from CSV…</em> (see <a href="batch.html">Batch printing</a>).</td></tr>
   <tr><td><strong>Open</strong> / <strong>Save</strong></td><td>Open a design file; save the current one (<kbd>Ctrl</kbd>+<kbd>S</kbd>).</td></tr>
   <tr><td>Undo / redo</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> and <kbd>Ctrl</kbd>+<kbd>Y</kbd>.</td></tr>
   <tr><td>Zoom out / in / fit</td><td>Zoom from 25 % to 500 %. <em>Fit</em> returns to 100 % and re-centers. Drag with the <strong>middle mouse button</strong> to pan.</td></tr>
@@ -78,13 +78,13 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 {{figure:designer-arrange|Four text objects selected in the Label Designer, with the Align, Distribute evenly, and Center on label buttons in the properties panel|Several objects selected. The panel offers alignment, even spacing, centering, locking, and delete.}}
 <table>
   <tr><th>Tool</th><th>What it does</th></tr>
-  <tr><td><strong>Align</strong>: Left, Center, Right, Top, Middle, Bottom</td><td>Lines the selected objects up with each other.</td></tr>
-  <tr><td><strong>Distribute evenly</strong>: Horizontally, Vertically</td><td>Makes the gaps between three or more objects equal. The two outermost objects stay where they are.</td></tr>
+  <tr><td><strong>Align</strong>: left, center, right, top, middle, bottom</td><td>Lines the selected objects up with each other.</td></tr>
+  <tr><td><strong>Distribute evenly</strong>: horizontally, vertically</td><td>Makes the gaps between three or more objects equal. The two outermost objects stay where they are.</td></tr>
   <tr><td><strong>Center on label</strong></td><td>Centers the selection as a group on the label, horizontally or vertically. A single object has the same buttons.</td></tr>
   <tr><td><strong>Lock all</strong> / <strong>Unlock all</strong></td><td>Locks or unlocks every selected object.</td></tr>
   <tr><td><strong>Delete selected</strong></td><td>Deletes the unlocked objects in the selection.</td></tr>
 </table>
-<p>Locked objects are skipped by every one of these tools. A single object also has <strong>Rotate 90°</strong> (a quarter turn clockwise) and <strong>Flip horizontally</strong> / <strong>Flip vertically</strong>, which mirror it before it is rotated.</p>
+<p>These tools are icon buttons: hover over one to see its name, and screen readers announce the same name. Locked objects are skipped by every one of them. A single object also has <strong>Rotate 90°</strong> (a quarter turn clockwise) and <strong>Flip horizontally</strong> / <strong>Flip vertically</strong>, which mirror it before it is rotated.</p>
 
 <h2>Saving and the unsaved-changes prompt</h2>
 <p>Designs are saved as <code>.thermalprint</code> files. They are editable, versioned, and include embedded images, so a design is a single file you can copy or email. The status bar shows <em>Unsaved</em> when there are changes.</p>
@@ -92,8 +92,26 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 {{figure:save-changes|The Save changes dialog with Cancel, Discard, and Save buttons and a label name field|The Save changes? prompt. Cancel keeps working; Discard throws the changes away; Save keeps them.}}
 <p>If a save fails or you cancel the file chooser, your design stays open and unchanged.</p>
 
+<h2>The template gallery</h2>
+<p><strong>File → Template gallery…</strong> shows every built-in template and every template you saved as a small preview, with a search box. Click a card to open it as an unsaved copy; the <strong>✕</strong> button under one of your own templates removes it.</p>
+{{figure:designer-gallery|The Template gallery window with previews of the built-in templates|The template gallery. Previews appear a few at a time so the window opens at once.}}
+
 <h2>Your own templates</h2>
 <p>When you reuse a design, choose <strong>File → Save as template…</strong>. The design is stored in a <code>templates</code> folder inside ThermalPrint's settings folder, named after the label, and appears under <em>Your templates</em> in the template menu next to the built-in ones. Choosing one opens an unsaved copy, so the template itself never changes. Saving a template under a name you already used replaces it, and the <strong>✕</strong> beside a template removes it. You can keep up to 100.</p>
+
+<h2>Labels with no fixed length</h2>
+<p>On a continuous roll the label should be as long as its content. In <strong>Label setup</strong> tick <strong>Auto-length (continuous roll)</strong>: the printed length becomes the lowest edge of any object plus the <strong>Bottom margin</strong> (2 mm to start), and the status bar and <em>Printed length</em> show the result. Use it with <em>Custom</em> media in <a href="print-center.html">Print Center</a>. The canvas keeps the height you set for editing.</p>
+
+<h2>Numbered runs and sheets</h2>
+<ul>
+  <li><strong>File → Print a number range…</strong> prints labels numbered by <code>${serial}</code>: choose the <em>First number</em>, the <em>Step</em>, and <em>How many labels</em>. Every label is drawn first, so nothing is sent if one has a problem. Use <code>${serial:4}</code> for zero-padded numbers like <code>0007</code>, and type a prefix before it, such as <code>INV-${serial:4}</code>.</li>
+  <li><strong>File → Print on a sheet…</strong> places copies of the label on an A4 or Letter page for an office printer or a sheet of sticky labels. Choose columns, rows, margin, and gap, or press <strong>Fit as many as possible</strong>; a small diagram shows the layout. <code>${serial}</code> counts up from one label to the next. <strong>Save as PDF</strong> always works; <strong>Print sheet</strong> needs a printer that lists the paper. More labels than fit make more pages.</li>
+</ul>
+{{figure:designer-sheet|The Print on a sheet window with columns, rows, margin, gap, and a diagram of the page|The sheet window. The blue cells are the labels that will print.}}
+{{figure:designer-range|The Print a number range window with first number, step, and count|The number range window.}}
+
+<h2>If the app closes unexpectedly</h2>
+<p>While a design has unsaved changes, ThermalPrint keeps a recovery copy a few seconds after each edit. If the app ends unexpectedly, the next start shows <em>Unsaved changes from your last session were found</em> above the toolbar: <strong>Restore</strong> reopens it as an unsaved copy and <strong>Discard</strong> deletes it. Saving, or discarding a change on purpose, removes the copy.</p>
 
 <h2>The printable area</h2>
 <p>Most printers cannot print right to the edge of the media. When the label size matches the media of the selected printer and the printer reports its margins, the canvas shades that border in amber, and the status area names any object that reaches into it, because that part may be cut off. Turn the shading off with <em>View → Show printable area</em>.</p>

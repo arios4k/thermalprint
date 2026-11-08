@@ -9,6 +9,7 @@ summary: Plain-language explanations of the printing and barcode terms, and comm
   <tr><th>Term</th><th>Meaning</th></tr>
   <tr><td><strong>Alignment offset</strong></td><td>A small shift, in millimeters, that moves printed content to correct a printer that feeds labels off-center.</td></tr>
   <tr><td><strong>Banner page</strong></td><td>A page some print systems add before or after a job. ThermalPrint turns it off.</td></tr>
+  <tr><td><strong>Auto-length</strong></td><td>A label setting for continuous rolls: the printed length follows the content instead of a fixed height.</td></tr>
   <tr><td><strong>Batch</strong></td><td>Printing many labels in one go, either from a queue of files or from a spreadsheet merged into a design.</td></tr>
   <tr><td><strong>Clipping</strong></td><td>Content that would be cut off at the paper edge. ThermalPrint blocks printing when it happens.</td></tr>
   <tr><td><strong>Code 128, Code 39, EAN, UPC, ITF, Codabar</strong></td><td>Linear barcode types. See the <a href="barcodes.html">Barcode reference</a>.</td></tr>
@@ -20,6 +21,9 @@ summary: Plain-language explanations of the printing and barcode terms, and comm
   <tr><td><strong>Design</strong></td><td>A label you created in the Label Designer, saved as a <code>.thermalprint</code> file.</td></tr>
   <tr><td><strong>DPI</strong></td><td>Dots per inch: how many printed dots fit in an inch. Common thermal printers are 203 or 300 DPI.</td></tr>
   <tr><td><strong>Driver</strong></td><td>The software that translates a print job into commands your printer understands.</td></tr>
+  <tr><td><strong>FNC1</strong></td><td>A control character in GS1 barcodes. It marks the start of GS1 data and ends a variable-length field.</td></tr>
+  <tr><td><strong>GS1, application identifier (AI)</strong></td><td>The global standard for supply-chain barcodes. An AI is the number in brackets, such as <code>(01)</code> for a product number, that says what the value after it means.</td></tr>
+  <tr><td><strong>GTIN</strong></td><td>Global Trade Item Number: the number behind a product barcode such as EAN-13 or UPC-A.</td></tr>
   <tr><td><strong>Media</strong></td><td>The paper (here, label) size the printer driver offers, such as 4 × 6 in.</td></tr>
   <tr><td><strong>Object</strong></td><td>One item on a label: a text box, barcode, QR code, shape, or image.</td></tr>
   <tr><td><strong>Placeholder</strong></td><td>A <code>${name}</code> marker in a design that is replaced with a value when the label is drawn.</td></tr>
@@ -31,6 +35,7 @@ summary: Plain-language explanations of the printing and barcode terms, and comm
   <tr><td><strong>Queue (print queue)</strong></td><td>The list of labels waiting to print in Import &amp; Convert. Also, a printer's name in CUPS.</td></tr>
   <tr><td><strong>Raw queue</strong></td><td>A CUPS queue that passes data straight to the printer without a driver. Needed for raw ZPL.</td></tr>
   <tr><td><strong>Serial number</strong></td><td>A counting number printed with <code>${serial}</code>.</td></tr>
+  <tr><td><strong>SSCC</strong></td><td>Serial Shipping Container Code: an 18-digit number that identifies one pallet or parcel.</td></tr>
   <tr><td><strong>Thermal printer</strong></td><td>A printer that makes marks with heat on special paper, so it needs no ink or toner.</td></tr>
   <tr><td><strong>Threshold</strong></td><td>Turning every pixel fully black or white. It can harm thin barcode bars.</td></tr>
   <tr><td><strong>Watch folder</strong></td><td>A folder ThermalPrint checks for new label files to add to the queue.</td></tr>

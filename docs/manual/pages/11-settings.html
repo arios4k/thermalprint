@@ -17,7 +17,8 @@ summary: What ThermalPrint remembers, where it is stored, the built-in limits, a
   <tr><td>Recent prints (up to 50)</td><td>Yes, in a separate file.</td></tr>
   <tr><td>Window size and position</td><td>Yes.</td></tr>
   <tr><td>The print queue in Import &amp; Convert</td><td>No. It is empty each time you start.</td></tr>
-  <tr><td>Your label designs</td><td>Only as the <code>.thermalprint</code> files you save yourself.</td></tr>
+  <tr><td>Your label designs</td><td>Only as the <code>.thermalprint</code> files you save yourself, plus a recovery copy while changes are unsaved.</td></tr>
+  <tr><td>Your templates, logos, fonts, and address book</td><td>Yes, in the folders listed below.</td></tr>
 </table>
 
 <h2 id="where-your-data-lives">Where your data lives</h2>
@@ -25,6 +26,11 @@ summary: What ThermalPrint remembers, where it is stored, the built-in limits, a
   <tr><th>File</th><th>Holds</th><th>Normal install</th><th>Snap</th></tr>
   <tr><td><code>settings.json</code></td><td>Preferences and printer profiles</td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
   <tr><td><code>history.json</code></td><td>Recent prints</td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
+  <tr><td><code>templates/</code></td><td>Designs saved with <em>Save as template…</em></td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
+  <tr><td><code>logos/</code></td><td>Images saved with <em>Save as logo</em></td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
+  <tr><td><code>fonts/</code></td><td>Fonts you added to text objects</td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
+  <tr><td><code>addresses.json</code></td><td>The address book</td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
+  <tr><td><code>recovery.thermalprint</code></td><td>A copy of unsaved changes, removed when you save or discard</td><td><code>~/.local/share/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.local/share/</code></td></tr>
   <tr><td><code>app.ron</code></td><td>Window state</td><td><code>~/.local/share/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.local/share/</code></td></tr>
 </table>
 <p>To start fresh, quit ThermalPrint and delete these files. A damaged or hand-edited settings file is checked when it is read: impossible values are corrected, and an unreadable file is ignored.</p>

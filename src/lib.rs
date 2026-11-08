@@ -1,3 +1,4 @@
+pub mod address_book;
 pub mod batch;
 pub mod calibration;
 pub mod design;
@@ -10,10 +11,16 @@ pub mod history;
 pub mod i18n;
 pub mod layout;
 pub mod printing;
+pub mod qr_builder;
+pub mod recovery;
 pub mod settings;
+pub mod sheet;
+pub mod symbols;
 pub mod ui;
 pub mod user_templates;
 pub mod watch;
 pub mod zpl;
 
+pub mod fonts;
+pub mod gs1;
 pub mod help;

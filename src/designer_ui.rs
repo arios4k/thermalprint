@@ -1,3 +1,4 @@
+use crate::symbols::Symbol;
 use crate::{
     design::{self, BarcodeKind, DesignObject, Element, LabelDocument, ShapeKind, TextAlign},
     design_render, export,
@@ -18,6 +19,7 @@ enum DragKind {
     Resize,
     Rotate,
 }
+type LabelMaker = Arc<dyn Fn(usize) -> LabelDocument + Send + Sync>;
 struct Drag {
     kind: DragKind,
     start: Pos2,
@@ -41,6 +43,139 @@ struct BatchState {
     error: Option<String>,
     row: usize,
     preview: Option<(usize, egui::TextureHandle)>,
+}
+
+/// The number-range window: serials start, step, and how many labels to print.
+#[derive(Clone, Debug)]
+struct RangeState {
+    start: u64,
+    step: u64,
+    count: u32,
+}
+
+/// The values typed into the QR content builder; they are not saved with the design.
+#[derive(Clone, Debug, Default)]
+struct QrForm {
+    kind: usize,
+    website: String,
+    ssid: String,
+    password: String,
+    security: crate::qr_builder::WifiSecurity,
+    hidden: bool,
+    contact: crate::qr_builder::Contact,
+    mail_to: String,
+    mail_subject: String,
+    mail_body: String,
+    phone: String,
+    error: Option<String>,
+}
+
+const QR_KINDS: [&str; 5] = ["Website", "Wi-Fi", "Contact card", "Email", "Phone number"];
+
+/// Fill in the QR content from a form. Returns true when the content was replaced.
+fn qr_builder_ui(ui: &mut egui::Ui, form: &mut QrForm, data: &mut String) -> bool {
+    use crate::qr_builder::{QrContent, WifiSecurity};
+    let mut applied = false;
+    egui::CollapsingHeader::new(crate::i18n::tr("Build the content"))
+        .id_salt("qr-builder")
+        .show(ui, |ui| {
+            egui::ComboBox::from_id_salt("qr-builder-kind")
+                .selected_text(crate::i18n::tr(QR_KINDS[form.kind.min(4)]))
+                .show_ui(ui, |ui| {
+                    for (i, name) in QR_KINDS.iter().enumerate() {
+                        ui.selectable_value(&mut form.kind, i, crate::i18n::tr(name));
+                    }
+                })
+                .response
+                .accessible_name(crate::i18n::tr("Kind of QR content"));
+            let line = |ui: &mut egui::Ui, label: &str, text: &mut String| {
+                ui.label(crate::i18n::tr(label));
+                ui.add(egui::TextEdit::singleline(text))
+                    .accessible_name(crate::i18n::tr(label));
+            };
+            match form.kind {
+                0 => line(ui, "Web address", &mut form.website),
+                1 => {
+                    line(ui, "Network name", &mut form.ssid);
+                    line(ui, "Password", &mut form.password);
+                    ui.horizontal(|ui| {
+                        for (security, name) in [
+                            (WifiSecurity::Wpa, "WPA / WPA2"),
+                            (WifiSecurity::Wep, "WEP"),
+                            (WifiSecurity::Open, "No password"),
+                        ] {
+                            ui.selectable_value(
+                                &mut form.security,
+                                security,
+                                crate::i18n::tr(name),
+                            );
+                        }
+                    });
+                    ui.checkbox(&mut form.hidden, crate::i18n::tr("Hidden network"));
+                }
+                2 => {
+                    line(ui, "Name", &mut form.contact.name);
+                    line(ui, "Organization", &mut form.contact.organization);
+                    line(ui, "Phone", &mut form.contact.phone);
+                    line(ui, "Email address", &mut form.contact.email);
+                    line(ui, "Website", &mut form.contact.website);
+                    line(ui, "Address", &mut form.contact.address);
+                }
+                3 => {
+                    line(ui, "Email address", &mut form.mail_to);
+                    line(ui, "Subject", &mut form.mail_subject);
+                    line(ui, "Message", &mut form.mail_body);
+                }
+                _ => line(ui, "Phone", &mut form.phone),
+            }
+            if icon_action(
+                ui,
+                "Apply",
+                "Use this content",
+                "Replace the QR content with what you entered",
+                true,
+                false,
+            )
+            .clicked()
+            {
+                let content = match form.kind {
+                    0 => QrContent::Website(form.website.clone()),
+                    1 => QrContent::Wifi {
+                        ssid: form.ssid.clone(),
+                        password: form.password.clone(),
+                        security: form.security,
+                        hidden: form.hidden,
+                    },
+                    2 => QrContent::Contact(form.contact.clone()),
+                    3 => QrContent::Email {
+                        to: form.mail_to.clone(),
+                        subject: form.mail_subject.clone(),
+                        body: form.mail_body.clone(),
+                    },
+                    _ => QrContent::Phone(form.phone.clone()),
+                };
+                match content.payload() {
+                    Ok(text) => {
+                        *data = text;
+                        form.error = None;
+                        applied = true;
+                    }
+                    Err(error) => form.error = Some(format!("{error:#}")),
+                }
+            }
+            if let Some(error) = &form.error {
+                ui.colored_label(Color32::from_rgb(200, 60, 60), error);
+            }
+        });
+    applied
+}
+
+/// The sheet window: several labels on one A4 or Letter page.
+#[derive(Clone, Debug)]
+struct SheetState {
+    spec: crate::sheet::SheetSpec,
+    count: u32,
+    dpi: u32,
 }
 
 pub struct Designer {
@@ -80,6 +215,23 @@ pub struct Designer {
     pub error: bool,
     job: Option<mpsc::Receiver<anyhow::Result<String>>>,
     batch: Option<BatchState>,
+    range: Option<RangeState>,
+    sheet: Option<SheetState>,
+    /// The template gallery window: the search text while it is open.
+    gallery: Option<String>,
+    gallery_thumbs: std::collections::HashMap<String, egui::TextureHandle>,
+    qr_form: QrForm,
+    sscc_form: SsccForm,
+    logos: Vec<crate::symbols::Logo>,
+    addresses: Vec<crate::address_book::Entry>,
+    fonts: Vec<String>,
+    symbol_textures: Vec<(crate::symbols::Symbol, egui::TextureHandle)>,
+    logo_textures: std::collections::HashMap<PathBuf, egui::TextureHandle>,
+    /// Crash recovery: a design left over from an unexpected exit, offered at startup.
+    recovered: Option<LabelDocument>,
+    recovery_dir: Option<PathBuf>,
+    recovery_written: Option<LabelDocument>,
+    recovery_at: Option<std::time::Instant>,
 }
 impl Default for Designer {
     fn default() -> Self {
@@ -122,11 +274,56 @@ impl Designer {
             error: false,
             job: None,
             batch: None,
+            range: None,
+            sheet: None,
+            gallery: None,
+            gallery_thumbs: Default::default(),
+            qr_form: QrForm::default(),
+            sscc_form: SsccForm::default(),
+            logos: crate::symbols::logos_dir()
+                .map(|dir| crate::symbols::list_logos_in(&dir))
+                .unwrap_or_default(),
+            addresses: crate::address_book::load(),
+            fonts: crate::fonts::list(),
+            symbol_textures: Vec::new(),
+            logo_textures: Default::default(),
+            recovered: None,
+            recovery_dir: None,
+            recovery_written: None,
+            recovery_at: None,
         }
     }
     pub(crate) fn select_object(&mut self, id: u64) {
         if self.doc.objects.iter().any(|object| object.id == id) {
             self.selected = vec![id];
+        }
+    }
+    /// Open one of the extra windows (documentation screenshots only).
+    pub(crate) fn demo_window(&mut self, name: &str) {
+        match name {
+            "gallery" => self.gallery = Some(String::new()),
+            "sheet" => {
+                let spec = crate::sheet::SheetSpec::fitting(
+                    crate::sheet::Page::A4,
+                    self.doc.width_mm,
+                    self.doc.effective_height_mm(),
+                    5.,
+                    0.,
+                );
+                self.sheet = Some(SheetState {
+                    count: spec.cells().max(1) as u32,
+                    spec,
+                    dpi: 300,
+                });
+            }
+            "range" => {
+                self.range = Some(RangeState {
+                    start: 100,
+                    step: 5,
+                    count: 20,
+                })
+            }
+            _ => {}
         }
     }
     /// Select several objects at once (documentation screenshots only).
@@ -433,8 +630,94 @@ impl Designer {
     pub(crate) fn request_open(&mut self, path: PathBuf) {
         self.request_action(PendingAction::Open(path));
     }
+    /// Turn on crash recovery (not in tests or documentation captures) and look for a copy
+    /// left by an earlier session that ended unexpectedly.
+    pub(crate) fn enable_recovery(&mut self) {
+        if let Some(dir) = crate::recovery::recovery_dir() {
+            self.enable_recovery_in(dir);
+        }
+    }
+    fn enable_recovery_in(&mut self, dir: PathBuf) {
+        self.recovered = crate::recovery::read_in(&dir);
+        self.recovery_dir = Some(dir);
+    }
+    /// Keep a recovery copy of unsaved changes, a few seconds after the last edit.
+    fn autosave(&mut self, ctx: &egui::Context) {
+        let Some(dir) = self.recovery_dir.clone() else {
+            return;
+        };
+        if self.recovered.is_some() {
+            return;
+        }
+        if !self.is_modified() {
+            if self.recovery_written.take().is_some() {
+                crate::recovery::clear_in(&dir);
+            }
+            return;
+        }
+        if self.recovery_written.as_ref() == Some(&self.doc) {
+            return;
+        }
+        let wait = std::time::Duration::from_secs(3);
+        match self.recovery_at {
+            Some(at) if at.elapsed() < wait => {
+                ctx.request_repaint_after(wait - at.elapsed());
+            }
+            _ => {
+                let _ = crate::recovery::write_in(&dir, &self.doc);
+                self.recovery_written = Some(self.doc.clone());
+                self.recovery_at = Some(std::time::Instant::now());
+            }
+        }
+    }
+    fn recovery_banner(&mut self, root: &mut egui::Ui) {
+        let Some(doc) = self.recovered.clone() else {
+            return;
+        };
+        egui::Panel::top("designer-recovery").show(root, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(format!(
+                    "{} {}",
+                    crate::i18n::tr("Unsaved changes from your last session were found:"),
+                    doc.title
+                ));
+                if icon_action(
+                    ui,
+                    "Refresh",
+                    "Restore",
+                    "Reopen the design from your last session as an unsaved copy",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    self.recovered = None;
+                    self.replace_document(doc.clone(), None, false);
+                    self.status = "Design restored · save to keep it".into();
+                }
+                if icon_action(
+                    ui,
+                    "Delete",
+                    "Discard",
+                    "Delete the recovered copy",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    self.recovered = None;
+                    if let Some(dir) = &self.recovery_dir {
+                        crate::recovery::clear_in(dir);
+                    }
+                }
+            });
+        });
+    }
     pub(crate) fn request_close(&mut self) -> bool {
         if self.close_approved || !self.is_modified() {
+            if let (Some(dir), None) = (&self.recovery_dir, &self.recovered) {
+                crate::recovery::clear_in(dir);
+            }
             return true;
         }
         self.pending_action = Some(PendingAction::Close);
@@ -740,6 +1023,465 @@ impl Designer {
             }
         }
     }
+    /// A small preview of a design for the gallery.
+    fn thumbnail(
+        ctx: &egui::Context,
+        key: &str,
+        doc: &LabelDocument,
+    ) -> Option<egui::TextureHandle> {
+        let output = design_render::render_label(doc, 203).ok()?;
+        let longest = output.image.width().max(output.image.height()).max(1) as f32;
+        let scale = (140. / longest).min(1.);
+        let (w, h) = (
+            ((output.image.width() as f32 * scale) as u32).max(1),
+            ((output.image.height() as f32 * scale) as u32).max(1),
+        );
+        let small =
+            image::imageops::resize(&output.image, w, h, image::imageops::FilterType::Triangle);
+        Some(ctx.load_texture(
+            format!("gallery-{key}"),
+            egui::ColorImage::from_rgb([w as usize, h as usize], small.as_raw()),
+            egui::TextureOptions::LINEAR,
+        ))
+    }
+    fn gallery_window(&mut self, ctx: &egui::Context) {
+        let Some(mut query) = self.gallery.take() else {
+            return;
+        };
+        let mut open = true;
+        let mut open_builtin: Option<usize> = None;
+        let mut open_user: Option<PathBuf> = None;
+        let mut remove_user: Option<PathBuf> = None;
+        // Preview a few more designs each frame so the window opens at once.
+        let mut budget = 4;
+        let mut missing = false;
+        egui::Window::new(crate::i18n::tr("Template gallery"))
+            .default_pos(window_start(ctx))
+            .open(&mut open)
+            .collapsible(false)
+            .default_width(560.)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Search"));
+                    ui.add(egui::TextEdit::singleline(&mut query))
+                        .accessible_name(crate::i18n::tr("Search templates"));
+                });
+                let needle = query.trim().to_lowercase();
+                egui::ScrollArea::vertical()
+                    .max_height(420.)
+                    .show(ui, |ui| {
+                        ui.label(RichText::new(crate::i18n::tr("Templates")).strong());
+                        ui.horizontal_wrapped(|ui| {
+                            for (i, t) in design::TEMPLATES.iter().enumerate() {
+                                if !needle.is_empty() && !t.name.to_lowercase().contains(&needle) {
+                                    continue;
+                                }
+                                let key = format!("builtin-{i}");
+                                if !self.gallery_thumbs.contains_key(&key) && budget > 0 {
+                                    budget -= 1;
+                                    if let Some(texture) =
+                                        Self::thumbnail(ctx, &key, &design::from_template(i))
+                                    {
+                                        self.gallery_thumbs.insert(key.clone(), texture);
+                                    }
+                                }
+                                missing |= !self.gallery_thumbs.contains_key(&key);
+                                let texture = self.gallery_thumbs.get(&key);
+                                if gallery_card(ui, t.name, texture, t.description).clicked() {
+                                    open_builtin = Some(i);
+                                }
+                            }
+                        });
+                        ui.add_space(6.);
+                        ui.label(RichText::new(crate::i18n::tr("Your templates")).strong());
+                        if self.user_templates.is_empty() {
+                            ui.label(
+                                RichText::new(crate::i18n::tr(
+                                    "Nothing saved yet. Use File → Save as template… to add one.",
+                                ))
+                                .small()
+                                .weak(),
+                            );
+                        }
+                        ui.horizontal_wrapped(|ui| {
+                            for t in self.user_templates.clone() {
+                                if !needle.is_empty() && !t.name.to_lowercase().contains(&needle) {
+                                    continue;
+                                }
+                                let key = format!("user-{}", t.path.display());
+                                if !self.gallery_thumbs.contains_key(&key) && budget > 0 {
+                                    budget -= 1;
+                                    if let Ok(doc) = LabelDocument::load(&t.path)
+                                        && let Some(texture) = Self::thumbnail(ctx, &key, &doc)
+                                    {
+                                        self.gallery_thumbs.insert(key.clone(), texture);
+                                    }
+                                }
+                                missing |= !self.gallery_thumbs.contains_key(&key);
+                                ui.vertical(|ui| {
+                                    let texture = self.gallery_thumbs.get(&key);
+                                    if gallery_card(ui, &t.name, texture, &t.name).clicked() {
+                                        open_user = Some(t.path.clone());
+                                    }
+                                    if icon_action(
+                                        ui,
+                                        "Delete",
+                                        "",
+                                        "Remove this template",
+                                        true,
+                                        false,
+                                    )
+                                    .clicked()
+                                    {
+                                        remove_user = Some(t.path.clone());
+                                    }
+                                });
+                            }
+                        });
+                    });
+            });
+        if missing {
+            ctx.request_repaint();
+        }
+        if let Some(i) = open_builtin {
+            self.request_template(i);
+            open = false;
+        }
+        if let Some(path) = open_user {
+            self.open_user_template(&path);
+            open = false;
+        }
+        if let Some(path) = remove_user {
+            match crate::user_templates::remove(&path) {
+                Ok(()) => self.status = "Template removed".into(),
+                Err(error) => {
+                    self.status = format!("{error:#}");
+                    self.error = true;
+                }
+            }
+            self.user_templates = crate::user_templates::list();
+            self.gallery_thumbs.retain(|k, _| !k.starts_with("user-"));
+        }
+        if open {
+            self.gallery = Some(query);
+        }
+    }
+    fn sheet_window(&mut self, ctx: &egui::Context, settings: &Settings, printers: &[Printer]) {
+        use crate::sheet::{Page, SheetSpec};
+        let Some(mut state) = self.sheet.take() else {
+            return;
+        };
+        let (label_w, label_h) = (self.doc.width_mm, self.doc.effective_height_mm());
+        let mut open = true;
+        let mut action: Option<bool> = None; // Some(true) = print, Some(false) = save PDF
+        let printer = printers.iter().find(|p| p.name == settings.printer);
+        egui::Window::new(crate::i18n::tr("Print on a sheet"))
+            .default_pos(window_start(ctx))
+            .open(&mut open)
+            .collapsible(false)
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.label(crate::i18n::tr("Place copies of this label on an A4 or Letter page, for an office printer or a sheet of sticky labels. ${serial} counts up from one label to the next."));
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Paper"));
+                    for page in [Page::A4, Page::Letter] {
+                        ui.selectable_value(&mut state.spec.page, page, page.media());
+                    }
+                    ui.label(crate::i18n::tr("Resolution"));
+                    egui::ComboBox::from_id_salt("sheet-dpi")
+                        .selected_text(format!("{} DPI", state.dpi))
+                        .show_ui(ui, |ui| {
+                            for dpi in [203u32, 300, 600] {
+                                ui.selectable_value(&mut state.dpi, dpi, format!("{dpi} DPI"));
+                            }
+                        })
+                        .response
+                        .accessible_name(crate::i18n::tr("Resolution"));
+                });
+                egui::Grid::new("sheet-grid").num_columns(2).show(ui, |ui| {
+                    ui.label(crate::i18n::tr("Columns"));
+                    ui.add(egui::DragValue::new(&mut state.spec.columns).range(1..=50))
+                        .accessible_name(crate::i18n::tr("Columns"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("Rows"));
+                    ui.add(egui::DragValue::new(&mut state.spec.rows).range(1..=50))
+                        .accessible_name(crate::i18n::tr("Rows"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("Page margin"));
+                    ui.add(
+                        egui::DragValue::new(&mut state.spec.margin_mm)
+                            .range(0.0..=50.0)
+                            .speed(0.1)
+                            .suffix(" mm"),
+                    )
+                    .accessible_name(crate::i18n::tr("Page margin in millimeters"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("Gap between labels"));
+                    ui.add(
+                        egui::DragValue::new(&mut state.spec.gap_mm)
+                            .range(0.0..=50.0)
+                            .speed(0.1)
+                            .suffix(" mm"),
+                    )
+                    .accessible_name(crate::i18n::tr("Gap between labels in millimeters"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("How many labels"));
+                    ui.add(egui::DragValue::new(&mut state.count).range(1..=5000))
+                        .accessible_name(crate::i18n::tr("Number of labels"));
+                    ui.end_row();
+                });
+                if icon_action(
+                    ui,
+                    "Fit page",
+                    "Fit as many as possible",
+                    "Choose the most columns and rows of this label size that fit the page",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    let fit = SheetSpec::fitting(
+                        state.spec.page,
+                        label_w,
+                        label_h,
+                        state.spec.margin_mm,
+                        state.spec.gap_mm,
+                    );
+                    state.spec.columns = fit.columns.max(1);
+                    state.spec.rows = fit.rows.max(1);
+                    state.count = state.spec.cells() as u32;
+                }
+                let positions = state.spec.positions(label_w, label_h);
+                match &positions {
+                    Ok(cells) => {
+                        let sheets = crate::sheet::sheets_needed(state.count as usize, &state.spec);
+                        ui.label(format!(
+                            "{} {} · {} {}",
+                            cells.len(),
+                            crate::i18n::tr("labels per page"),
+                            sheets,
+                            crate::i18n::tr(if sheets == 1 { "page" } else { "pages" })
+                        ));
+                        let (pw, ph) = state.spec.page.size_mm();
+                        let scale = 150. / ph;
+                        let (rect, _) = ui.allocate_exact_size(
+                            Vec2::new(pw * scale, ph * scale),
+                            Sense::hover(),
+                        );
+                        let painter = ui.painter_at(rect);
+                        painter.rect_filled(rect, 2., Color32::WHITE);
+                        painter.rect_stroke(
+                            rect,
+                            2.,
+                            Stroke::new(1., Color32::GRAY),
+                            StrokeKind::Inside,
+                        );
+                        for (i, (x, y)) in cells.iter().enumerate() {
+                            let cell = Rect::from_min_size(
+                                rect.min + Vec2::new(x * scale, y * scale),
+                                Vec2::new(label_w * scale, label_h * scale),
+                            );
+                            let used = (i as u32) < state.count;
+                            painter.rect_filled(
+                                cell,
+                                1.,
+                                if used {
+                                    Color32::from_rgb(120, 160, 230)
+                                } else {
+                                    Color32::from_gray(225)
+                                },
+                            );
+                        }
+                    }
+                    Err(error) => {
+                        ui.colored_label(Color32::from_rgb(200, 60, 60), format!("{error:#}"));
+                    }
+                }
+                let can_print = printer.is_some_and(|p| p.media.iter().any(|m| m == state.spec.page.media()));
+                if printer.is_some() && !can_print {
+                    ui.label(
+                        RichText::new(crate::i18n::tr(
+                            "The selected printer does not list this paper. You can still save a PDF.",
+                        ))
+                        .weak(),
+                    );
+                } else if printer.is_none() {
+                    ui.label(RichText::new(crate::i18n::tr("Choose a printer in Print Center first.")).weak());
+                }
+                ui.horizontal_wrapped(|ui| {
+                    let ready = positions.is_ok() && self.job.is_none();
+                    if icon_action(
+                        ui,
+                        "Export document",
+                        "Save as PDF",
+                        "Save the sheet as a PDF file",
+                        ready,
+                        false,
+                    )
+                    .clicked()
+                    {
+                        action = Some(false);
+                    }
+                    if icon_action(
+                        ui,
+                        "Print device",
+                        "Print sheet",
+                        "Send the sheet to the selected printer",
+                        ready && can_print,
+                        false,
+                    )
+                    .clicked()
+                    {
+                        action = Some(true);
+                    }
+                });
+            });
+        if let Some(print) = action {
+            let doc = self.doc.clone();
+            let spec = state.spec;
+            let (count, dpi) = (state.count as usize, state.dpi);
+            let mut settings = settings.clone();
+            settings.media = spec.page.media().to_string();
+            let target = if print {
+                printer.cloned().map(|p| (p, None))
+            } else {
+                rfd::FileDialog::new()
+                    .add_filter("PDF", &["pdf"])
+                    .set_file_name("labels-sheet.pdf")
+                    .save_file()
+                    .map(|path| (Printer::default(), Some(path)))
+            };
+            if let Some((printer, path)) = target {
+                let first = doc.serial_number;
+                self.start_job("Preparing sheet…", move || {
+                    let outputs = (0..count)
+                        .map(|i| {
+                            let label = crate::batch::apply_range(&doc, first, 1, i);
+                            design_render::render_label(&label, dpi)
+                        })
+                        .collect::<anyhow::Result<Vec<_>>>()?;
+                    let pages = crate::sheet::compose(&outputs, &spec)?;
+                    match path {
+                        Some(path) => {
+                            for (n, page) in pages.iter().enumerate() {
+                                let target = if pages.len() == 1 {
+                                    path.clone()
+                                } else {
+                                    let stem = path
+                                        .file_stem()
+                                        .map(|s| s.to_string_lossy().into_owned())
+                                        .unwrap_or_else(|| "sheet".into());
+                                    path.with_file_name(format!("{stem}-{}.pdf", n + 1))
+                                };
+                                export::save(page, &target)?;
+                            }
+                            Ok(format!("Saved {} sheet(s) as PDF", pages.len()))
+                        }
+                        None => {
+                            for (n, page) in pages.iter().enumerate() {
+                                printing::submit(page, &settings, &printer).map_err(|e| {
+                                    anyhow::anyhow!(
+                                        "Stopped at sheet {} of {}: {e:#}",
+                                        n + 1,
+                                        pages.len()
+                                    )
+                                })?;
+                            }
+                            Ok(format!(
+                                "Submitted {} sheet(s). Use Job status to check the queue.",
+                                pages.len()
+                            ))
+                        }
+                    }
+                });
+                open = false;
+            }
+        }
+        if open {
+            self.sheet = Some(state);
+        }
+    }
+    fn range_window(&mut self, ctx: &egui::Context, settings: &Settings, printers: &[Printer]) {
+        let Some(mut state) = self.range.take() else {
+            return;
+        };
+        let mut open = true;
+        let mut start = false;
+        let printer = printers.iter().find(|p| p.name == settings.printer);
+        egui::Window::new(crate::i18n::tr("Print a number range"))
+            .default_pos(window_start(ctx))
+            .open(&mut open)
+            .collapsible(false)
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.label(crate::i18n::tr("Put ${serial} in text, barcode, or QR content. Use ${serial:4} for numbers padded with zeros, like 0007. Add a prefix by typing it before the number, for example INV-${serial:4}."));
+                egui::Grid::new("range-grid").num_columns(2).show(ui, |ui| {
+                    ui.label(crate::i18n::tr("First number"));
+                    ui.add(egui::DragValue::new(&mut state.start).range(0..=999_999_999_999u64))
+                        .accessible_name(crate::i18n::tr("First number"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("Step"));
+                    ui.add(egui::DragValue::new(&mut state.step).range(1..=1_000_000u64))
+                        .accessible_name(crate::i18n::tr("Step between numbers"));
+                    ui.end_row();
+                    ui.label(crate::i18n::tr("How many labels"));
+                    ui.add(egui::DragValue::new(&mut state.count).range(1..=crate::batch::MAX_RANGE))
+                        .accessible_name(crate::i18n::tr("Number of labels"));
+                    ui.end_row();
+                });
+                let (first, last) = crate::batch::range_ends(state.start, state.step, state.count);
+                ui.label(
+                    RichText::new(format!("{} {first} – {last}", crate::i18n::tr("Serials")))
+                        .strong(),
+                );
+                let uses_serial = self.doc.objects.iter().any(|o| match &o.element {
+                    Element::Text { text, .. } => text.contains("${serial"),
+                    Element::Barcode { data, .. } | Element::Qr { data } => data.contains("${serial"),
+                    _ => false,
+                });
+                if !uses_serial {
+                    ui.colored_label(
+                        Color32::from_rgb(200, 120, 20),
+                        crate::i18n::tr("This design has no ${serial} yet, so every label would be the same."),
+                    );
+                }
+                if printer.is_none() {
+                    ui.label(RichText::new(crate::i18n::tr("Choose a printer in Print Center first.")).weak());
+                }
+                let label = format!("{} {}", crate::i18n::tr("Print labels:"), state.count);
+                if icon_action(
+                    ui,
+                    "Print device",
+                    &label,
+                    "Every label is checked first; nothing prints if one has a problem.",
+                    printer.is_some() && self.job.is_none(),
+                    false,
+                )
+                .clicked()
+                {
+                    start = true;
+                }
+            });
+        if start && let Some(printer) = printer.cloned() {
+            let doc = self.doc.clone();
+            let (first, step, total) = (state.start, state.step, state.count as usize);
+            let make: LabelMaker =
+                Arc::new(move |index| crate::batch::apply_range(&doc, first, step, index));
+            self.run_labels(
+                "Printing number range…",
+                "label",
+                total,
+                make,
+                settings,
+                printer,
+                "numbers",
+            );
+            open = false;
+        }
+        if open {
+            self.range = Some(state);
+        }
+    }
     fn batch_window(&mut self, ctx: &egui::Context, settings: &Settings, printers: &[Printer]) {
         let Some(mut state) = self.batch.take() else {
             return;
@@ -860,39 +1602,66 @@ impl Designer {
             });
         if start && let (Some(table), Some(printer)) = (state.table.clone(), printer.cloned()) {
             let doc = self.doc.clone();
-            let settings = settings.clone();
-            let raw = self.raw_zpl;
             let total = table.rows.len();
-            self.start_job("Printing batch…", move || {
-                crate::batch::preflight(&doc, &table, settings.dpi).map_err(|problems| {
-                    anyhow::anyhow!("Nothing was printed. {}", problems.join(" · "))
-                })?;
-                for index in 0..total {
-                    let label = crate::batch::apply_row(&doc, &table, index);
-                    if raw {
-                        let bytes = zpl::encode_design(&label, settings.dpi)?;
-                        printing::submit_raw_zpl(&bytes, &settings, &printer)
-                    } else {
-                        let output = design_render::render_label(&label, settings.dpi)?;
-                        printing::submit(&output, &settings, &printer)
-                    }
-                    .map_err(|e| {
-                        anyhow::anyhow!("Stopped at row {} of {total}: {e:#}", index + 1)
-                    })?;
-                }
-                let mut entry =
-                    crate::history::design_entry(&doc, None, &settings.printer, settings.copies);
-                entry.title = format!("{} · batch of {total}", doc.title);
-                crate::history::record(entry);
-                Ok(format!(
-                    "Submitted {total} labels. Use Job status to check the queue."
-                ))
-            });
+            let make: LabelMaker =
+                Arc::new(move |index| crate::batch::apply_row(&doc, &table, index));
+            self.run_labels(
+                "Printing batch…",
+                "row",
+                total,
+                make,
+                settings,
+                printer,
+                "batch of",
+            );
             open = false;
         }
         if open {
             self.batch = Some(state);
         }
+    }
+    /// Print a run of labels: every label is rendered first, so nothing is sent if one is bad.
+    #[allow(clippy::too_many_arguments)]
+    fn run_labels(
+        &mut self,
+        status: &str,
+        noun: &'static str,
+        total: usize,
+        make: LabelMaker,
+        settings: &Settings,
+        printer: Printer,
+        history_word: &'static str,
+    ) {
+        let settings = settings.clone();
+        let raw = self.raw_zpl;
+        let title = self.doc.title.clone();
+        let original = self.doc.clone();
+        self.start_job(status, move || {
+            let label_noun = if noun == "row" { "Row" } else { "Label" };
+            crate::batch::preflight_with(label_noun, total, settings.dpi, |i| make(i)).map_err(
+                |problems| anyhow::anyhow!("Nothing was printed. {}", problems.join(" · ")),
+            )?;
+            for index in 0..total {
+                let label = make(index);
+                if raw {
+                    let bytes = zpl::encode_design(&label, settings.dpi)?;
+                    printing::submit_raw_zpl(&bytes, &settings, &printer)
+                } else {
+                    let output = design_render::render_label(&label, settings.dpi)?;
+                    printing::submit(&output, &settings, &printer)
+                }
+                .map_err(|e| {
+                    anyhow::anyhow!("Stopped at {noun} {} of {total}: {e:#}", index + 1)
+                })?;
+            }
+            let mut entry =
+                crate::history::design_entry(&original, None, &settings.printer, settings.copies);
+            entry.title = format!("{title} · {history_word} {total}");
+            crate::history::record(entry);
+            Ok(format!(
+                "Submitted {total} labels. Use Job status to check the queue."
+            ))
+        });
     }
     fn start_render(&mut self, dpi: u32) {
         if self.worker.is_some() || self.rendered_revision == Some(self.revision) {
@@ -992,6 +1761,8 @@ impl Designer {
         let ctx = root.ctx().clone();
         self.poll(&ctx);
         self.poll_job(&ctx);
+        self.autosave(&ctx);
+        self.recovery_banner(root);
         egui::Panel::top("designer-toolbar").show(root, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.menu_button(crate::i18n::tr("File"), |ui| {
@@ -1009,6 +1780,45 @@ impl Designer {
                         .clicked()
                     {
                         self.save_as_template();
+                        ui.close();
+                    }
+                    if ui
+                        .button(crate::i18n::tr("Template gallery…"))
+                        .on_hover_text(crate::i18n::tr("Browse the built-in templates and your own with previews"))
+                        .clicked()
+                    {
+                        self.gallery = Some(String::new());
+                        ui.close();
+                    }
+                    if ui
+                        .button(crate::i18n::tr("Print on a sheet…"))
+                        .on_hover_text(crate::i18n::tr("Place several labels on one A4 or Letter page"))
+                        .clicked()
+                    {
+                        let spec = crate::sheet::SheetSpec::fitting(
+                            crate::sheet::Page::A4,
+                            self.doc.width_mm,
+                            self.doc.effective_height_mm(),
+                            5.,
+                            0.,
+                        );
+                        self.sheet = Some(SheetState {
+                            count: spec.cells().max(1) as u32,
+                            spec,
+                            dpi: 300,
+                        });
+                        ui.close();
+                    }
+                    if ui
+                        .button(crate::i18n::tr("Print a number range…"))
+                        .on_hover_text(crate::i18n::tr("Print labels numbered by ${serial} with a start, step, and count"))
+                        .clicked()
+                    {
+                        self.range = Some(RangeState {
+                            start: self.doc.serial_number,
+                            step: 1,
+                            count: 10,
+                        });
                         ui.close();
                     }
                     if ui
@@ -1142,6 +1952,9 @@ impl Designer {
             });
         });
         self.batch_window(&ctx, settings, printers);
+        self.range_window(&ctx, settings, printers);
+        self.sheet_window(&ctx, settings, printers);
+        self.gallery_window(&ctx);
         egui::Panel::left("designer-elements")
             .default_size(68.)
             .size_range(68.0..=68.0)
@@ -1165,7 +1978,7 @@ impl Designer {
                     self.doc.title,
                     if self.is_modified() { " · Unsaved" } else { "" },
                     self.doc.width_mm,
-                    self.doc.height_mm,
+                    self.doc.effective_height_mm(),
                     (self.zoom * 100.) as u32,
                     self.doc.objects.len()
                 ));
@@ -1200,7 +2013,7 @@ impl Designer {
                 if self.raw_zpl {
                     ui.label(crate::i18n::tr("Raw ZPL: verify printer compatibility and loaded label size."))
                         .on_hover_text(crate::help::explanation("ZPL"));
-                } else if let Some(warning) = printer.media_mismatch(&settings.media, self.doc.width_mm, self.doc.height_mm) {
+                } else if let Some(warning) = printer.media_mismatch(&settings.media, self.doc.width_mm, self.doc.effective_height_mm()) {
                     let color = if ui.visuals().dark_mode { Color32::from_rgb(245, 193, 99) }
                         else { Color32::from_rgb(132, 83, 10) };
                     ui.colored_label(color, warning);
@@ -1235,6 +2048,225 @@ impl Designer {
         egui::CentralPanel::default().show(root, |ui| self.canvas(ui));
         self.shortcut(&ctx);
         self.start_render(settings.dpi);
+    }
+    /// The address book menu: pick an address to add it as a text block.
+    fn address_menu(&mut self, ui: &mut egui::Ui) {
+        ui.label(crate::i18n::tr("Address book"));
+        if self.addresses.is_empty() {
+            ui.label(
+                RichText::new(crate::i18n::tr(
+                    "Nothing saved yet. Select a text object and choose Save to address book.",
+                ))
+                .small()
+                .weak(),
+            );
+        }
+        let mut add: Option<String> = None;
+        let mut remove: Option<String> = None;
+        for entry in &self.addresses {
+            ui.horizontal(|ui| {
+                if ui
+                    .button(&entry.name)
+                    .on_hover_text(&entry.address)
+                    .clicked()
+                {
+                    add = Some(entry.address.clone());
+                }
+                if ui
+                    .small_button("✕")
+                    .on_hover_text(crate::i18n::tr("Remove this address"))
+                    .clicked()
+                {
+                    remove = Some(entry.name.clone());
+                }
+            });
+        }
+        if let Some(address) = add {
+            let lines = address.lines().count().max(1) as f32;
+            self.add(
+                Element::Text {
+                    text: address,
+                    font_pt: 12.,
+                    bold: false,
+                    align: TextAlign::Left,
+                },
+                60.,
+                (lines * 6.).clamp(8., 80.),
+            );
+            ui.close();
+        }
+        if let Some(name) = remove {
+            match crate::address_book::remove(&name) {
+                Ok(list) => {
+                    self.addresses = list;
+                    self.status = "Address removed".into();
+                }
+                Err(error) => {
+                    self.status = format!("{error:#}");
+                    self.error = true;
+                }
+            }
+        }
+    }
+    fn save_address(&mut self, text: &str) {
+        let name = text.lines().next().unwrap_or("").to_string();
+        match crate::address_book::add(&name, text) {
+            Ok(list) => {
+                self.addresses = list;
+                self.status = format!("Saved {name} to the address book");
+                self.error = false;
+            }
+            Err(error) => {
+                self.status = format!("Could not save the address: {error:#}");
+                self.error = true;
+            }
+        }
+    }
+    /// The symbols and saved logos menu: pick one to add it to the label.
+    fn symbols_menu(&mut self, ui: &mut egui::Ui) {
+        use crate::symbols;
+        if self.symbol_textures.is_empty() {
+            for symbol in symbols::ALL {
+                let image = symbols::render(symbol, 96);
+                let texture = ui.ctx().load_texture(
+                    format!("symbol-{}", symbol.name()),
+                    egui::ColorImage::from_rgba_unmultiplied([96, 96], image.as_raw()),
+                    egui::TextureOptions::LINEAR,
+                );
+                self.symbol_textures.push((symbol, texture));
+            }
+        }
+        ui.label(crate::i18n::tr("Symbols"));
+        let mut chosen: Option<Symbol> = None;
+        ui.horizontal_wrapped(|ui| {
+            ui.set_max_width(260.);
+            for (symbol, texture) in &self.symbol_textures {
+                let name = crate::i18n::tr(symbol.name());
+                let response = ui.add(egui::Button::image(
+                    egui::Image::new(texture).fit_to_exact_size(Vec2::splat(44.)),
+                ));
+                response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, name));
+                if response.on_hover_text(name).clicked() {
+                    chosen = Some(*symbol);
+                }
+            }
+        });
+        if let Some(symbol) = chosen {
+            let image = symbols::render(symbol, 400);
+            if let Ok(png) = symbols::png_bytes(&image) {
+                self.add(
+                    Element::Image {
+                        data_base64: base64::engine::general_purpose::STANDARD.encode(png),
+                    },
+                    25.,
+                    25.,
+                );
+            }
+            ui.close();
+        }
+        if !self.logos.is_empty() {
+            ui.separator();
+            ui.label(crate::i18n::tr("Your logos"));
+        }
+        let mut add_logo: Option<PathBuf> = None;
+        let mut remove_logo: Option<PathBuf> = None;
+        for logo in self.logos.clone() {
+            let texture = self
+                .logo_textures
+                .entry(logo.path.clone())
+                .or_insert_with(|| {
+                    let color = image::open(&logo.path)
+                        .map(|img| image::imageops::thumbnail(&img.to_rgba8(), 64, 64))
+                        .map(|thumb| {
+                            egui::ColorImage::from_rgba_unmultiplied(
+                                [thumb.width() as usize, thumb.height() as usize],
+                                thumb.as_raw(),
+                            )
+                        })
+                        .unwrap_or_else(|_| egui::ColorImage::example());
+                    ui.ctx()
+                        .load_texture("logo-thumb", color, egui::TextureOptions::LINEAR)
+                })
+                .clone();
+            ui.horizontal(|ui| {
+                let response = ui.add(egui::Button::image_and_text(
+                    egui::Image::new(&texture).fit_to_exact_size(Vec2::splat(28.)),
+                    &logo.name,
+                ));
+                if response.clicked() {
+                    add_logo = Some(logo.path.clone());
+                }
+                if ui
+                    .small_button("✕")
+                    .on_hover_text(crate::i18n::tr("Remove this logo"))
+                    .clicked()
+                {
+                    remove_logo = Some(logo.path.clone());
+                }
+            });
+        }
+        if let Some(path) = add_logo {
+            match std::fs::read(&path) {
+                Ok(bytes) => {
+                    let (w, h) = image::load_from_memory(&bytes)
+                        .map(|im| (im.width() as f32, im.height() as f32))
+                        .unwrap_or((1., 1.));
+                    let scale = 30. / w.max(h).max(1.);
+                    self.add(
+                        Element::Image {
+                            data_base64: base64::engine::general_purpose::STANDARD.encode(bytes),
+                        },
+                        (w * scale).max(3.),
+                        (h * scale).max(3.),
+                    );
+                    ui.close();
+                }
+                Err(error) => {
+                    self.status = format!("Could not read the logo: {error}");
+                    self.error = true;
+                }
+            }
+        }
+        if let Some(path) = remove_logo
+            && let Some(dir) = symbols::logos_dir()
+        {
+            match symbols::remove_logo_in(&dir, &path) {
+                Ok(()) => self.status = "Logo removed".into(),
+                Err(error) => {
+                    self.status = format!("{error:#}");
+                    self.error = true;
+                }
+            }
+            self.refresh_logos();
+        }
+    }
+    fn refresh_logos(&mut self) {
+        self.logos = crate::symbols::logos_dir()
+            .map(|dir| crate::symbols::list_logos_in(&dir))
+            .unwrap_or_default();
+        self.logo_textures.clear();
+    }
+    fn save_logo(&mut self, data_base64: &str) {
+        let result = base64::engine::general_purpose::STANDARD
+            .decode(data_base64)
+            .map_err(anyhow::Error::from)
+            .and_then(|bytes| {
+                let dir = crate::symbols::logos_dir()
+                    .ok_or_else(|| anyhow::anyhow!("No settings folder is available"))?;
+                let name = format!("Logo {}", crate::symbols::list_logos_in(&dir).len() + 1);
+                crate::symbols::save_logo_in(&dir, &name, &bytes)
+            });
+        match result {
+            Ok(_) => {
+                self.status = "Saved to your logos · find it under Symbols and logos".into();
+                self.error = false;
+            }
+            Err(error) => {
+                self.status = format!("Could not save the logo: {error:#}");
+                self.error = true;
+            }
+        }
+        self.refresh_logos();
     }
     fn elements(&mut self, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
@@ -1328,6 +2360,10 @@ impl Designer {
                 }
             }
             ui.separator();
+            let book = element_tool(ui, "Address book");
+            egui::Popup::menu(&book).show(|ui| self.address_menu(ui));
+            let symbols = element_tool(ui, "Symbols and logos");
+            egui::Popup::menu(&symbols).show(|ui| self.symbols_menu(ui));
             let templates = element_tool(ui, "Choose a label template");
             egui::Popup::menu(&templates).show(|ui| {
                 ui.label(crate::i18n::tr("Templates"));
@@ -1442,6 +2478,31 @@ impl Designer {
                     ui.add(egui::DragValue::new(&mut self.doc.serial_number))
                         .accessible_name(crate::i18n::tr("Serial variable"));
                 });
+                ui.checkbox(&mut self.doc.auto_length, crate::i18n::tr("Auto-length (continuous roll)"))
+                    .on_hover_text(crate::i18n::tr(
+                        "Print only as long as the content needs, plus a bottom margin. Use it with continuous label rolls.",
+                    ));
+                if self.doc.auto_length {
+                    ui.horizontal(|ui| {
+                        ui.label(crate::i18n::tr("Bottom margin"));
+                        ui.add(
+                            egui::DragValue::new(&mut self.doc.auto_margin_mm)
+                                .range(0.0..=50.0)
+                                .speed(0.1)
+                                .suffix(" mm"),
+                        )
+                        .accessible_name(crate::i18n::tr("Bottom margin in millimeters"));
+                    });
+                    ui.label(
+                        RichText::new(format!(
+                            "{}: {:.1} mm",
+                            crate::i18n::tr("Printed length"),
+                            self.doc.effective_height_mm()
+                        ))
+                        .small()
+                        .weak(),
+                    );
+                }
                 ui.horizontal(|ui| {
                     ui.label(crate::i18n::tr("Grid size"));
                     ui.add(
@@ -1468,64 +2529,70 @@ impl Designer {
             ui.add_space(4.);
             ui.label(RichText::new(crate::i18n::tr("Align")).strong());
             ui.horizontal_wrapped(|ui| {
-                for (name, alignment) in [
-                    ("Left", design::Alignment::Left),
-                    ("Center", design::Alignment::CenterHorizontally),
-                    ("Right", design::Alignment::Right),
-                    ("Top", design::Alignment::Top),
-                    ("Middle", design::Alignment::CenterVertically),
-                    ("Bottom", design::Alignment::Bottom),
+                for (icon, alignment) in [
+                    ("Align left", design::Alignment::Left),
+                    ("Align center", design::Alignment::CenterHorizontally),
+                    ("Align right", design::Alignment::Right),
+                    ("Align top", design::Alignment::Top),
+                    ("Align middle", design::Alignment::CenterVertically),
+                    ("Align bottom", design::Alignment::Bottom),
                 ] {
-                    if ui
-                        .add_enabled(unlocked > 1, egui::Button::new(crate::i18n::tr(name)))
-                        .on_hover_text(crate::i18n::tr(
-                            "Align the selected objects with each other",
-                        ))
-                        .clicked()
-                    {
+                    if icon_action(ui, icon, "", icon, unlocked > 1, false).clicked() {
                         self.arrange(alignment, design::AlignTo::Selection);
                     }
                 }
             });
             ui.label(RichText::new(crate::i18n::tr("Distribute evenly")).strong());
             ui.horizontal_wrapped(|ui| {
-                for (name, axis) in [
-                    ("Horizontally", design::Axis::Horizontal),
-                    ("Vertically", design::Axis::Vertical),
+                for (icon, axis) in [
+                    ("Distribute horizontally", design::Axis::Horizontal),
+                    ("Distribute vertically", design::Axis::Vertical),
                 ] {
-                    if ui
-                        .add_enabled(unlocked > 2, egui::Button::new(crate::i18n::tr(name)))
-                        .on_hover_text(crate::i18n::tr(
-                            "Make the gaps between three or more objects equal",
-                        ))
-                        .clicked()
-                    {
+                    if icon_action(ui, icon, "", icon, unlocked > 2, false).clicked() {
                         self.distribute(axis);
                     }
                 }
             });
             ui.label(RichText::new(crate::i18n::tr("Center on label")).strong());
             ui.horizontal_wrapped(|ui| {
-                for (name, alignment) in [
-                    ("Horizontally", design::Alignment::CenterHorizontally),
-                    ("Vertically", design::Alignment::CenterVertically),
+                for (icon, alignment) in [
+                    (
+                        "Center horizontally on label",
+                        design::Alignment::CenterHorizontally,
+                    ),
+                    (
+                        "Center vertically on label",
+                        design::Alignment::CenterVertically,
+                    ),
                 ] {
-                    if ui
-                        .add_enabled(unlocked > 0, egui::Button::new(crate::i18n::tr(name)))
-                        .on_hover_text(crate::i18n::tr(
-                            "Center the selected objects as a group on the label",
-                        ))
-                        .clicked()
-                    {
+                    if icon_action(ui, icon, "", icon, unlocked > 0, false).clicked() {
                         self.arrange_group_on_label(alignment);
                     }
                 }
             });
             ui.horizontal_wrapped(|ui| {
-                if ui.button(crate::i18n::tr("Lock all")).clicked() {
+                if icon_action(
+                    ui,
+                    "Lock",
+                    "Lock all",
+                    "Lock all selected objects",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
                     self.set_lock(true);
                 }
-                if ui.button(crate::i18n::tr("Unlock all")).clicked() {
+                if icon_action(
+                    ui,
+                    "Unlock",
+                    "Unlock all",
+                    "Unlock all selected objects",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
                     self.set_lock(false);
                 }
             });
@@ -1560,6 +2627,9 @@ impl Designer {
         ui.heading(format!("{} #{}", o.label(), id));
         let locked = o.locked;
         let mut center = (false, false);
+        let mut save_logo: Option<String> = None;
+        let mut add_font = false;
+        let mut save_address: Option<String> = None;
         ui.add_enabled_ui(!locked, |ui| {
             ui.horizontal(|ui| {
                 ui.label("X");
@@ -1604,26 +2674,71 @@ impl Designer {
                     o.rotate_to(angle);
                 }
             });
-            if ui
-                .button(crate::i18n::tr("Rotate 90°"))
-                .on_hover_text(crate::i18n::tr("Turn the object a quarter turn clockwise"))
-                .clicked()
-            {
-                let angle = o.rotation + 90.;
-                o.rotate_to(angle);
-            }
-            ui.checkbox(&mut o.flip_x, crate::i18n::tr("Flip horizontally"));
-            ui.checkbox(&mut o.flip_y, crate::i18n::tr("Flip vertically"));
-            ui.label(crate::i18n::tr("Center on label"));
             ui.horizontal_wrapped(|ui| {
-                center.0 = ui.button(crate::i18n::tr("Horizontally")).clicked();
-                center.1 = ui.button(crate::i18n::tr("Vertically")).clicked();
+                if icon_action(
+                    ui,
+                    "Rotate 90",
+                    "Rotate 90°",
+                    "Turn the object a quarter turn clockwise",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    let angle = o.rotation + 90.;
+                    o.rotate_to(angle);
+                }
+            });
+            ui.horizontal_wrapped(|ui| {
+                if icon_action(
+                    ui,
+                    "Flip horizontally",
+                    "",
+                    "Flip horizontally",
+                    true,
+                    o.flip_x,
+                )
+                .clicked()
+                {
+                    o.flip_x = !o.flip_x;
+                }
+                if icon_action(ui, "Flip vertically", "", "Flip vertically", true, o.flip_y)
+                    .clicked()
+                {
+                    o.flip_y = !o.flip_y;
+                }
+                center.0 = icon_action(
+                    ui,
+                    "Center horizontally on label",
+                    "",
+                    "Center horizontally on label",
+                    true,
+                    false,
+                )
+                .clicked();
+                center.1 = icon_action(
+                    ui,
+                    "Center vertically on label",
+                    "",
+                    "Center vertically on label",
+                    true,
+                    false,
+                )
+                .clicked();
             });
         });
-        ui.checkbox(&mut o.locked, crate::i18n::tr("Lock position and size"))
-            .on_hover_text(crate::i18n::tr(
-                "A locked object cannot be moved, resized, rotated, or deleted from the canvas",
-            ));
+        if icon_action(
+            ui,
+            if o.locked { "Lock" } else { "Unlock" },
+            "Lock position and size",
+            "A locked object cannot be moved, resized, rotated, or deleted from the canvas",
+            true,
+            o.locked,
+        )
+        .clicked()
+        {
+            o.locked = !o.locked;
+        }
         match &mut o.element {
             Element::Text {
                 text,
@@ -1631,6 +2746,18 @@ impl Designer {
                 bold,
                 align,
             } => {
+                if icon_action(
+                    ui,
+                    "Address book",
+                    "Save to address book",
+                    "Keep this text, named after its first line, in your address book",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    save_address = Some(text.clone());
+                }
                 ui.label(crate::i18n::tr("Text · ${date} and ${serial} are dynamic"));
                 ui.add(egui::TextEdit::multiline(text).desired_rows(6))
                     .accessible_name(crate::i18n::tr("Object text"));
@@ -1641,11 +2768,58 @@ impl Designer {
                 )
                 .accessible_name(crate::i18n::tr("Font size in points"));
                 ui.horizontal_wrapped(|ui| {
-                    ui.checkbox(bold, crate::i18n::tr("Bold"));
+                    ui.add_enabled(
+                        o.options.font.is_empty(),
+                        egui::Checkbox::new(bold, crate::i18n::tr("Bold")),
+                    )
+                    .on_disabled_hover_text(crate::i18n::tr(
+                        "Your own fonts have no bold switch. Install a bold font file instead.",
+                    ));
                     ui.checkbox(&mut o.options.italic, crate::i18n::tr("Italic"));
                     ui.checkbox(&mut o.options.inverse, crate::i18n::tr("Inverse"))
                         .on_hover_text(crate::i18n::tr("White letters on a black box"));
                 });
+                ui.horizontal_wrapped(|ui| {
+                    let current = if o.options.font.is_empty() {
+                        crate::i18n::tr("Built-in font").to_string()
+                    } else {
+                        o.options.font.clone()
+                    };
+                    egui::ComboBox::from_id_salt("text-font")
+                        .selected_text(current)
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut o.options.font,
+                                String::new(),
+                                crate::i18n::tr("Built-in font"),
+                            );
+                            for name in &self.fonts {
+                                ui.selectable_value(&mut o.options.font, name.clone(), name);
+                            }
+                        })
+                        .response
+                        .accessible_name(crate::i18n::tr("Font"));
+                    if icon_action(
+                        ui,
+                        "Add text",
+                        "",
+                        "Add a font from a .ttf or .otf file",
+                        true,
+                        false,
+                    )
+                    .clicked()
+                    {
+                        add_font = true;
+                    }
+                });
+                if !o.options.font.is_empty() && !self.fonts.contains(&o.options.font) {
+                    ui.colored_label(
+                        Color32::from_rgb(200, 120, 20),
+                        crate::i18n::tr(
+                            "This font is not installed on this computer, so the built-in font is used.",
+                        ),
+                    );
+                }
                 ui.horizontal(|ui| {
                     ui.selectable_value(align, TextAlign::Left, crate::i18n::tr("Left"));
                     ui.selectable_value(align, TextAlign::Center, crate::i18n::tr("Center"));
@@ -1692,6 +2866,8 @@ impl Designer {
                             BarcodeKind::Itf,
                             BarcodeKind::Codabar,
                             BarcodeKind::DataMatrix,
+                            BarcodeKind::Gs1128,
+                            BarcodeKind::Gs1DataMatrix,
                         ] {
                             ui.selectable_value(kind, k, barcode_name(k))
                                 .on_hover_text(barcode_hint(k));
@@ -1734,12 +2910,16 @@ impl Designer {
                 if let Some(hint) = check_digit_hint(*kind, data) {
                     ui.label(RichText::new(hint).small().weak());
                 }
+                if matches!(kind, BarcodeKind::Gs1128 | BarcodeKind::Gs1DataMatrix) {
+                    gs1_helper(ui, *kind, data, &mut self.sscc_form);
+                }
             }
             Element::Qr { data } => {
                 ui.label(crate::i18n::tr("QR content"))
                     .on_hover_text(crate::help::explanation("QR"));
                 ui.add(egui::TextEdit::multiline(data).desired_rows(4))
                     .accessible_name(crate::i18n::tr("QR code content"));
+                qr_builder_ui(ui, &mut self.qr_form, data);
                 egui::ComboBox::from_id_salt("qr-level")
                     .selected_text(qr_level_name(o.options.qr_level))
                     .show_ui(ui, |ui| {
@@ -1791,10 +2971,22 @@ impl Designer {
                 .accessible_name(crate::i18n::tr("Shape stroke width in millimeters"));
                 ui.checkbox(filled, crate::i18n::tr("Filled"));
             }
-            Element::Image { .. } => {
+            Element::Image { data_base64 } => {
                 ui.label(crate::i18n::tr(
                     "Embedded image. Resize with W/H or the canvas handle.",
                 ));
+                if icon_action(
+                    ui,
+                    "Save document",
+                    "Save as logo",
+                    "Keep this image under Symbols and logos so you can add it to any label",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    save_logo = Some(data_base64.clone());
+                }
                 egui::ComboBox::from_id_salt("image-mode")
                     .selected_text(image_mode_name(o.options.image_mode))
                     .show_ui(ui, |ui| {
@@ -1842,9 +3034,15 @@ impl Designer {
                     &mut o.options.invert,
                     crate::i18n::tr("Invert black and white"),
                 );
-                if ui
-                    .small_button(crate::i18n::tr("Reset image adjustments"))
-                    .clicked()
+                if icon_action(
+                    ui,
+                    "Refresh",
+                    "Reset image adjustments",
+                    "Return the image mode, contrast, and cut-off to their defaults",
+                    true,
+                    false,
+                )
+                .clicked()
                 {
                     let keep = o.options.clone();
                     o.options = design::ObjectOptions {
@@ -1853,6 +3051,32 @@ impl Designer {
                     };
                 }
             }
+        }
+        if add_font
+            && let Some(path) = rfd::FileDialog::new()
+                .add_filter("Font", &["ttf", "otf"])
+                .pick_file()
+        {
+            match crate::fonts::install(&path) {
+                Ok(name) => {
+                    self.status = format!("Font {name} added");
+                    self.error = false;
+                    self.fonts = crate::fonts::list();
+                    if let Some(o) = self.doc.objects.iter_mut().find(|o| o.id == id) {
+                        o.options.font = name;
+                    }
+                }
+                Err(error) => {
+                    self.status = format!("{error:#}");
+                    self.error = true;
+                }
+            }
+        }
+        if let Some(text) = save_address {
+            self.save_address(&text);
+        }
+        if let Some(data) = save_logo {
+            self.save_logo(&data);
         }
         if center.0 {
             self.arrange(
@@ -2343,6 +3567,60 @@ fn element_tool(ui: &mut egui::Ui, label: &str) -> egui::Response {
     response
 }
 
+/// Where a new window opens: near the middle top of the application window.
+fn window_start(ctx: &egui::Context) -> Pos2 {
+    let area = ctx.content_rect();
+    Pos2::new(
+        (area.center().x - 200.).max(area.left() + 20.),
+        area.top() + 70.,
+    )
+}
+
+/// One card of the template gallery: the preview above the name, as a single button.
+fn gallery_card(
+    ui: &mut egui::Ui,
+    name: &str,
+    texture: Option<&egui::TextureHandle>,
+    hover: &str,
+) -> egui::Response {
+    let shown = crate::i18n::tr(name);
+    let response = ui
+        .add(
+            egui::Button::new("")
+                .min_size(Vec2::new(150., 176.))
+                .corner_radius(8.),
+        )
+        .on_hover_text(hover);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, shown));
+    let painter = ui.painter_at(response.rect);
+    let preview = Rect::from_min_size(
+        response.rect.min + Vec2::new(5., 5.),
+        Vec2::new(response.rect.width() - 10., 140.),
+    );
+    painter.rect_filled(preview, 4., Color32::WHITE);
+    if let Some(texture) = texture {
+        let size = texture.size_vec2();
+        let scale = (preview.width() / size.x)
+            .min(preview.height() / size.y)
+            .min(1.);
+        let image_rect = Rect::from_center_size(preview.center(), size * scale);
+        painter.image(
+            texture.id(),
+            image_rect,
+            Rect::from_min_max(Pos2::ZERO, Pos2::new(1., 1.)),
+            Color32::WHITE,
+        );
+    }
+    painter.text(
+        Pos2::new(response.rect.center().x, response.rect.bottom() - 15.),
+        egui::Align2::CENTER_CENTER,
+        shown,
+        egui::TextStyle::Body.resolve(ui.style()),
+        ui.visuals().text_color(),
+    );
+    response
+}
+
 pub(crate) fn template_button(ui: &mut egui::Ui, name: &str) -> egui::Response {
     let (rect, response) = ui.allocate_exact_size(Vec2::new(218., 34.), Sense::click());
     let shown = crate::i18n::tr(name);
@@ -2404,6 +3682,87 @@ fn image_mode_hint(mode: design::ImageMode) -> &'static str {
     }
 }
 /// What to tell the user about the check digit of an EAN or UPC value.
+/// The SSCC helper's inputs; they are not saved with the design.
+#[derive(Clone, Debug, Default)]
+struct SsccForm {
+    extension: u8,
+    prefix: String,
+    serial: String,
+    error: Option<String>,
+}
+
+/// Feedback on GS1 data, and a helper that builds an SSCC (pallet or parcel number).
+fn gs1_helper(ui: &mut egui::Ui, kind: BarcodeKind, data: &mut String, form: &mut SsccForm) {
+    if !data.contains("${") {
+        let parsed = crate::gs1::parse(data).and_then(|fields| {
+            if kind == BarcodeKind::Gs1DataMatrix {
+                crate::gs1::data_matrix_payload(&fields)?;
+            }
+            Ok(fields)
+        });
+        match parsed {
+            Ok(fields) => {
+                ui.label(
+                    RichText::new(format!(
+                        "{} {}",
+                        crate::i18n::tr("Prints as"),
+                        crate::gs1::human(&fields)
+                    ))
+                    .small()
+                    .weak(),
+                );
+            }
+            Err(error) if !data.trim().is_empty() => {
+                ui.colored_label(Color32::from_rgb(200, 60, 60), format!("{error:#}"));
+            }
+            Err(_) => {}
+        }
+    }
+    egui::CollapsingHeader::new(crate::i18n::tr("SSCC helper"))
+        .id_salt("sscc-helper")
+        .show(ui, |ui| {
+            ui.label(
+                RichText::new(crate::i18n::tr(
+                    "An SSCC numbers one pallet or parcel: extension digit, your GS1 company prefix, and a serial reference. The check digit is added for you.",
+                ))
+                .small()
+                .weak(),
+            );
+            ui.horizontal(|ui| {
+                ui.label(crate::i18n::tr("Extension digit"));
+                ui.add(egui::DragValue::new(&mut form.extension).range(0..=9))
+                    .accessible_name(crate::i18n::tr("Extension digit"));
+            });
+            ui.label(crate::i18n::tr("Company prefix"));
+            ui.add(egui::TextEdit::singleline(&mut form.prefix))
+                .accessible_name(crate::i18n::tr("Company prefix"));
+            ui.label(crate::i18n::tr("Serial reference"));
+            ui.add(egui::TextEdit::singleline(&mut form.serial))
+                .accessible_name(crate::i18n::tr("Serial reference"));
+            if icon_action(
+                ui,
+                "Apply",
+                "Use this SSCC",
+                "Replace the barcode content with (00) and the SSCC",
+                true,
+                false,
+            )
+            .clicked()
+            {
+                match crate::gs1::sscc(form.extension, form.prefix.trim(), form.serial.trim()) {
+                    Ok(number) => {
+                        *data = format!("(00){number}");
+                        form.error = None;
+                    }
+                    Err(error) => form.error = Some(format!("{error:#}")),
+                }
+            }
+            if let Some(error) = &form.error {
+                ui.colored_label(Color32::from_rgb(200, 60, 60), error);
+            }
+        });
+}
+
 fn check_digit_hint(kind: BarcodeKind, data: &str) -> Option<String> {
     let body = match kind {
         BarcodeKind::Ean13 => 12,
@@ -2492,6 +3851,8 @@ fn barcode_name(kind: BarcodeKind) -> &'static str {
         BarcodeKind::Itf => "ITF (Interleaved 2 of 5)",
         BarcodeKind::Codabar => "Codabar",
         BarcodeKind::DataMatrix => "Data Matrix",
+        BarcodeKind::Gs1128 => "GS1-128",
+        BarcodeKind::Gs1DataMatrix => "GS1 Data Matrix",
     }
 }
 
@@ -2513,6 +3874,12 @@ fn barcode_hint(kind: BarcodeKind) -> &'static str {
         }
         BarcodeKind::DataMatrix => {
             "A small square 2D symbol for tiny parts and labels. Keep the object roughly square."
+        }
+        BarcodeKind::Gs1128 => {
+            "The logistics barcode for pallets and cartons. Type GS1 data such as (01)09506000134352(10)LOT7."
+        }
+        BarcodeKind::Gs1DataMatrix => {
+            "A small square symbol for GS1 data such as (01)09506000134352(10)LOT7. Put a batch or serial last."
         }
     }
 }
@@ -2853,6 +4220,115 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
             path(&[(12., 3.), (12., 21.)]);
             path(&[(4., 7.), (4., 17.)]);
             path(&[(20., 7.), (20., 17.)]);
+        }
+        "Align left" => {
+            path(&[(4., 3.), (4., 21.)]);
+            path(&[(4., 7.), (19., 7.)]);
+            path(&[(4., 12.), (12., 12.)]);
+            path(&[(4., 17.), (15., 17.)]);
+        }
+        "Align center" => {
+            path(&[(12., 3.), (12., 21.)]);
+            path(&[(6., 7.), (18., 7.)]);
+            path(&[(8., 12.), (16., 12.)]);
+            path(&[(5., 17.), (19., 17.)]);
+        }
+        "Align right" => {
+            path(&[(20., 3.), (20., 21.)]);
+            path(&[(5., 7.), (20., 7.)]);
+            path(&[(12., 12.), (20., 12.)]);
+            path(&[(9., 17.), (20., 17.)]);
+        }
+        "Align top" => {
+            path(&[(3., 4.), (21., 4.)]);
+            path(&[(7., 4.), (7., 19.)]);
+            path(&[(12., 4.), (12., 12.)]);
+            path(&[(17., 4.), (17., 15.)]);
+        }
+        "Align middle" => {
+            path(&[(3., 12.), (21., 12.)]);
+            path(&[(7., 5.), (7., 19.)]);
+            path(&[(12., 8.), (12., 16.)]);
+            path(&[(17., 6.), (17., 18.)]);
+        }
+        "Align bottom" => {
+            path(&[(3., 20.), (21., 20.)]);
+            path(&[(7., 5.), (7., 20.)]);
+            path(&[(12., 12.), (12., 20.)]);
+            path(&[(17., 9.), (17., 20.)]);
+        }
+        "Distribute horizontally" => {
+            path(&[(3., 3.), (3., 21.)]);
+            path(&[(21., 3.), (21., 21.)]);
+            outline(9., 7., 6., 10., 1.);
+        }
+        "Distribute vertically" => {
+            path(&[(3., 3.), (21., 3.)]);
+            path(&[(3., 21.), (21., 21.)]);
+            outline(7., 9., 10., 6., 1.);
+        }
+        "Center horizontally on label" => {
+            outline(8., 6., 8., 12., 1.);
+            path(&[(12., 2.), (12., 4.)]);
+            path(&[(12., 20.), (12., 22.)]);
+        }
+        "Center vertically on label" => {
+            outline(6., 8., 12., 8., 1.);
+            path(&[(2., 12.), (4., 12.)]);
+            path(&[(20., 12.), (22., 12.)]);
+        }
+        "Lock" => {
+            outline(5., 11., 14., 10., 2.);
+            path(&[
+                (8., 11.),
+                (8., 8.),
+                (10., 5.),
+                (14., 5.),
+                (16., 8.),
+                (16., 11.),
+            ]);
+        }
+        "Unlock" => {
+            outline(5., 11., 14., 10., 2.);
+            path(&[(8., 11.), (8., 8.), (10., 5.), (14., 5.), (16., 8.)]);
+        }
+        "Rotate 90" => {
+            path(&[(20., 10.), (18., 5.), (12., 3.), (6., 5.), (3., 10.)]);
+            path(&[(16., 10.), (20., 10.), (20., 6.)]);
+            outline(8., 12., 8., 8., 1.);
+        }
+        "Flip horizontally" => {
+            path(&[(12., 2.), (12., 22.)]);
+            path(&[(9., 6.), (3., 18.), (9., 18.), (9., 6.)]);
+            path(&[(15., 6.), (21., 18.), (15., 18.), (15., 6.)]);
+        }
+        "Flip vertically" => {
+            path(&[(2., 12.), (22., 12.)]);
+            path(&[(6., 9.), (18., 9.), (12., 3.), (6., 9.)]);
+            path(&[(6., 15.), (18., 15.), (12., 21.), (6., 15.)]);
+        }
+        "Fit page" => {
+            outline(3., 3., 18., 18., 2.);
+            outline(6., 6., 5., 5., 1.);
+            outline(13., 6., 5., 5., 1.);
+            outline(6., 13., 5., 5., 1.);
+            outline(13., 13., 5., 5., 1.);
+        }
+        "Address book" => {
+            outline(5., 3., 15., 18., 2.);
+            path(&[(3., 7.), (7., 7.)]);
+            path(&[(3., 12.), (7., 12.)]);
+            path(&[(3., 17.), (7., 17.)]);
+            painter.circle_stroke(point(13., 10.), 2.5, stroke);
+            path(&[(9., 17.), (11., 14.), (15., 14.), (17., 17.)]);
+        }
+        "Symbols and logos" => {
+            path(&[(12., 3.), (22., 20.), (2., 20.), (12., 3.)]);
+            path(&[(12., 9.), (12., 14.)]);
+            path(&[(12., 17.), (12., 17.)]);
+        }
+        "Apply" => {
+            path(&[(4., 12.), (9., 17.), (20., 6.)]);
         }
         "Choose a label template" => {
             outline(3., 3., 18., 18., 3.);
@@ -3423,5 +4899,198 @@ mod inspector_render_tests {
             ids.len(),
             "locked objects survive delete"
         );
+    }
+}
+
+#[cfg(test)]
+mod range_window_tests {
+    use super::*;
+
+    #[test]
+    fn the_range_window_opens_stays_open_and_never_prints_without_a_printer() {
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(50., 30.);
+        designer.doc.add(
+            Element::Text {
+                text: "No. ${serial:4}".into(),
+                font_pt: 14.,
+                bold: false,
+                align: TextAlign::Left,
+            },
+            2.,
+            2.,
+            40.,
+            10.,
+        );
+        designer.range = Some(RangeState {
+            start: 7,
+            step: 5,
+            count: 3,
+        });
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(900., 700.));
+        for _ in 0..3 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |_| designer.range_window(&ctx, &Settings::default(), &[]),
+            );
+            output.textures_delta.clear();
+        }
+        assert!(designer.range.is_some());
+        assert!(designer.job.is_none());
+    }
+}
+
+#[cfg(test)]
+mod recovery_flow_tests {
+    use super::*;
+
+    fn frame(designer: &mut Designer, ctx: &egui::Context) {
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(1280., 800.));
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ui| designer.show(ui, &Settings::default(), &[]),
+        );
+        output.textures_delta.clear();
+    }
+
+    #[test]
+    fn unsaved_work_is_kept_then_offered_back_after_a_crash() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.enable_recovery_in(dir.path().to_path_buf());
+        frame(&mut designer, &ctx);
+        assert!(
+            crate::recovery::read_in(dir.path()).is_none(),
+            "nothing to keep yet"
+        );
+        designer.doc.title = "Work in progress".into();
+        frame(&mut designer, &ctx);
+        let kept = crate::recovery::read_in(dir.path()).expect("a copy is written");
+        assert_eq!(kept.title, "Work in progress");
+
+        // A new session finds it and offers it.
+        let mut next = Designer::new();
+        next.enable_recovery_in(dir.path().to_path_buf());
+        assert_eq!(
+            next.recovered.as_ref().map(|d| d.title.as_str()),
+            Some("Work in progress")
+        );
+        frame(&mut next, &ctx);
+        // Edits made while the offer is open never overwrite the recovered copy.
+        next.doc.title = "Something else".into();
+        frame(&mut next, &ctx);
+        assert_eq!(
+            crate::recovery::read_in(dir.path()).unwrap().title,
+            "Work in progress"
+        );
+    }
+
+    #[test]
+    fn saving_or_discarding_removes_the_copy() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.enable_recovery_in(dir.path().to_path_buf());
+        designer.doc.title = "Edited".into();
+        frame(&mut designer, &ctx);
+        assert!(crate::recovery::read_in(dir.path()).is_some());
+        designer.saved_document = designer.doc.clone();
+        frame(&mut designer, &ctx);
+        assert!(
+            crate::recovery::read_in(dir.path()).is_none(),
+            "saved work needs no copy"
+        );
+
+        designer.doc.title = "Edited again".into();
+        frame(&mut designer, &ctx);
+        designer.close_approved = true;
+        assert!(designer.request_close());
+        assert!(
+            crate::recovery::read_in(dir.path()).is_none(),
+            "discarding removes it"
+        );
+    }
+}
+
+#[cfg(test)]
+mod sheet_window_tests {
+    use super::*;
+
+    #[test]
+    fn the_sheet_window_opens_and_stays_open_without_printing() {
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(50., 30.);
+        let spec = crate::sheet::SheetSpec::fitting(crate::sheet::Page::A4, 50., 30., 5., 0.);
+        assert_eq!((spec.columns, spec.rows), (4, 9));
+        designer.sheet = Some(SheetState {
+            count: 36,
+            spec,
+            dpi: 300,
+        });
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(900., 800.));
+        for _ in 0..3 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |_| designer.sheet_window(&ctx, &Settings::default(), &[]),
+            );
+            output.textures_delta.clear();
+        }
+        assert!(designer.sheet.is_some());
+        assert!(designer.job.is_none());
+    }
+}
+
+#[cfg(test)]
+mod gallery_tests {
+    use super::*;
+
+    #[test]
+    fn the_gallery_previews_every_built_in_template_and_filters_by_name() {
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.gallery = Some(String::new());
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(1000., 800.));
+        for _ in 0..6 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |_| designer.gallery_window(&ctx),
+            );
+            output.textures_delta.clear();
+        }
+        let builtin = designer
+            .gallery_thumbs
+            .keys()
+            .filter(|k| k.starts_with("builtin-"))
+            .count();
+        assert_eq!(builtin, design::TEMPLATES.len());
+        assert!(
+            designer.gallery.is_some(),
+            "stays open until a template is picked"
+        );
+        designer.gallery = Some("zzz-no-match".into());
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |_| designer.gallery_window(&ctx),
+        );
+        output.textures_delta.clear();
+        assert!(designer.gallery.is_some());
     }
 }
