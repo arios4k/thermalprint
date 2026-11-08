@@ -1468,64 +1468,70 @@ impl Designer {
             ui.add_space(4.);
             ui.label(RichText::new(crate::i18n::tr("Align")).strong());
             ui.horizontal_wrapped(|ui| {
-                for (name, alignment) in [
-                    ("Left", design::Alignment::Left),
-                    ("Center", design::Alignment::CenterHorizontally),
-                    ("Right", design::Alignment::Right),
-                    ("Top", design::Alignment::Top),
-                    ("Middle", design::Alignment::CenterVertically),
-                    ("Bottom", design::Alignment::Bottom),
+                for (icon, alignment) in [
+                    ("Align left", design::Alignment::Left),
+                    ("Align center", design::Alignment::CenterHorizontally),
+                    ("Align right", design::Alignment::Right),
+                    ("Align top", design::Alignment::Top),
+                    ("Align middle", design::Alignment::CenterVertically),
+                    ("Align bottom", design::Alignment::Bottom),
                 ] {
-                    if ui
-                        .add_enabled(unlocked > 1, egui::Button::new(crate::i18n::tr(name)))
-                        .on_hover_text(crate::i18n::tr(
-                            "Align the selected objects with each other",
-                        ))
-                        .clicked()
-                    {
+                    if icon_action(ui, icon, "", icon, unlocked > 1, false).clicked() {
                         self.arrange(alignment, design::AlignTo::Selection);
                     }
                 }
             });
             ui.label(RichText::new(crate::i18n::tr("Distribute evenly")).strong());
             ui.horizontal_wrapped(|ui| {
-                for (name, axis) in [
-                    ("Horizontally", design::Axis::Horizontal),
-                    ("Vertically", design::Axis::Vertical),
+                for (icon, axis) in [
+                    ("Distribute horizontally", design::Axis::Horizontal),
+                    ("Distribute vertically", design::Axis::Vertical),
                 ] {
-                    if ui
-                        .add_enabled(unlocked > 2, egui::Button::new(crate::i18n::tr(name)))
-                        .on_hover_text(crate::i18n::tr(
-                            "Make the gaps between three or more objects equal",
-                        ))
-                        .clicked()
-                    {
+                    if icon_action(ui, icon, "", icon, unlocked > 2, false).clicked() {
                         self.distribute(axis);
                     }
                 }
             });
             ui.label(RichText::new(crate::i18n::tr("Center on label")).strong());
             ui.horizontal_wrapped(|ui| {
-                for (name, alignment) in [
-                    ("Horizontally", design::Alignment::CenterHorizontally),
-                    ("Vertically", design::Alignment::CenterVertically),
+                for (icon, alignment) in [
+                    (
+                        "Center horizontally on label",
+                        design::Alignment::CenterHorizontally,
+                    ),
+                    (
+                        "Center vertically on label",
+                        design::Alignment::CenterVertically,
+                    ),
                 ] {
-                    if ui
-                        .add_enabled(unlocked > 0, egui::Button::new(crate::i18n::tr(name)))
-                        .on_hover_text(crate::i18n::tr(
-                            "Center the selected objects as a group on the label",
-                        ))
-                        .clicked()
-                    {
+                    if icon_action(ui, icon, "", icon, unlocked > 0, false).clicked() {
                         self.arrange_group_on_label(alignment);
                     }
                 }
             });
             ui.horizontal_wrapped(|ui| {
-                if ui.button(crate::i18n::tr("Lock all")).clicked() {
+                if icon_action(
+                    ui,
+                    "Lock",
+                    "Lock all",
+                    "Lock all selected objects",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
                     self.set_lock(true);
                 }
-                if ui.button(crate::i18n::tr("Unlock all")).clicked() {
+                if icon_action(
+                    ui,
+                    "Unlock",
+                    "Unlock all",
+                    "Unlock all selected objects",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
                     self.set_lock(false);
                 }
             });
@@ -1604,26 +1610,71 @@ impl Designer {
                     o.rotate_to(angle);
                 }
             });
-            if ui
-                .button(crate::i18n::tr("Rotate 90°"))
-                .on_hover_text(crate::i18n::tr("Turn the object a quarter turn clockwise"))
-                .clicked()
-            {
-                let angle = o.rotation + 90.;
-                o.rotate_to(angle);
-            }
-            ui.checkbox(&mut o.flip_x, crate::i18n::tr("Flip horizontally"));
-            ui.checkbox(&mut o.flip_y, crate::i18n::tr("Flip vertically"));
-            ui.label(crate::i18n::tr("Center on label"));
             ui.horizontal_wrapped(|ui| {
-                center.0 = ui.button(crate::i18n::tr("Horizontally")).clicked();
-                center.1 = ui.button(crate::i18n::tr("Vertically")).clicked();
+                if icon_action(
+                    ui,
+                    "Rotate 90",
+                    "Rotate 90°",
+                    "Turn the object a quarter turn clockwise",
+                    true,
+                    false,
+                )
+                .clicked()
+                {
+                    let angle = o.rotation + 90.;
+                    o.rotate_to(angle);
+                }
+            });
+            ui.horizontal_wrapped(|ui| {
+                if icon_action(
+                    ui,
+                    "Flip horizontally",
+                    "",
+                    "Flip horizontally",
+                    true,
+                    o.flip_x,
+                )
+                .clicked()
+                {
+                    o.flip_x = !o.flip_x;
+                }
+                if icon_action(ui, "Flip vertically", "", "Flip vertically", true, o.flip_y)
+                    .clicked()
+                {
+                    o.flip_y = !o.flip_y;
+                }
+                center.0 = icon_action(
+                    ui,
+                    "Center horizontally on label",
+                    "",
+                    "Center horizontally on label",
+                    true,
+                    false,
+                )
+                .clicked();
+                center.1 = icon_action(
+                    ui,
+                    "Center vertically on label",
+                    "",
+                    "Center vertically on label",
+                    true,
+                    false,
+                )
+                .clicked();
             });
         });
-        ui.checkbox(&mut o.locked, crate::i18n::tr("Lock position and size"))
-            .on_hover_text(crate::i18n::tr(
-                "A locked object cannot be moved, resized, rotated, or deleted from the canvas",
-            ));
+        if icon_action(
+            ui,
+            if o.locked { "Lock" } else { "Unlock" },
+            "Lock position and size",
+            "A locked object cannot be moved, resized, rotated, or deleted from the canvas",
+            true,
+            o.locked,
+        )
+        .clicked()
+        {
+            o.locked = !o.locked;
+        }
         match &mut o.element {
             Element::Text {
                 text,
@@ -1842,9 +1893,15 @@ impl Designer {
                     &mut o.options.invert,
                     crate::i18n::tr("Invert black and white"),
                 );
-                if ui
-                    .small_button(crate::i18n::tr("Reset image adjustments"))
-                    .clicked()
+                if icon_action(
+                    ui,
+                    "Refresh",
+                    "Reset image adjustments",
+                    "Return the image mode, contrast, and cut-off to their defaults",
+                    true,
+                    false,
+                )
+                .clicked()
                 {
                     let keep = o.options.clone();
                     o.options = design::ObjectOptions {
@@ -2853,6 +2910,92 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
             path(&[(12., 3.), (12., 21.)]);
             path(&[(4., 7.), (4., 17.)]);
             path(&[(20., 7.), (20., 17.)]);
+        }
+        "Align left" => {
+            path(&[(4., 3.), (4., 21.)]);
+            path(&[(4., 7.), (19., 7.)]);
+            path(&[(4., 12.), (12., 12.)]);
+            path(&[(4., 17.), (15., 17.)]);
+        }
+        "Align center" => {
+            path(&[(12., 3.), (12., 21.)]);
+            path(&[(6., 7.), (18., 7.)]);
+            path(&[(8., 12.), (16., 12.)]);
+            path(&[(5., 17.), (19., 17.)]);
+        }
+        "Align right" => {
+            path(&[(20., 3.), (20., 21.)]);
+            path(&[(5., 7.), (20., 7.)]);
+            path(&[(12., 12.), (20., 12.)]);
+            path(&[(9., 17.), (20., 17.)]);
+        }
+        "Align top" => {
+            path(&[(3., 4.), (21., 4.)]);
+            path(&[(7., 4.), (7., 19.)]);
+            path(&[(12., 4.), (12., 12.)]);
+            path(&[(17., 4.), (17., 15.)]);
+        }
+        "Align middle" => {
+            path(&[(3., 12.), (21., 12.)]);
+            path(&[(7., 5.), (7., 19.)]);
+            path(&[(12., 8.), (12., 16.)]);
+            path(&[(17., 6.), (17., 18.)]);
+        }
+        "Align bottom" => {
+            path(&[(3., 20.), (21., 20.)]);
+            path(&[(7., 5.), (7., 20.)]);
+            path(&[(12., 12.), (12., 20.)]);
+            path(&[(17., 9.), (17., 20.)]);
+        }
+        "Distribute horizontally" => {
+            path(&[(3., 3.), (3., 21.)]);
+            path(&[(21., 3.), (21., 21.)]);
+            outline(9., 7., 6., 10., 1.);
+        }
+        "Distribute vertically" => {
+            path(&[(3., 3.), (21., 3.)]);
+            path(&[(3., 21.), (21., 21.)]);
+            outline(7., 9., 10., 6., 1.);
+        }
+        "Center horizontally on label" => {
+            outline(8., 6., 8., 12., 1.);
+            path(&[(12., 2.), (12., 4.)]);
+            path(&[(12., 20.), (12., 22.)]);
+        }
+        "Center vertically on label" => {
+            outline(6., 8., 12., 8., 1.);
+            path(&[(2., 12.), (4., 12.)]);
+            path(&[(20., 12.), (22., 12.)]);
+        }
+        "Lock" => {
+            outline(5., 11., 14., 10., 2.);
+            path(&[
+                (8., 11.),
+                (8., 8.),
+                (10., 5.),
+                (14., 5.),
+                (16., 8.),
+                (16., 11.),
+            ]);
+        }
+        "Unlock" => {
+            outline(5., 11., 14., 10., 2.);
+            path(&[(8., 11.), (8., 8.), (10., 5.), (14., 5.), (16., 8.)]);
+        }
+        "Rotate 90" => {
+            path(&[(20., 10.), (18., 5.), (12., 3.), (6., 5.), (3., 10.)]);
+            path(&[(16., 10.), (20., 10.), (20., 6.)]);
+            outline(8., 12., 8., 8., 1.);
+        }
+        "Flip horizontally" => {
+            path(&[(12., 2.), (12., 22.)]);
+            path(&[(9., 6.), (3., 18.), (9., 18.), (9., 6.)]);
+            path(&[(15., 6.), (21., 18.), (15., 18.), (15., 6.)]);
+        }
+        "Flip vertically" => {
+            path(&[(2., 12.), (22., 12.)]);
+            path(&[(6., 9.), (18., 9.), (12., 3.), (6., 9.)]);
+            path(&[(6., 15.), (18., 15.), (12., 21.), (6., 15.)]);
         }
         "Choose a label template" => {
             outline(3., 3., 18., 18., 3.);

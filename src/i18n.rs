@@ -712,8 +712,6 @@ const ES: &[(&str, &str)] = &[
     ),
     ("Flip horizontally", "Voltear horizontalmente"),
     ("Flip vertically", "Voltear verticalmente"),
-    ("Horizontally", "Horizontalmente"),
-    ("Vertically", "Verticalmente"),
     ("Lock position and size", "Bloquear posición y tamaño"),
     ("Italic", "Cursiva"),
     ("Inverse", "Invertido"),
@@ -752,18 +750,6 @@ const ES: &[(&str, &str)] = &[
         "Separación de la cuadrícula guía. El ajuste se mueve en pasos de un quinto.",
     ),
     (
-        "Align the selected objects with each other",
-        "Alinea entre sí los objetos seleccionados",
-    ),
-    (
-        "Make the gaps between three or more objects equal",
-        "Iguala los espacios entre tres o más objetos",
-    ),
-    (
-        "Center the selected objects as a group on the label",
-        "Centra los objetos seleccionados como grupo en la etiqueta",
-    ),
-    (
         "A locked object cannot be moved, resized, rotated, or deleted from the canvas",
         "Un objeto bloqueado no se puede mover, redimensionar, girar ni borrar desde el lienzo",
     ),
@@ -783,9 +769,34 @@ const ES: &[(&str, &str)] = &[
         "How the image is reduced to black and white",
         "Cómo se reduce la imagen a blanco y negro",
     ),
-    ("Top", "Arriba"),
-    ("Middle", "Centro"),
-    ("Bottom", "Abajo"),
+    ("Align left", "Alinear a la izquierda"),
+    ("Align center", "Alinear al centro"),
+    ("Align right", "Alinear a la derecha"),
+    ("Align top", "Alinear arriba"),
+    ("Align middle", "Alinear en el medio"),
+    ("Align bottom", "Alinear abajo"),
+    ("Distribute horizontally", "Distribuir horizontalmente"),
+    ("Distribute vertically", "Distribuir verticalmente"),
+    (
+        "Center horizontally on label",
+        "Centrar horizontalmente en la etiqueta",
+    ),
+    (
+        "Center vertically on label",
+        "Centrar verticalmente en la etiqueta",
+    ),
+    (
+        "Lock all selected objects",
+        "Bloquea todos los objetos seleccionados",
+    ),
+    (
+        "Unlock all selected objects",
+        "Desbloquea todos los objetos seleccionados",
+    ),
+    (
+        "Return the image mode, contrast, and cut-off to their defaults",
+        "Devuelve el modo de imagen, el contraste y el umbral a sus valores predeterminados",
+    ),
 ];
 const DE: &[(&str, &str)] = &[
     ("About ThermalPrint", "Über ThermalPrint"),
@@ -1391,8 +1402,6 @@ const DE: &[(&str, &str)] = &[
     ),
     ("Flip horizontally", "Horizontal spiegeln"),
     ("Flip vertically", "Vertikal spiegeln"),
-    ("Horizontally", "Horizontal"),
-    ("Vertically", "Vertikal"),
     ("Lock position and size", "Position und Größe sperren"),
     ("Italic", "Kursiv"),
     ("Inverse", "Invertiert"),
@@ -1428,18 +1437,6 @@ const DE: &[(&str, &str)] = &[
         "Abstand des Hilfsrasters. Das Einrasten erfolgt in Schritten von einem Fünftel.",
     ),
     (
-        "Align the selected objects with each other",
-        "Die ausgewählten Objekte aneinander ausrichten",
-    ),
-    (
-        "Make the gaps between three or more objects equal",
-        "Die Abstände zwischen drei oder mehr Objekten angleichen",
-    ),
-    (
-        "Center the selected objects as a group on the label",
-        "Die ausgewählten Objekte als Gruppe auf der Etikette zentrieren",
-    ),
-    (
         "A locked object cannot be moved, resized, rotated, or deleted from the canvas",
         "Ein gesperrtes Objekt kann auf der Fläche nicht verschoben, skaliert, gedreht oder gelöscht werden",
     ),
@@ -1459,9 +1456,34 @@ const DE: &[(&str, &str)] = &[
         "How the image is reduced to black and white",
         "Wie das Bild auf Schwarzweiß reduziert wird",
     ),
-    ("Top", "Oben"),
-    ("Middle", "Mitte"),
-    ("Bottom", "Unten"),
+    ("Align left", "Linksbündig ausrichten"),
+    ("Align center", "Zentriert ausrichten"),
+    ("Align right", "Rechtsbündig ausrichten"),
+    ("Align top", "Oben ausrichten"),
+    ("Align middle", "In der Mitte ausrichten"),
+    ("Align bottom", "Unten ausrichten"),
+    ("Distribute horizontally", "Horizontal verteilen"),
+    ("Distribute vertically", "Vertikal verteilen"),
+    (
+        "Center horizontally on label",
+        "Horizontal auf der Etikette zentrieren",
+    ),
+    (
+        "Center vertically on label",
+        "Vertikal auf der Etikette zentrieren",
+    ),
+    (
+        "Lock all selected objects",
+        "Alle ausgewählten Objekte sperren",
+    ),
+    (
+        "Unlock all selected objects",
+        "Alle ausgewählten Objekte entsperren",
+    ),
+    (
+        "Return the image mode, contrast, and cut-off to their defaults",
+        "Bildmodus, Kontrast und Schwellenwert auf die Standardwerte zurücksetzen",
+    ),
 ];
 const FR: &[(&str, &str)] = &[
     ("About ThermalPrint", "À propos de ThermalPrint"),
@@ -2100,8 +2122,6 @@ const FR: &[(&str, &str)] = &[
     ),
     ("Flip horizontally", "Retourner horizontalement"),
     ("Flip vertically", "Retourner verticalement"),
-    ("Horizontally", "Horizontalement"),
-    ("Vertically", "Verticalement"),
     ("Lock position and size", "Verrouiller position et taille"),
     ("Italic", "Italique"),
     ("Inverse", "Inversé"),
@@ -2143,18 +2163,6 @@ const FR: &[(&str, &str)] = &[
         "Espacement de la grille. L'aimantation avance par pas d'un cinquième.",
     ),
     (
-        "Align the selected objects with each other",
-        "Aligne les objets sélectionnés entre eux",
-    ),
-    (
-        "Make the gaps between three or more objects equal",
-        "Égalise les espaces entre trois objets ou plus",
-    ),
-    (
-        "Center the selected objects as a group on the label",
-        "Centre les objets sélectionnés en groupe sur l'étiquette",
-    ),
-    (
         "A locked object cannot be moved, resized, rotated, or deleted from the canvas",
         "Un objet verrouillé ne peut pas être déplacé, redimensionné, pivoté ni supprimé depuis le canevas",
     ),
@@ -2174,9 +2182,34 @@ const FR: &[(&str, &str)] = &[
         "How the image is reduced to black and white",
         "Comment l'image est réduite en noir et blanc",
     ),
-    ("Top", "Haut"),
-    ("Middle", "Milieu"),
-    ("Bottom", "Bas"),
+    ("Align left", "Aligner à gauche"),
+    ("Align center", "Aligner au centre"),
+    ("Align right", "Aligner à droite"),
+    ("Align top", "Aligner en haut"),
+    ("Align middle", "Aligner au milieu"),
+    ("Align bottom", "Aligner en bas"),
+    ("Distribute horizontally", "Répartir horizontalement"),
+    ("Distribute vertically", "Répartir verticalement"),
+    (
+        "Center horizontally on label",
+        "Centrer horizontalement sur l'étiquette",
+    ),
+    (
+        "Center vertically on label",
+        "Centrer verticalement sur l'étiquette",
+    ),
+    (
+        "Lock all selected objects",
+        "Verrouille tous les objets sélectionnés",
+    ),
+    (
+        "Unlock all selected objects",
+        "Déverrouille tous les objets sélectionnés",
+    ),
+    (
+        "Return the image mode, contrast, and cut-off to their defaults",
+        "Remet le mode d'image, le contraste et le seuil à leurs valeurs par défaut",
+    ),
 ];
 
 #[cfg(test)]
