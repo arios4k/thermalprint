@@ -82,6 +82,14 @@ pub fn tr(text: &str) -> &str {
 }
 
 const ES: &[(&str, &str)] = &[
+    (
+        "Move printed labels to a Processed folder",
+        "Mover las etiquetas impresas a una carpeta Processed",
+    ),
+    (
+        "After printing, labels from the watch folder are removed from the queue and moved into a Processed folder inside it. Labels added from elsewhere are not moved.",
+        "Tras imprimir, las etiquetas de la carpeta vigilada se quitan de la cola y se mueven a una carpeta Processed dentro de ella. Las etiquetas añadidas desde otro lugar no se mueven.",
+    ),
     ("About ThermalPrint", "Acerca de ThermalPrint"),
     ("Add labels…", "Añadir etiquetas…"),
     (
@@ -991,6 +999,14 @@ const ES: &[(&str, &str)] = &[
     ),
 ];
 const DE: &[(&str, &str)] = &[
+    (
+        "Move printed labels to a Processed folder",
+        "Gedruckte Etiketten in einen Ordner Processed verschieben",
+    ),
+    (
+        "After printing, labels from the watch folder are removed from the queue and moved into a Processed folder inside it. Labels added from elsewhere are not moved.",
+        "Nach dem Drucken werden Etiketten aus dem überwachten Ordner aus der Warteschlange entfernt und in einen Ordner Processed darin verschoben. Von anderswo hinzugefügte Etiketten werden nicht verschoben.",
+    ),
     ("About ThermalPrint", "Über ThermalPrint"),
     ("Add labels…", "Etiketten hinzufügen…"),
     ("Advanced driver resolution", "Erweiterte Treiberauflösung"),
@@ -1867,6 +1883,14 @@ const DE: &[(&str, &str)] = &[
     ),
 ];
 const FR: &[(&str, &str)] = &[
+    (
+        "Move printed labels to a Processed folder",
+        "Déplacer les étiquettes imprimées vers un dossier Processed",
+    ),
+    (
+        "After printing, labels from the watch folder are removed from the queue and moved into a Processed folder inside it. Labels added from elsewhere are not moved.",
+        "Après l'impression, les étiquettes du dossier surveillé sont retirées de la file et déplacées dans un dossier Processed à l'intérieur. Les étiquettes ajoutées depuis ailleurs ne sont pas déplacées.",
+    ),
     ("About ThermalPrint", "À propos de ThermalPrint"),
     ("Add labels…", "Ajouter des étiquettes…"),
     ("Advanced driver resolution", "Résolution avancée du pilote"),

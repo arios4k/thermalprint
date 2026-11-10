@@ -37,6 +37,11 @@ enum Message {
     Rendered(Arc<Output>),
     Printers(Vec<Printer>),
     Done(String),
+    /// One queued label was submitted; the index is its place in the queue.
+    PrintedOne {
+        detail: String,
+        index: Option<usize>,
+    },
     Cancelled,
     Error(String),
 }
@@ -365,6 +370,21 @@ impl ThermalPrint {
                 self.sync_watcher();
                 self.persist();
             }
+            if ui
+                .add_enabled(
+                    folder.is_some(),
+                    egui::Checkbox::new(
+                        &mut self.settings.move_printed,
+                        crate::i18n::tr("Move printed labels to a Processed folder"),
+                    ),
+                )
+                .on_hover_text(crate::i18n::tr(
+                    "After printing, labels from the watch folder are removed from the queue and moved into a Processed folder inside it. Labels added from elsewhere are not moved.",
+                ))
+                .changed()
+            {
+                self.persist();
+            }
         });
     }
     fn save_selection(&mut self) {
@@ -588,6 +608,17 @@ impl ThermalPrint {
                 } => {
                     self.status = format!("{detail} · {submitted}/{total} submitted");
                     self.error = submitted < total;
+                    if let Some(note) = self.finish_printed((0..submitted).collect()) {
+                        self.status = format!("{} · {note}", self.status);
+                    }
+                }
+                Message::PrintedOne { detail, index } => {
+                    self.status = detail;
+                    self.error = false;
+                    if let Some(note) = self.finish_printed(index.into_iter().collect()) {
+                        self.status = format!("{} · {note}", self.status);
+                        self.error = note.starts_with("Printed, but");
+                    }
                 }
                 Message::Done(s) => {
                     self.status = s;
@@ -634,8 +665,8 @@ impl ThermalPrint {
         };
         let output = self.output.clone().unwrap();
         let settings = self.settings.clone();
-        let source = self
-            .selected
+        let index = self.selected.filter(|&i| i < self.queue.len());
+        let source = index
             .and_then(|i| self.queue.get(i))
             .map(|item| (item.path.clone(), item.page));
         self.persist();
@@ -649,10 +680,64 @@ impl ThermalPrint {
                     settings.copies,
                 ));
             }
-            Ok(Message::Done(format!(
-                "Submitted · {submitted}. Use Job status to check the queue."
-            )))
+            Ok(Message::PrintedOne {
+                detail: format!("Submitted · {submitted}. Use Job status to check the queue."),
+                index,
+            })
         });
+    }
+    /// Take printed labels out of the queue and move their files to the Processed folder.
+    /// Files still needed by another queued page (multi-page PDFs) stay until the last one.
+    fn finish_printed(&mut self, mut indices: Vec<usize>) -> Option<String> {
+        if !self.settings.move_printed || indices.is_empty() {
+            return None;
+        }
+        let dir = self.settings.watch_folder.clone()?;
+        indices.sort_unstable();
+        indices.dedup();
+        indices.retain(|&i| i < self.queue.len());
+        let &first = indices.first()?;
+        let mut printed = Vec::new();
+        for &i in indices.iter().rev() {
+            printed.push(self.queue.remove(i).path);
+        }
+        self.selected = None;
+        self.page = None;
+        self.output = None;
+        self.original_texture = None;
+        self.output_texture = None;
+        // The label that took the printed one's place, or the last one if it was at the end.
+        if !self.queue.is_empty() {
+            self.select(first.min(self.queue.len() - 1));
+        }
+        printed.sort();
+        printed.dedup();
+        let (mut moved, mut failed) = (0, None);
+        for path in printed {
+            if self.queue.iter().any(|item| item.path == path) {
+                continue;
+            }
+            match crate::watch::archive(&path, &dir) {
+                Ok(Some(new)) => {
+                    moved += 1;
+                    // Keep the recent-files list pointing at the file's new location.
+                    for recent in self.settings.recent.iter_mut().filter(|r| **r == path) {
+                        *recent = new.clone();
+                    }
+                }
+                Ok(None) => {}
+                Err(error) => failed = Some(format!("{error:#}")),
+            }
+        }
+        if moved > 0 {
+            self.persist();
+        }
+        failed
+            .map(|e| format!("Printed, but could not move a label to Processed · {e}"))
+            .or_else(|| {
+                (moved > 0)
+                    .then(|| format!("{moved} label(s) moved to {}", crate::watch::PROCESSED_DIR))
+            })
     }
     /// Open the manual page that explains the screen you are on.
     fn open_manual(&self, ctx: &egui::Context) {
@@ -1367,7 +1452,9 @@ impl ThermalPrint {
                 ui.label(
                     RichText::new(format!(
                         "Label {} of {}",
-                        self.selected.map_or(0, |i| i + 1),
+                        self.loading_selection
+                            .or(self.selected)
+                            .map_or(0, |i| i + 1),
                         self.queue.len()
                     ))
                     .strong(),

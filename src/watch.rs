@@ -3,8 +3,9 @@
 //! in progress is never opened half-written. Existing files are never imported.
 use anyhow::{Context, Result, bail};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     path::{Path, PathBuf},
+    time::SystemTime,
 };
 
 const EXTENSIONS: [&str; 8] = ["pdf", "png", "jpg", "jpeg", "tif", "tiff", "bmp", "webp"];
@@ -12,11 +13,16 @@ const MAX_FILE_BYTES: u64 = 50_000_000;
 const MAX_ENTRIES: usize = 5_000;
 const MAX_PER_SCAN: usize = 20;
 
+/// Size and modification time. A file is "the same" only while both are unchanged, so a
+/// new file saved under a name that was used (and imported) before is still noticed.
+type Stamp = (u64, Option<SystemTime>);
+
 pub struct Watcher {
     dir: PathBuf,
-    seen: HashSet<PathBuf>,
-    /// Size at the previous scan, for files that may still be downloading.
-    pending: HashMap<PathBuf, u64>,
+    /// Files already imported or present at start, forgotten once deleted or replaced.
+    seen: HashMap<PathBuf, Stamp>,
+    /// Stamp at the previous scan, for files that may still be downloading.
+    pending: HashMap<PathBuf, Stamp>,
 }
 
 fn supported(path: &Path) -> bool {
@@ -33,11 +39,11 @@ impl Watcher {
     pub fn new(dir: &Path) -> Result<Self> {
         let mut watcher = Self {
             dir: dir.to_owned(),
-            seen: HashSet::new(),
+            seen: HashMap::new(),
             pending: HashMap::new(),
         };
-        for (path, _) in watcher.candidates()? {
-            watcher.seen.insert(path);
+        for (path, stamp) in watcher.candidates()?.0 {
+            watcher.seen.insert(path, stamp);
         }
         Ok(watcher)
     }
@@ -47,12 +53,19 @@ impl Watcher {
     }
 
     /// Regular, supported, non-empty files. Symbolic links are ignored so a link cannot
-    /// pull in a file from somewhere the user did not choose.
-    fn candidates(&self) -> Result<Vec<(PathBuf, u64)>> {
+    /// pull in a file from somewhere the user did not choose. The flag is true when the
+    /// folder was too large to list completely.
+    fn candidates(&self) -> Result<(Vec<(PathBuf, Stamp)>, bool)> {
         let entries = std::fs::read_dir(&self.dir)
             .with_context(|| format!("Cannot read {}", self.dir.display()))?;
         let mut found = Vec::new();
-        for entry in entries.take(MAX_ENTRIES).flatten() {
+        let mut count = 0;
+        for entry in entries.flatten() {
+            count += 1;
+            if count > MAX_ENTRIES {
+                found.sort();
+                return Ok((found, true));
+            }
             let path = entry.path();
             let Ok(metadata) = std::fs::symlink_metadata(&path) else {
                 continue;
@@ -61,31 +74,76 @@ impl Watcher {
                 && supported(&path)
                 && (1..=MAX_FILE_BYTES).contains(&metadata.len())
             {
-                found.push((path, metadata.len()));
+                found.push((path, (metadata.len(), metadata.modified().ok())));
             }
         }
         found.sort();
-        Ok(found)
+        Ok((found, false))
     }
 
     /// Files that appeared since the last scan and have a stable size. Oldest names first.
     pub fn scan(&mut self) -> Result<Vec<PathBuf>> {
         let mut ready = Vec::new();
         let mut still_present = HashMap::new();
-        for (path, length) in self.candidates()? {
-            if self.seen.contains(&path) {
+        let (candidates, truncated) = self.candidates()?;
+        if !truncated {
+            // Forget files that were deleted, moved or replaced, so a new file reusing
+            // an old name is treated as new.
+            let current: HashMap<&PathBuf, &Stamp> =
+                candidates.iter().map(|(p, s)| (p, s)).collect();
+            self.seen
+                .retain(|path, stamp| current.get(path).is_some_and(|now| *now == stamp));
+        }
+        for (path, stamp) in candidates {
+            if self.seen.contains_key(&path) {
                 continue;
             }
-            if self.pending.get(&path) == Some(&length) && ready.len() < MAX_PER_SCAN {
-                self.seen.insert(path.clone());
+            if self.pending.get(&path) == Some(&stamp) && ready.len() < MAX_PER_SCAN {
+                self.seen.insert(path.clone(), stamp);
                 ready.push(path);
             } else {
-                still_present.insert(path, length);
+                still_present.insert(path, stamp);
             }
         }
         self.pending = still_present;
         Ok(ready)
     }
+}
+
+/// Name of the subfolder, inside the watch folder, that printed labels are moved to.
+pub const PROCESSED_DIR: &str = "Processed";
+
+/// Move a printed label from the watch folder into its `Processed` subfolder. Only files
+/// directly inside the watch folder are moved, so labels imported from elsewhere are never
+/// touched. An existing file with the same name is kept: the new one gets " (2)", " (3)", ...
+/// Returns the new path, or `None` when the file is not in the watch folder.
+pub fn archive(file: &Path, watch_dir: &Path) -> Result<Option<PathBuf>> {
+    if file.parent() != Some(watch_dir) {
+        return Ok(None);
+    }
+    let Some(name) = file.file_name() else {
+        return Ok(None);
+    };
+    let processed = watch_dir.join(PROCESSED_DIR);
+    std::fs::create_dir_all(&processed)
+        .with_context(|| format!("Cannot create {}", processed.display()))?;
+    let stem = file
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let extension = file
+        .extension()
+        .map(|e| format!(".{}", e.to_string_lossy()))
+        .unwrap_or_default();
+    let mut target = processed.join(name);
+    let mut number = 2;
+    while target.symlink_metadata().is_ok() {
+        target = processed.join(format!("{stem} ({number}){extension}"));
+        number += 1;
+    }
+    std::fs::rename(file, &target)
+        .with_context(|| format!("Cannot move {} to {}", file.display(), target.display()))?;
+    Ok(Some(target))
 }
 
 /// Explain why a folder may be unreadable from the Snap. `real_home` is the user's actual
@@ -161,6 +219,45 @@ mod tests {
         assert!(
             watcher.scan().unwrap().is_empty(),
             "each file is imported once"
+        );
+    }
+
+    #[test]
+    fn a_new_file_reusing_an_imported_name_is_imported_again() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut watcher = Watcher::new(dir.path()).unwrap();
+        let label = write(dir.path(), "label.pdf", b"%PDF-1");
+        watcher.scan().unwrap();
+        assert_eq!(watcher.scan().unwrap(), std::slice::from_ref(&label));
+        std::fs::remove_file(&label).unwrap();
+        assert!(watcher.scan().unwrap().is_empty());
+        write(dir.path(), "label.pdf", b"%PDF-2 different");
+        watcher.scan().unwrap();
+        assert_eq!(watcher.scan().unwrap(), [label]);
+    }
+
+    #[test]
+    fn archive_moves_watch_folder_files_only_and_never_overwrites() {
+        let dir = tempfile::tempdir().unwrap();
+        let first = write(dir.path(), "label.pdf", b"one");
+        let moved = archive(&first, dir.path()).unwrap().unwrap();
+        assert_eq!(moved, dir.path().join(PROCESSED_DIR).join("label.pdf"));
+        assert!(!first.exists());
+        let second = write(dir.path(), "label.pdf", b"two");
+        let moved_again = archive(&second, dir.path()).unwrap().unwrap();
+        assert_eq!(
+            moved_again,
+            dir.path().join(PROCESSED_DIR).join("label (2).pdf")
+        );
+        assert_eq!(std::fs::read(&moved).unwrap(), b"one");
+        let other = tempfile::tempdir().unwrap();
+        let elsewhere = write(other.path(), "x.pdf", b"x");
+        assert_eq!(archive(&elsewhere, dir.path()).unwrap(), None);
+        assert!(elsewhere.exists());
+        let mut watcher = Watcher::new(dir.path()).unwrap();
+        assert!(
+            watcher.scan().unwrap().is_empty(),
+            "Processed is not scanned"
         );
     }
 

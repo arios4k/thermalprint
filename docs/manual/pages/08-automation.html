@@ -15,6 +15,7 @@ summary: Let new downloads join the queue automatically, and reopen anything you
   <li>Download a label. Within a couple of seconds it joins the queue, ready to review.</li>
 </ol>
 <p>Untick <strong>Watch for new labels</strong> to pause, or press <strong>Clear</strong> to forget the folder. ThermalPrint remembers the folder and the on/off choice for next time.</p>
+<p>To keep the folder tidy, also tick <strong>Move printed labels to a Processed folder</strong>. After a label prints, it is taken out of the queue and moved into a <code>Processed</code> subfolder, and the next label in the queue is shown in its place. The queue count, the <strong>Label X of N</strong> counter, and the Previous and Next buttons update to match. If you later want to print a moved label again, add it from the <code>Processed</code> folder with <strong>Add labels…</strong>, or open it from Print Center's recent list, which follows the file to its new place.</p>
 
 <h3>What is picked up</h3>
 <table>
@@ -23,7 +24,8 @@ summary: Let new downloads join the queue automatically, and reopen anything you
   <tr><td>Old files</td><td>Files that were already in the folder when you turned watching on are <strong>ignored</strong>. Only new files are added.</td></tr>
   <tr><td>Downloads in progress</td><td>A file is added only after its size has stopped changing, so a half-downloaded PDF is never opened. Temporary names such as <code>.crdownload</code> are skipped.</td></tr>
   <tr><td>Skipped files</td><td>Empty files, files over 50 MB, hidden files that start with a dot, and shortcuts (symbolic links).</td></tr>
-  <tr><td>Each file once</td><td>A file is added a single time, even if you remove it from the queue.</td></tr>
+  <tr><td>Each file once</td><td>A file is added a single time, even if you remove it from the queue. If you delete or move the file and later save a new one with the same name, the new file is added.</td></tr>
+  <tr><td>Printed labels</td><td>Tick <strong>Move printed labels to a Processed folder</strong> and each label you print from the watch folder leaves the queue and is moved into a <code>Processed</code> folder inside it. A file with the same name there is never overwritten; the new one is saved as <code>label (2).pdf</code>. Labels you added from elsewhere are not moved, and a multi-page PDF is moved after its last page prints. The option is off by default.</td></tr>
   <tr><td>Where you are</td><td>If you are on Home or Import &amp; Convert, the app switches to the queue. If you are in the Designer or Print Center, it stays put and the status bar says how many labels are waiting.</td></tr>
 </table>
 <div class="callout note"><p>The watch folder only <em>adds</em> labels to the queue. It never prints by itself. You still review each label and press Print.</p></div>

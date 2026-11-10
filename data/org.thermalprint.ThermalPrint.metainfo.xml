@@ -45,6 +45,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.6.3" date="2026-11-10">
+      <description>
+        <p>Smoother folder watching.</p>
+        <ul>
+          <li>New option to move printed labels from the watch folder into a Processed folder, so the queue and the folder stay tidy.</li>
+          <li>Fixed new labels sometimes being missed by the watch folder when a file reused the name of an earlier one.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.2" date="2026-11-08">
       <description>
         <p>File previews and icon fixes.</p>

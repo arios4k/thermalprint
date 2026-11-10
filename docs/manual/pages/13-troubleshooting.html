@@ -25,6 +25,7 @@ summary: Fixes for printers that are not listed, labels that print wrong, extra 
   <tr><td>A GS1 barcode is refused</td><td>Read the red message under the barcode settings: a wrong check digit, a bad date, or a variable-length field that is not last in a GS1 Data Matrix. See the <a href="barcodes.html#gs1-barcodes">GS1 section</a>.</td></tr>
   <tr><td>I closed ThermalPrint by accident</td><td>Start it again: unsaved changes are offered back at the top of the Label Designer. See <a href="designer.html#if-the-app-closes-unexpectedly">the recovery copy</a>.</td></tr>
   <tr><td><code>.thermalprint</code> files show a generic icon</td><td>For the Debian and Fedora packages, update to 0.6.2 or later (it adds a preview thumbnail that works with every icon theme), restart the file manager (<code>nautilus -q</code>), and look again. A file that was already shown may keep its old icon for a while; renaming it or restarting the session refreshes it. For the Snap, run <a href="snap.html#saved-designs-and-double-click-opening">the register-mime helper</a> again: it copies the icon into your user icon folders, including the folder of your current icon theme, because themes such as Zorin and Adwaita show their own generic file icon unless the theme folder has the icon. Then restart the file manager (<code>nautilus -q</code> in a terminal) or log out and in.</td></tr>
+  <tr><td>A label disappeared from the queue after printing</td><td>The <strong>Move printed labels to a Processed folder</strong> option is on. The label was printed and its file is in the <code>Processed</code> folder inside your watch folder. Untick the option under Watch a folder to keep printed labels in the queue.</td></tr>
   <tr><td>The watch folder switched itself off</td><td>The folder moved or cannot be read. Choose it again. In the Snap, see <a href="snap.html#folders-and-the-watch-folder">folders</a>.</td></tr>
   <tr><td>F1 or Help does nothing</td><td>ThermalPrint hands the link to your default web browser. Check that one is set, or open the <a href="index.html">manual</a> directly.</td></tr>
 </table>
@@ -77,6 +78,7 @@ summary: Fixes for printers that are not listed, labels that print wrong, extra 
   <tr><td>CUPS rejected the job: …</td><td>The printer system refused the job. The text after the colon comes from CUPS and usually says why.</td></tr>
   <tr><td>Output is … mm; printer media is … mm</td><td>The label size differs from the media. Use <em>Match output to printer media</em> or choose matching media.</td></tr>
   <tr><td>Printing is not connected. In a terminal run: sudo snap connect …</td><td>Run that command. See <a href="snap.html">Using the Snap</a>.</td></tr>
+  <tr><td>Printed, but could not move a label to Processed · …</td><td>The label printed, but its file could not be moved. Check that you can write to the watch folder. The label has already left the queue.</td></tr>
   <tr><td>Watch folder is off · …</td><td>The reason follows the dot. Choose a readable folder.</td></tr>
 </table>
 
