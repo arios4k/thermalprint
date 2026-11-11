@@ -5,26 +5,26 @@ Origin: ThermalPrint
 Label: ThermalPrint
 Suite: stable
 Codename: stable
-Date: Sun, 08 Nov 2026 18:47:14 UTC
+Date: Wed, 11 Nov 2026 00:05:17 UTC
 Architectures: amd64
 Components: main
 Description: ThermalPrint APT repository
 MD5Sum:
- 4829df16d20fec6cbf90e5836a7fa43a 829 main/binary-amd64/Packages
- d37b1348562cc00083e0544f46729890 557 main/binary-amd64/Packages.gz
+ 1548f9ee8a291ad50b08946493b87956 829 main/binary-amd64/Packages
+ d074d5793dee4aa098b39f4bfca4d521 555 main/binary-amd64/Packages.gz
  9230664d81f9a1f816ef0822bc532106 134 main/binary-amd64/Release
 SHA1:
- 32407140836660ab837249d681e9f7e202e015c8 829 main/binary-amd64/Packages
- a9cea4c07afecfe242bca4cc6151d50d762ce5cb 557 main/binary-amd64/Packages.gz
+ 01a2b52b7327339a33d601a00e8034b77b289e13 829 main/binary-amd64/Packages
+ 681c9cd11dec8e57190c4fe8ec62f30180cf92db 555 main/binary-amd64/Packages.gz
  30a256550a6f6850587689acafd8d74ee66735b6 134 main/binary-amd64/Release
 SHA256:
- ee5e9c909a0f420ad3ed10d8d27115a0606fce169e7fabee5df960f1a3171dc2 829 main/binary-amd64/Packages
- 16fc3ab491266412fd74401820d5578446e3ce0428cf1251cc85ea33e653102f 557 main/binary-amd64/Packages.gz
+ 170a81b5e3a6e5c84b7dcdb79010ffa162b8a44462500d080abb828b1091c323 829 main/binary-amd64/Packages
+ ecdc7c091007bec5c671952ce267b0a1838bf2170d2375115e5ab78d7ebcad3c 555 main/binary-amd64/Packages.gz
  57b90879fd1d7762a531e013981642892fba51f3007598e75f29cfd09bfeb169 134 main/binary-amd64/Release
 -----BEGIN PGP SIGNATURE-----
 
-iHUEARYIAB0WIQRql6BHZiHLWF0Dx8myfzX8fyp7lAUCavDDsgAKCRCyfzX8fyp7
-lLhIAP91ixhaEhrilvQVWS2Rv+50MD6jtvYVekE8TgpsS8uDmgD9FEL8L0/o7CbK
-PMZaUPfN0RsC5GtFhspE4+2HRc6CzwY=
-=1c6c
+iHUEARYIAB0WIQRql6BHZiHLWF0Dx8myfzX8fyp7lAUCavOxPQAKCRCyfzX8fyp7
+lCBRAPwJCfA6UyRI4UtcO6j3E95iD7h4/G7X7B49i1XrVn3bJgD/ZKkIKuCgp0DW
+DOUghDZaCDxRh1f5ZQeQHL3OX9EVsQU=
+=dJg9
 -----END PGP SIGNATURE-----
