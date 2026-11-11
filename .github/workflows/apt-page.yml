@@ -21,6 +21,12 @@ concurrency:
 
 jobs:
   publish:
+    # A release commit is published by the release workflow when its tag is pushed. Both
+    # workflows would deploy the site for the same commit, and GitHub Pages treats a second
+    # deployment of the same commit as already done, so whichever ran second was silently
+    # ignored. The landing page ran first with the old package index, and the new version
+    # never went live. Release commits are named "Release x.y.z: ...".
+    if: ${{ !(github.event_name == 'push' && startsWith(github.event.head_commit.message, 'Release ')) }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages

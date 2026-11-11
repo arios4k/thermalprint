@@ -121,3 +121,19 @@ jobs:
             gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes || gh release view "$GITHUB_REF_NAME" >/dev/null
           fi
           gh release upload "$GITHUB_REF_NAME" "target/debian/thermalprint_${PACKAGE_VERSION}-1_amd64.deb" --clobber
+      - name: Check that the new version is live on the site
+        run: |
+          set -eu
+          owner="${GITHUB_REPOSITORY_OWNER}"
+          repo="${GITHUB_REPOSITORY#*/}"
+          url="https://${owner}.github.io/${repo}/dists/stable/main/binary-amd64/Packages"
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if curl -fsS "${url}?check=${GITHUB_RUN_ID}-${attempt}" | grep -qx "Version: ${PACKAGE_VERSION}-1"; then
+              echo "The APT index on the site lists ${PACKAGE_VERSION}-1."
+              exit 0
+            fi
+            echo "Attempt ${attempt}: the site does not list ${PACKAGE_VERSION}-1 yet."
+            sleep 20
+          done
+          echo "::error::The APT index on the site still does not list ${PACKAGE_VERSION}-1, although it was published to gh-pages. Re-run the 'Publish APT landing page' workflow from a commit that has no release tag to deploy the site again."
+          exit 1
