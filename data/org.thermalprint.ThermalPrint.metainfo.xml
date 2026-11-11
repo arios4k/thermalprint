@@ -49,6 +49,7 @@
       <description>
         <p>Print without scrolling.</p>
         <ul>
+          <li>A larger, more modern Home screen: big clickable cards, template tiles, recent documents as rows, and a printer chip.</li>
           <li>A new row above the preview has previous and next buttons, a Reviewed checkbox, and a green Print button.</li>
           <li>When Print is unavailable, pointing at it says why, such as "Tick Reviewed once you have checked the crop".</li>
         </ul>

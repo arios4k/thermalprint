@@ -229,6 +229,13 @@ impl Capture {
                     app.designer.doc = doc;
                     app.designer.select_object(id);
                 }
+                "home" => {
+                    app.settings.recent = vec![
+                        PathBuf::from("/home/demo/Downloads/demo-order-1048.pdf"),
+                        PathBuf::from("/home/demo/Downloads/demo-order-1047.pdf"),
+                        PathBuf::from("/home/demo/Documents/Labels/demo-return-label.png"),
+                    ];
+                }
                 "import-watch" => {
                     app.settings.watch_folder = Some(PathBuf::from("/home/demo/Downloads"));
                     app.settings.watch_enabled = true;

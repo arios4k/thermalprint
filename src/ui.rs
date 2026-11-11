@@ -1163,14 +1163,52 @@ impl ThermalPrint {
         });
     }
     fn home(&mut self, ui: &mut egui::Ui) {
-        ui.vertical_centered(|ui| {
-            ui.add_space(20.);
-            ui.heading(RichText::new(crate::i18n::tr("Your label workspace")).size(30.));
-            ui.label(crate::i18n::tr(
-                "Design a custom label or prepare a downloaded shipping label.",
-            ));
-            ui.add_space(20.);
+        // A centered column, so the page does not stretch across a very wide window.
+        let available = ui.available_width();
+        let width = (available - 48.).clamp(320., 1040.);
+        let margin = ((available - width) / 2.).max(0.);
+        ui.horizontal_top(|ui| {
+            ui.add_space(margin);
+            ui.vertical(|ui| {
+                ui.set_width(width);
+                self.home_content(ui, width);
+            });
         });
+    }
+    fn home_content(&mut self, ui: &mut egui::Ui, width: f32) {
+        let dark = ui.visuals().dark_mode;
+        let accent = if dark {
+            Color32::from_rgb(88, 199, 173)
+        } else {
+            Color32::from_rgb(28, 111, 100)
+        };
+        ui.add_space(26.);
+        ui.horizontal(|ui| {
+            ui.vertical(|ui| {
+                ui.label(
+                    RichText::new(crate::i18n::tr("WORKSPACE"))
+                        .size(12.)
+                        .strong()
+                        .color(accent),
+                );
+                ui.label(
+                    RichText::new(crate::i18n::tr("Your label workspace"))
+                        .size(34.)
+                        .strong(),
+                );
+                ui.label(
+                    RichText::new(crate::i18n::tr(
+                        "Design a custom label or prepare a downloaded shipping label.",
+                    ))
+                    .size(15.)
+                    .weak(),
+                );
+            });
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                self.printer_chip(ui);
+            });
+        });
+        ui.add_space(22.);
         ui.columns(2, |columns| {
             if Self::home_card(
                 &mut columns[0],
@@ -1202,11 +1240,15 @@ impl ThermalPrint {
             }
         });
         self.first_steps(ui);
-        ui.add_space(18.);
-        ui.heading(crate::i18n::tr("Templates"));
+        ui.add_space(30.);
+        Self::section_title(ui, "Templates");
+        let gap = 12.;
+        let columns = (((width + gap) / (180. + gap)).floor() as usize).clamp(2, 6);
+        let tile = (width - gap * (columns as f32 - 1.)) / columns as f32 - 0.05;
         ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = Vec2::splat(gap);
             for (i, t) in design::TEMPLATES.iter().enumerate() {
-                if crate::designer_ui::template_button(ui, t.name)
+                if Self::template_tile(ui, t.name, Vec2::new(tile, 104.))
                     .on_hover_text(t.description)
                     .clicked()
                 {
@@ -1215,27 +1257,220 @@ impl ThermalPrint {
                 }
             }
         });
-        ui.add_space(18.);
-        ui.heading(crate::i18n::tr("Printer status"));
-        if let Some(p) = self
-            .printers
-            .iter()
-            .find(|p| p.name == self.settings.printer)
-        {
-            ui.label(format!("{} · {}", p.name, printing::thermal_hint(p)));
-        } else {
-            ui.label(crate::i18n::tr(
-                "No printer selected. Export is available without a printer.",
-            ));
+        ui.add_space(30.);
+        Self::section_title(ui, "Recent documents");
+        if self.settings.recent.is_empty() {
+            ui.label(
+                RichText::new(crate::i18n::tr(
+                    "No recent documents yet. Labels you open will appear here.",
+                ))
+                .weak(),
+            );
         }
-        ui.add_space(8.);
-        ui.heading(crate::i18n::tr("Recent documents"));
-        for path in self.settings.recent.clone() {
-            if ui.link(path.display().to_string()).clicked() {
-                self.area = Area::Import;
-                self.append_files(vec![path]);
+        let mut open = None;
+        for path in &self.settings.recent {
+            if Self::recent_row(ui, path, width).clicked() {
+                open = Some(path.clone());
             }
         }
+        if let Some(path) = open {
+            self.area = Area::Import;
+            self.append_files(vec![path]);
+        }
+        ui.add_space(28.);
+    }
+    fn section_title(ui: &mut egui::Ui, title: &str) {
+        ui.label(RichText::new(crate::i18n::tr(title)).size(20.).strong());
+        ui.add_space(8.);
+    }
+    /// The selected printer as a compact chip; clicking it opens Print Center.
+    fn printer_chip(&mut self, ui: &mut egui::Ui) {
+        let found = self
+            .printers
+            .iter()
+            .find(|p| p.name == self.settings.printer);
+        let (text, hint, online) = match found {
+            Some(p) => (
+                p.name.chars().take(30).collect::<String>(),
+                printing::thermal_hint(p).to_string(),
+                true,
+            ),
+            None => (
+                crate::i18n::tr("No printer selected").to_owned(),
+                crate::i18n::tr("No printer selected. Export is available without a printer.")
+                    .to_owned(),
+                false,
+            ),
+        };
+        let font = egui::TextStyle::Button.resolve(ui.style());
+        let text_width = ui
+            .painter()
+            .layout_no_wrap(text.clone(), font.clone(), Color32::WHITE)
+            .size()
+            .x;
+        let (rect, response) =
+            ui.allocate_exact_size(Vec2::new(text_width + 50., 36.), Sense::click());
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &text));
+        let dark = ui.visuals().dark_mode;
+        let hovered = response.hovered() || response.has_focus();
+        if hovered {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+        }
+        ui.painter().rect(
+            rect,
+            18.,
+            if dark {
+                Color32::from_rgb(34, 42, 45)
+            } else {
+                Color32::WHITE
+            },
+            Stroke::new(
+                1.,
+                if hovered {
+                    Color32::from_rgb(36, 146, 126)
+                } else {
+                    ui.visuals().widgets.noninteractive.bg_stroke.color
+                },
+            ),
+            StrokeKind::Inside,
+        );
+        ui.painter().circle_filled(
+            Pos2::new(rect.left() + 20., rect.center().y),
+            5.,
+            if online {
+                Color32::from_rgb(40, 150, 90)
+            } else {
+                ui.visuals().weak_text_color()
+            },
+        );
+        ui.painter().text(
+            Pos2::new(rect.left() + 34., rect.center().y),
+            egui::Align2::LEFT_CENTER,
+            &text,
+            font,
+            ui.visuals().text_color(),
+        );
+        let response =
+            response.on_hover_text(format!("{}: {hint}", crate::i18n::tr("Printer status")));
+        if response.clicked() {
+            self.area = Area::PrintCenter;
+        }
+    }
+    /// A large template button: an icon badge above the template's name.
+    fn template_tile(ui: &mut egui::Ui, name: &str, size: Vec2) -> egui::Response {
+        let shown = crate::i18n::tr(name);
+        let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, shown));
+        let dark = ui.visuals().dark_mode;
+        let accent = Color32::from_rgb(36, 146, 126);
+        let hovered = response.hovered() || response.has_focus();
+        if hovered {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+        }
+        ui.painter().rect(
+            rect,
+            14.,
+            if dark {
+                Color32::from_rgb(34, 42, 45)
+            } else {
+                Color32::WHITE
+            },
+            if hovered {
+                Stroke::new(2., accent)
+            } else {
+                Stroke::new(1., ui.visuals().widgets.noninteractive.bg_stroke.color)
+            },
+            StrokeKind::Inside,
+        );
+        let badge = Rect::from_min_size(rect.min + Vec2::splat(14.), Vec2::splat(42.));
+        ui.painter().rect_filled(
+            badge,
+            12.,
+            accent.gamma_multiply(if dark { 0.25 } else { 0.10 }),
+        );
+        crate::designer_ui::paint_tool_icon(
+            ui.painter(),
+            badge.center(),
+            accent,
+            crate::designer_ui::template_icon(name),
+        );
+        ui.painter()
+            .with_clip_rect(rect.shrink2(Vec2::new(6., 0.)))
+            .text(
+                Pos2::new(rect.left() + 16., rect.bottom() - 14.),
+                egui::Align2::LEFT_BOTTOM,
+                shown,
+                egui::FontId::proportional(15.),
+                ui.visuals().strong_text_color(),
+            );
+        response
+    }
+    /// One recently opened file: its name and folder, clickable across the whole row.
+    fn recent_row(ui: &mut egui::Ui, path: &std::path::Path, width: f32) -> egui::Response {
+        let name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .into_owned();
+        let folder = path
+            .parent()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default();
+        let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 54.), Sense::click());
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &name));
+        let dark = ui.visuals().dark_mode;
+        let accent = Color32::from_rgb(71, 119, 205);
+        let hovered = response.hovered() || response.has_focus();
+        if hovered {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+        }
+        ui.painter().rect(
+            rect,
+            12.,
+            if dark {
+                Color32::from_rgb(34, 42, 45)
+            } else {
+                Color32::WHITE
+            },
+            if hovered {
+                Stroke::new(2., accent)
+            } else {
+                Stroke::new(1., ui.visuals().widgets.noninteractive.bg_stroke.color)
+            },
+            StrokeKind::Inside,
+        );
+        let badge = Rect::from_center_size(
+            Pos2::new(rect.left() + 32., rect.center().y),
+            Vec2::splat(36.),
+        );
+        ui.painter().rect_filled(
+            badge,
+            10.,
+            accent.gamma_multiply(if dark { 0.25 } else { 0.10 }),
+        );
+        crate::designer_ui::paint_tool_icon(ui.painter(), badge.center(), accent, "Import label");
+        let text_x = rect.left() + 64.;
+        let max_width = (rect.right() - text_x - 16.).max(40.);
+        let clip = ui.painter().with_clip_rect(Rect::from_min_max(
+            Pos2::new(text_x, rect.top()),
+            Pos2::new(text_x + max_width, rect.bottom()),
+        ));
+        clip.text(
+            Pos2::new(text_x, rect.top() + 9.),
+            egui::Align2::LEFT_TOP,
+            &name,
+            egui::FontId::proportional(15.),
+            ui.visuals().strong_text_color(),
+        );
+        clip.text(
+            Pos2::new(text_x, rect.top() + 30.),
+            egui::Align2::LEFT_TOP,
+            &folder,
+            egui::FontId::proportional(12.),
+            ui.visuals().weak_text_color(),
+        );
+        ui.add_space(2.);
+        response.on_hover_text(path.display().to_string())
     }
     fn select_default_media(&mut self) {
         if self.settings.media.is_empty()
@@ -1705,6 +1940,7 @@ impl ThermalPrint {
         });
     }
     #[allow(clippy::too_many_arguments)]
+    /// A large action card. The whole card is one button, with a big call-to-action at the bottom.
     fn home_card(
         ui: &mut egui::Ui,
         title: &str,
@@ -1720,39 +1956,92 @@ impl ThermalPrint {
             crate::i18n::tr(description),
             crate::i18n::tr(action),
         );
-        let width = ui.available_width();
-        Self::section_frame(ui)
-            .inner_margin(22)
-            .corner_radius(18)
-            .stroke(Stroke::new(
-                1.,
-                ui.visuals().widgets.noninteractive.bg_stroke.color,
-            ))
-            .show(ui, |ui| {
-                ui.set_width((width - 46.).max(0.));
-                ui.set_min_height(250.);
-                let card_top = ui.cursor().top();
-                let (badge, _) = ui.allocate_exact_size(Vec2::splat(48.), Sense::hover());
-                ui.painter().rect_filled(
-                    badge,
-                    14.,
-                    accent.gamma_multiply(if ui.visuals().dark_mode { 0.25 } else { 0.10 }),
-                );
-                crate::designer_ui::paint_tool_icon(ui.painter(), badge.center(), accent, icon);
-                ui.add_space(8.);
-                ui.heading(RichText::new(title).size(24.));
-                ui.label(RichText::new(subtitle).strong());
-                ui.add_space(2.);
-                ui.label(RichText::new(description).weak());
-                ui.add_space((card_top + 250. - ui.cursor().top() - 40.).max(12.));
-                ui.add_sized(
-                    [ui.available_width(), 40.],
-                    egui::Button::new(RichText::new(action).strong().color(Color32::WHITE))
-                        .fill(accent)
-                        .corner_radius(10.),
-                )
-            })
-            .inner
+        let dark = ui.visuals().dark_mode;
+        let (rect, response) =
+            ui.allocate_exact_size(Vec2::new(ui.available_width(), 300.), Sense::click());
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, action));
+        let hovered = response.hovered() || response.has_focus();
+        if hovered {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+        }
+        ui.painter().rect(
+            rect,
+            22.,
+            if dark {
+                Color32::from_rgb(34, 42, 45)
+            } else {
+                Color32::WHITE
+            },
+            if hovered {
+                Stroke::new(2., accent)
+            } else {
+                Stroke::new(1., ui.visuals().widgets.noninteractive.bg_stroke.color)
+            },
+            StrokeKind::Inside,
+        );
+        let inner = rect.shrink(26.);
+        let badge = Rect::from_min_size(inner.min, Vec2::splat(64.));
+        ui.painter().rect_filled(
+            badge,
+            18.,
+            accent.gamma_multiply(if dark { 0.25 } else { 0.12 }),
+        );
+        crate::designer_ui::paint_tool_icon(ui.painter(), badge.center(), accent, icon);
+        let text_color = ui.visuals().strong_text_color();
+        let weak_color = ui.visuals().weak_text_color();
+        let title_rect = ui.painter().text(
+            Pos2::new(inner.left(), badge.bottom() + 16.),
+            egui::Align2::LEFT_TOP,
+            title,
+            egui::FontId::proportional(28.),
+            text_color,
+        );
+        let subtitle_rect = ui.painter().text(
+            Pos2::new(inner.left(), title_rect.bottom() + 4.),
+            egui::Align2::LEFT_TOP,
+            subtitle,
+            egui::FontId::proportional(16.),
+            text_color,
+        );
+        let galley = ui.painter().layout(
+            description.to_owned(),
+            egui::FontId::proportional(14.),
+            ui.visuals().weak_text_color(),
+            inner.width(),
+        );
+        ui.painter().galley(
+            Pos2::new(inner.left(), subtitle_rect.bottom() + 8.),
+            galley,
+            weak_color,
+        );
+        // The big button.
+        let button = Rect::from_min_max(
+            Pos2::new(inner.left(), inner.bottom() - 60.),
+            inner.right_bottom(),
+        );
+        ui.painter().rect_filled(
+            button,
+            14.,
+            if hovered {
+                accent.lerp_to_gamma(Color32::WHITE, 0.14)
+            } else {
+                accent
+            },
+        );
+        ui.painter().text(
+            button.center(),
+            egui::Align2::CENTER_CENTER,
+            action,
+            egui::FontId::proportional(19.),
+            Color32::WHITE,
+        );
+        let tip = Pos2::new(button.right() - 26., button.center().y);
+        let chevron = Stroke::new(2.4, Color32::WHITE);
+        ui.painter()
+            .line_segment([tip + Vec2::new(-5., -7.), tip], chevron);
+        ui.painter()
+            .line_segment([tip + Vec2::new(-5., 7.), tip], chevron);
+        response
     }
     fn section_frame(ui: &egui::Ui) -> egui::Frame {
         egui::Frame::group(ui.style())

@@ -82,6 +82,11 @@ pub fn tr(text: &str) -> &str {
 }
 
 const ES: &[(&str, &str)] = &[
+    ("No printer selected", "Ninguna impresora seleccionada"),
+    (
+        "No recent documents yet. Labels you open will appear here.",
+        "Aún no hay documentos recientes. Las etiquetas que abras aparecerán aquí.",
+    ),
     ("Reviewed", "Revisada"),
     (
         "Print this label (Ctrl+P)",
@@ -1082,6 +1087,11 @@ const ES: &[(&str, &str)] = &[
     ),
 ];
 const DE: &[(&str, &str)] = &[
+    ("No printer selected", "Kein Drucker ausgewählt"),
+    (
+        "No recent documents yet. Labels you open will appear here.",
+        "Noch keine zuletzt geöffneten Dokumente. Etiketten, die Sie öffnen, erscheinen hier.",
+    ),
     ("Reviewed", "Geprüft"),
     (
         "Print this label (Ctrl+P)",
@@ -2052,6 +2062,11 @@ const DE: &[(&str, &str)] = &[
     ),
 ];
 const FR: &[(&str, &str)] = &[
+    ("No printer selected", "Aucune imprimante sélectionnée"),
+    (
+        "No recent documents yet. Labels you open will appear here.",
+        "Aucun document récent pour l'instant. Les étiquettes que vous ouvrez apparaîtront ici.",
+    ),
     ("Reviewed", "Vérifiée"),
     (
         "Print this label (Ctrl+P)",

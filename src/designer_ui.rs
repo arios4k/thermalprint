@@ -3618,16 +3618,9 @@ fn gallery_card(
     response
 }
 
-pub(crate) fn template_button(ui: &mut egui::Ui, name: &str) -> egui::Response {
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(218., 34.), Sense::click());
-    let shown = crate::i18n::tr(name);
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), shown));
-    let visuals = ui.style().interact(&response);
-    if response.hovered() || response.has_focus() {
-        ui.painter().rect_filled(rect, 5., visuals.bg_fill);
-    }
-    // The icon is chosen from the English name, which stays the template's identity.
-    let icon = match name {
+/// The icon for a template. It is chosen from the English name, which stays the template's identity.
+pub(crate) fn template_icon(name: &str) -> &'static str {
+    match name {
         "Blank custom" => "Blank custom",
         "Shipping 4 × 6" => "Shipping",
         "Return address" | "Name label" => "Add address",
@@ -3637,7 +3630,18 @@ pub(crate) fn template_button(ui: &mut egui::Ui, name: &str) -> egui::Response {
         "Price tag" => "Price tag",
         "Fragile" => "Fragile",
         _ => "Add Rectangle",
-    };
+    }
+}
+
+pub(crate) fn template_button(ui: &mut egui::Ui, name: &str) -> egui::Response {
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(218., 34.), Sense::click());
+    let shown = crate::i18n::tr(name);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), shown));
+    let visuals = ui.style().interact(&response);
+    if response.hovered() || response.has_focus() {
+        ui.painter().rect_filled(rect, 5., visuals.bg_fill);
+    }
+    let icon = template_icon(name);
     paint_tool_icon(
         ui.painter(),
         Pos2::new(rect.left() + 19., rect.center().y),
