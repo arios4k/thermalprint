@@ -45,6 +45,18 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.7.0" date="2026-11-10">
+      <description>
+        <p>A smoother day of printing labels.</p>
+        <ul>
+          <li>The watch folder shows a Watching indicator, keeps trying if a drive disappears, and can print on its own printer.</li>
+          <li>Messages stay on screen long enough to read, with a history, and moving printed labels to Processed can be undone.</li>
+          <li>Thumbnails for the queue, Alt+Left and Alt+Right to move between labels, and Ctrl+Enter to print and go to the next.</li>
+          <li>The queue is remembered between sessions, Print all can skip a label that fails, and automatic crops can skip the review step.</li>
+          <li>A summary of what will print, a first-run checklist, and a check that every screen text is translated.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.3" date="2026-11-10">
       <description>
         <p>Smoother folder watching.</p>

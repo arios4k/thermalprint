@@ -1,5 +1,6 @@
 mod about;
 mod navigation;
+mod notices;
 mod screenshots;
 mod window_chrome;
 use crate::{
@@ -30,7 +31,8 @@ enum Message {
     Loaded(Arc<Page>, Detection),
     Files(Vec<PathBuf>),
     BatchDone {
-        submitted: usize,
+        /// Queue positions that were submitted.
+        printed: Vec<usize>,
         total: usize,
         detail: String,
     },
@@ -53,6 +55,8 @@ enum DragKind {
 }
 #[derive(Clone)]
 struct QueueItem {
+    /// A small preview, made when the label has been shown once.
+    thumb: Option<egui::TextureHandle>,
     path: PathBuf,
     page: usize,
     crop: Crop,
@@ -92,6 +96,14 @@ pub struct ThermalPrint {
     history: Vec<crate::history::Entry>,
     history_stamp: Option<std::time::SystemTime>,
     last_watch: Instant,
+    notices: notices::Notices,
+    /// Why the watch folder is not working, shown beside its controls.
+    watch_error: Option<String>,
+    last_error: String,
+    /// Labels from the last session that can be put back in the queue.
+    restore_offer: Option<Vec<crate::settings::SavedItem>>,
+    /// Set by Print and next, so the next label is shown once this one is printed.
+    advance_next: bool,
     queue: Vec<QueueItem>,
     selected: Option<usize>,
     pending_files: std::collections::VecDeque<PathBuf>,
@@ -197,6 +209,11 @@ impl ThermalPrint {
             history: vec![],
             history_stamp: None,
             last_watch: Instant::now(),
+            notices: notices::Notices::default(),
+            watch_error: None,
+            last_error: String::new(),
+            restore_offer: None,
+            advance_next: false,
             queue: vec![],
             selected: None,
             pending_files: std::collections::VecDeque::new(),
@@ -226,6 +243,17 @@ impl ThermalPrint {
         } else {
             app.designer.enable_recovery();
             app.refresh_printers();
+            let saved: Vec<_> = app
+                .settings
+                .saved_queue
+                .iter()
+                .filter(|item| item.path.is_file())
+                .cloned()
+                .collect();
+            if !saved.is_empty() {
+                app.restore_offer = Some(saved);
+                app.area = Area::Import;
+            }
         }
         app
     }
@@ -261,14 +289,22 @@ impl ThermalPrint {
         });
     }
     fn open(&mut self) {
-        self.task("Choose shipping labels…", || {
-            let files = rfd::FileDialog::new()
-                .add_filter(
-                    "Labels",
-                    &["pdf", "png", "jpg", "jpeg", "tif", "tiff", "bmp", "webp"],
-                )
-                .pick_files();
-            Ok(files.map(Message::Files).unwrap_or(Message::Cancelled))
+        self.open_in(None);
+    }
+    /// Choose label files, starting in `dir` when it exists.
+    fn open_in(&mut self, dir: Option<PathBuf>) {
+        self.task("Choose shipping labels…", move || {
+            let mut dialog = rfd::FileDialog::new().add_filter(
+                "Labels",
+                &["pdf", "png", "jpg", "jpeg", "tif", "tiff", "bmp", "webp"],
+            );
+            if let Some(dir) = dir.filter(|d| d.is_dir()) {
+                dialog = dialog.set_directory(dir);
+            }
+            Ok(dialog
+                .pick_files()
+                .map(Message::Files)
+                .unwrap_or(Message::Cancelled))
         });
     }
     /// Start or stop the folder watcher to match the saved settings.
@@ -280,17 +316,22 @@ impl ThermalPrint {
             .flatten();
         let Some(folder) = wanted else {
             self.watcher = None;
+            self.watch_error = None;
             return;
         };
         if self.watcher.as_ref().is_some_and(|w| w.dir() == folder) {
             return;
         }
         match crate::watch::check(&folder).and_then(|()| crate::watch::Watcher::new(&folder)) {
-            Ok(watcher) => self.watcher = Some(watcher),
+            Ok(watcher) => {
+                self.watcher = Some(watcher);
+                self.watch_error = None;
+            }
             Err(error) => {
                 self.watcher = None;
                 self.settings.watch_enabled = false;
                 self.status = format!("Watch folder is off · {error:#}");
+                self.watch_error = Some(self.status.clone());
                 self.error = true;
             }
         }
@@ -305,8 +346,14 @@ impl ThermalPrint {
         }
         self.last_watch = Instant::now();
         match watcher.scan() {
-            Ok(files) if files.is_empty() => {}
             Ok(files) => {
+                if self.watch_error.take().is_some() {
+                    self.notices
+                        .push("The watch folder is readable again", false, None);
+                }
+                if files.is_empty() {
+                    return;
+                }
                 let count = files.len();
                 let visible = matches!(self.area, Area::Home | Area::Import);
                 if visible {
@@ -314,21 +361,62 @@ impl ThermalPrint {
                 }
                 self.append_files(files);
                 if !visible {
-                    self.status = format!(
+                    let text = format!(
                         "{count} new label(s) from the watch folder are waiting in Import & Convert"
                     );
+                    self.status = text.clone();
+                    self.notices.push(text, false, None);
                 }
             }
             Err(error) => {
-                self.watcher = None;
-                self.settings.watch_enabled = false;
-                self.status = format!("Watch folder is off · {error:#}");
-                self.error = true;
+                // A drive that is briefly unavailable should not switch watching off for good.
+                let text = format!("Cannot read the watch folder, still trying · {error:#}");
+                if self.watch_error.is_none() {
+                    self.notices.push(text.clone(), true, None);
+                }
+                self.watch_error = Some(text);
             }
         }
     }
     fn watch_controls(&mut self, ui: &mut egui::Ui) {
         let capturing = self.capture.is_some();
+        if self.watcher.is_some() || (self.capture.is_some() && self.settings.watch_enabled) {
+            let name = self
+                .settings
+                .watch_folder
+                .as_ref()
+                .and_then(|f| f.file_name())
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let green = Color32::from_rgb(40, 150, 90);
+            ui.horizontal(|ui| {
+                let (dot, _) = ui.allocate_exact_size(Vec2::splat(10.), Sense::hover());
+                ui.painter().circle_filled(dot.center(), 4., green);
+                ui.label(
+                    RichText::new(format!("{} {name}", crate::i18n::tr("Watching")))
+                        .small()
+                        .color(green),
+                );
+            });
+        }
+        if let Some(error) = self.watch_error.clone() {
+            ui.label(
+                RichText::new(error)
+                    .small()
+                    .color(Color32::from_rgb(200, 65, 55)),
+            );
+            if self.watcher.is_none()
+                && self.settings.watch_folder.is_some()
+                && ui
+                    .small_button(crate::i18n::tr("Turn watching back on"))
+                    .clicked()
+            {
+                self.settings.watch_enabled = true;
+                self.watch_error = None;
+                self.sync_watcher();
+                self.persist();
+            }
+        }
         egui::CollapsingHeader::new(crate::i18n::tr("Watch a folder"))
             .default_open(capturing)
             .show(ui, |ui| {
@@ -384,6 +472,58 @@ impl ThermalPrint {
                 .changed()
             {
                 self.persist();
+            }
+            if folder.is_some() && !self.printers.is_empty() {
+                ui.label(RichText::new(crate::i18n::tr("Printer for watched labels")).small());
+                let current = self
+                    .settings
+                    .watch_printer
+                    .clone()
+                    .unwrap_or_else(|| crate::i18n::tr("Current printer").to_owned());
+                let mut chosen: Option<Option<String>> = None;
+                egui::ComboBox::from_id_salt("watch-printer")
+                    .selected_text(current)
+                    .width(ui.available_width() - 12.)
+                    .show_ui(ui, |ui| {
+                        if ui
+                            .selectable_label(
+                                self.settings.watch_printer.is_none(),
+                                crate::i18n::tr("Current printer"),
+                            )
+                            .clicked()
+                        {
+                            chosen = Some(None);
+                        }
+                        for printer in &self.printers {
+                            if ui
+                                .selectable_label(
+                                    self.settings.watch_printer.as_deref()
+                                        == Some(printer.name.as_str()),
+                                    &printer.name,
+                                )
+                                .clicked()
+                            {
+                                chosen = Some(Some(printer.name.clone()));
+                            }
+                        }
+                    });
+                if let Some(choice) = chosen {
+                    self.settings.watch_printer = choice;
+                    self.persist();
+                }
+            }
+            if let Some(dir) = &folder
+                && ui
+                    .add_enabled(
+                        !self.busy,
+                        egui::Button::new(crate::i18n::tr("Add from Processed…")),
+                    )
+                    .on_hover_text(crate::i18n::tr(
+                        "Choose labels from the Processed folder to print them again",
+                    ))
+                    .clicked()
+            {
+                self.open_in(Some(dir.join(crate::watch::PROCESSED_DIR)));
             }
         });
     }
@@ -444,8 +584,11 @@ impl ThermalPrint {
         }
         let queue = self.queue.clone();
         let settings = self.settings.clone();
+        let keep_going = settings.keep_going;
         self.task("Submitting labels to CUPS in order…", move || {
             let total = queue.len();
+            let mut printed = Vec::new();
+            let mut failed: Vec<(usize, String)> = Vec::new();
             for (index, item) in queue.iter().enumerate() {
                 let result = (|| -> anyhow::Result<()> {
                     let page = document::load(&item.path, item.page)?;
@@ -464,18 +607,29 @@ impl ThermalPrint {
                     ));
                     Ok(())
                 })();
-                if let Err(e) = result {
-                    return Ok(Message::BatchDone {
-                        submitted: index,
-                        total,
-                        detail: format!("Stopped at label {}: {e:#}", index + 1),
-                    });
+                match result {
+                    Ok(()) => printed.push(index),
+                    Err(e) => {
+                        failed.push((index, format!("{e:#}")));
+                        if !keep_going {
+                            break;
+                        }
+                    }
                 }
             }
+            let detail = match failed.first() {
+                None => "All labels submitted to CUPS in order".to_string(),
+                Some((index, e)) if keep_going => format!(
+                    "{} label(s) failed and stayed in the queue · first, label {}: {e}",
+                    failed.len(),
+                    index + 1
+                ),
+                Some((index, e)) => format!("Stopped at label {}: {e}", index + 1),
+            };
             Ok(Message::BatchDone {
-                submitted: total,
+                printed,
                 total,
-                detail: "All labels submitted to CUPS in order".into(),
+                detail,
             })
         });
     }
@@ -510,6 +664,75 @@ impl ThermalPrint {
             egui::TextureOptions::LINEAR,
         )
     }
+    /// Put labels from the last session back in the queue. They need to be reviewed again.
+    fn restore_queue(&mut self, offer: Vec<crate::settings::SavedItem>) {
+        self.restore_offer = None;
+        for saved in offer {
+            self.queue.push(QueueItem {
+                thumb: None,
+                path: saved.path,
+                page: saved.page,
+                crop: saved.crop,
+                reviewed: self.settings.trust_auto_crop,
+                mode: Mode::Automatic,
+            });
+        }
+        if !self.queue.is_empty() {
+            self.select(0);
+        }
+    }
+    /// Remember the queue so it survives a restart or crash.
+    fn remember_queue(&mut self) {
+        if self.capture.is_some() || self.restore_offer.is_some() {
+            return;
+        }
+        let current: Vec<crate::settings::SavedItem> = self
+            .queue
+            .iter()
+            .map(|item| crate::settings::SavedItem {
+                path: item.path.clone(),
+                page: item.page,
+                crop: item.crop,
+            })
+            .collect();
+        if current != self.settings.saved_queue {
+            self.settings.saved_queue = current;
+            self.persist();
+        }
+    }
+    fn thumbnail(ctx: &egui::Context, image: &image::RgbImage) -> egui::TextureHandle {
+        let scale = (96. / image.width() as f32).min(136. / image.height() as f32);
+        let width = ((image.width() as f32 * scale) as u32).max(1);
+        let height = ((image.height() as f32 * scale) as u32).max(1);
+        let small = image::imageops::thumbnail(image, width, height);
+        Self::texture(ctx, "thumb", &small)
+    }
+    /// Labels from the watch folder can have their own printer.
+    fn apply_watch_printer(&mut self, path: &std::path::Path) {
+        let (Some(dir), Some(name)) = (
+            self.settings.watch_folder.clone(),
+            self.settings.watch_printer.clone(),
+        ) else {
+            return;
+        };
+        let from_watch_folder = path.parent() == Some(dir.as_path())
+            || path.parent() == Some(dir.join(crate::watch::PROCESSED_DIR).as_path());
+        if !from_watch_folder
+            || self.settings.printer == name
+            || !self.printers.iter().any(|p| p.name == name)
+        {
+            return;
+        }
+        if !self.settings.switch_printer(&name) {
+            self.settings.media.clear();
+            self.settings.resolution.clear();
+        }
+        self.notices.push(
+            format!("Printer switched to {name} for labels from the watch folder"),
+            false,
+            None,
+        );
+    }
     fn poll(&mut self, ctx: &egui::Context) {
         while let Ok(msg) = self.rx.try_recv() {
             self.busy = false;
@@ -521,20 +744,22 @@ impl ThermalPrint {
                     } else {
                         let i = self.queue.len();
                         self.queue.push(QueueItem {
+                            thumb: None,
                             path: page.path.clone(),
                             page: page.index,
                             crop: d.proposed,
-                            reviewed: !d.needs_review,
+                            reviewed: !d.needs_review || self.settings.trust_auto_crop,
                             mode: Mode::Automatic,
                         });
                         if page.count > 1 {
                             for n in 0..page.count {
                                 if n != page.index {
                                     self.queue.push(QueueItem {
+                                        thumb: None,
                                         path: page.path.clone(),
                                         page: n,
                                         crop: Crop::FULL,
-                                        reviewed: false,
+                                        reviewed: self.settings.trust_auto_crop,
                                         mode: Mode::Automatic,
                                     });
                                 }
@@ -543,6 +768,10 @@ impl ThermalPrint {
                         i
                     };
                     self.selected = Some(selected);
+                    if self.queue[selected].thumb.is_none() {
+                        self.queue[selected].thumb = Some(Self::thumbnail(ctx, &page.image));
+                    }
+                    self.apply_watch_printer(&page.path);
                     self.settings.remember(page.path.clone());
                     self.original_texture = Some(Self::texture(ctx, "original", &page.image));
                     self.crop = self.queue[selected].crop;
@@ -602,22 +831,27 @@ impl ThermalPrint {
                     };
                 }
                 Message::BatchDone {
-                    submitted,
+                    printed,
                     total,
                     detail,
                 } => {
+                    let submitted = printed.len();
                     self.status = format!("{detail} · {submitted}/{total} submitted");
                     self.error = submitted < total;
-                    if let Some(note) = self.finish_printed((0..submitted).collect()) {
-                        self.status = format!("{} · {note}", self.status);
-                    }
+                    self.notices.push(self.status.clone(), self.error, None);
+                    self.finish_printed(printed);
                 }
                 Message::PrintedOne { detail, index } => {
-                    self.status = detail;
+                    self.status = detail.clone();
                     self.error = false;
-                    if let Some(note) = self.finish_printed(index.into_iter().collect()) {
-                        self.status = format!("{} · {note}", self.status);
-                        self.error = note.starts_with("Printed, but");
+                    self.notices.push(detail, false, None);
+                    self.finish_printed(index.into_iter().collect());
+                    if std::mem::take(&mut self.advance_next)
+                        && !self.settings.move_printed
+                        && let Some(i) = index
+                        && i + 1 < self.queue.len()
+                    {
+                        self.select(i + 1);
                     }
                 }
                 Message::Done(s) => {
@@ -626,6 +860,7 @@ impl ThermalPrint {
                 }
                 Message::Cancelled => self.status = "Ready".into(),
                 Message::Error(e) => {
+                    self.advance_next = false;
                     self.status = e;
                     self.error = true;
                     self.dirty = false;
@@ -688,15 +923,19 @@ impl ThermalPrint {
     }
     /// Take printed labels out of the queue and move their files to the Processed folder.
     /// Files still needed by another queued page (multi-page PDFs) stay until the last one.
-    fn finish_printed(&mut self, mut indices: Vec<usize>) -> Option<String> {
+    fn finish_printed(&mut self, mut indices: Vec<usize>) {
         if !self.settings.move_printed || indices.is_empty() {
-            return None;
+            return;
         }
-        let dir = self.settings.watch_folder.clone()?;
+        let Some(dir) = self.settings.watch_folder.clone() else {
+            return;
+        };
         indices.sort_unstable();
         indices.dedup();
         indices.retain(|&i| i < self.queue.len());
-        let &first = indices.first()?;
+        let Some(&first) = indices.first() else {
+            return;
+        };
         let mut printed = Vec::new();
         for &i in indices.iter().rev() {
             printed.push(self.queue.remove(i).path);
@@ -712,32 +951,83 @@ impl ThermalPrint {
         }
         printed.sort();
         printed.dedup();
-        let (mut moved, mut failed) = (0, None);
+        let mut moves: notices::Moves = Vec::new();
+        let mut failed = None;
         for path in printed {
             if self.queue.iter().any(|item| item.path == path) {
                 continue;
             }
             match crate::watch::archive(&path, &dir) {
                 Ok(Some(new)) => {
-                    moved += 1;
                     // Keep the recent-files list pointing at the file's new location.
                     for recent in self.settings.recent.iter_mut().filter(|r| **r == path) {
                         *recent = new.clone();
                     }
+                    moves.push((path, new));
                 }
                 Ok(None) => {}
                 Err(error) => failed = Some(format!("{error:#}")),
             }
         }
-        if moved > 0 {
+        if !moves.is_empty() {
             self.persist();
         }
-        failed
-            .map(|e| format!("Printed, but could not move a label to Processed · {e}"))
-            .or_else(|| {
-                (moved > 0)
-                    .then(|| format!("{moved} label(s) moved to {}", crate::watch::PROCESSED_DIR))
-            })
+        if let Some(e) = failed {
+            self.notices.push(
+                format!("Printed, but could not move a label to Processed · {e}"),
+                true,
+                None,
+            );
+        }
+        if !moves.is_empty() {
+            self.notices.push(
+                format!(
+                    "{} label(s) moved to {}",
+                    moves.len(),
+                    crate::watch::PROCESSED_DIR
+                ),
+                false,
+                Some(moves),
+            );
+        }
+    }
+    /// Move labels back out of Processed and add them to the queue again.
+    fn undo_moves(&mut self, moves: notices::Moves) {
+        let mut restored = Vec::new();
+        for (original, archived) in &moves {
+            match crate::watch::restore(original, archived) {
+                Ok(true) => {
+                    for recent in self.settings.recent.iter_mut().filter(|r| *r == archived) {
+                        *recent = original.clone();
+                    }
+                    restored.push(original.clone());
+                }
+                Ok(false) => {}
+                Err(error) => self.notices.push(format!("{error:#}"), true, None),
+            }
+        }
+        if restored.is_empty() {
+            self.notices.push(
+                "Nothing to undo: the files were already moved or replaced",
+                true,
+                None,
+            );
+            return;
+        }
+        if let Some(watcher) = self.watcher.as_mut() {
+            for path in &restored {
+                watcher.mark_seen(path);
+            }
+        }
+        let count = restored.len();
+        self.area = Area::Import;
+        self.append_files(restored);
+        self.persist();
+        self.notices.push(
+            format!("{count} label(s) moved back to the watch folder and added to the queue"),
+            false,
+            None,
+        );
     }
     /// Open the manual page that explains the screen you are on.
     fn open_manual(&self, ctx: &egui::Context) {
@@ -805,6 +1095,53 @@ impl ThermalPrint {
             self.append_files(vec![path]);
         }
     }
+    /// A short checklist for new users, shown until a printer and media are chosen.
+    fn first_steps(&mut self, ui: &mut egui::Ui) {
+        let printer = !self.settings.printer.is_empty();
+        let media = !self.settings.media.is_empty();
+        if self.settings.setup_dismissed || (printer && media) || self.capture.is_some() {
+            return;
+        }
+        ui.add_space(14.);
+        Self::section_frame(ui).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.label(RichText::new(crate::i18n::tr("Get ready to print")).strong());
+            let found = !self.printers.is_empty();
+            for (done, text) in [
+                (
+                    printer,
+                    if found {
+                        "Choose your label printer in Import & Convert"
+                    } else {
+                        "Add your label printer in your system settings, then reopen the app"
+                    },
+                ),
+                (media, "Choose the label size your printer has loaded"),
+                (
+                    self.settings.watch_folder.is_some(),
+                    "Optional: watch a folder such as Downloads so new labels appear by themselves",
+                ),
+            ] {
+                ui.label(format!(
+                    "{}  {}",
+                    if done { "[x]" } else { "[  ]" },
+                    crate::i18n::tr(text)
+                ));
+            }
+            ui.horizontal(|ui| {
+                if ui
+                    .button(crate::i18n::tr("Open Import & Convert"))
+                    .clicked()
+                {
+                    self.area = Area::Import;
+                }
+                if ui.button(crate::i18n::tr("Hide this")).clicked() {
+                    self.settings.setup_dismissed = true;
+                    self.persist();
+                }
+            });
+        });
+    }
     fn home(&mut self, ui: &mut egui::Ui) {
         ui.vertical_centered(|ui| {
             ui.add_space(20.);
@@ -844,6 +1181,7 @@ impl ThermalPrint {
                 self.open();
             }
         });
+        self.first_steps(ui);
         ui.add_space(18.);
         ui.heading(crate::i18n::tr("Templates"));
         ui.horizontal_wrapped(|ui| {
@@ -1444,6 +1782,28 @@ impl ThermalPrint {
         {
             self.open();
         }
+        if let Some(offer) = self.restore_offer.clone() {
+            crate::help::notice(
+                ui,
+                "Restore your last queue?",
+                &format!(
+                    "{} label(s) were still in the queue when you last closed the app.",
+                    offer.len()
+                ),
+                false,
+            );
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(!self.busy, egui::Button::new(crate::i18n::tr("Restore")))
+                    .clicked()
+                {
+                    self.restore_queue(offer);
+                }
+                if ui.button(crate::i18n::tr("Discard")).clicked() {
+                    self.restore_offer = None;
+                }
+            });
+        }
         self.watch_controls(ui);
         if !self.queue.is_empty() {
             ui.add_space(8.);
@@ -1463,7 +1823,7 @@ impl ThermalPrint {
                     ui,
                     "Previous",
                     "",
-                    "View the previous label",
+                    "View the previous label (Alt+Left)",
                     !self.busy && self.selected.is_some_and(|i| i > 0),
                     false,
                 )
@@ -1475,7 +1835,7 @@ impl ThermalPrint {
                     ui,
                     "Next",
                     "",
-                    "View the next label",
+                    "View the next label (Alt+Right)",
                     !self.busy && self.selected.is_some_and(|i| i + 1 < self.queue.len()),
                     false,
                 )
@@ -1485,6 +1845,39 @@ impl ThermalPrint {
                 }
             });
             let mut action = None;
+            if self.queue.len() > 1 {
+                egui::ScrollArea::horizontal()
+                    .id_salt("queue-thumbnails")
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            let size = Vec2::new(44., 62.);
+                            for (i, item) in self.queue.iter().enumerate() {
+                                let selected = self.selected == Some(i);
+                                let name =
+                                    item.path.file_name().unwrap_or_default().to_string_lossy();
+                                let button = match &item.thumb {
+                                    Some(thumb) => egui::Button::image(
+                                        egui::Image::new(thumb).fit_to_exact_size(size),
+                                    ),
+                                    None => egui::Button::new((i + 1).to_string()).min_size(size),
+                                };
+                                let response = ui
+                                    .add_enabled(!self.busy, button.selected(selected))
+                                    .on_hover_text(format!("{} · {name}", i + 1));
+                                response.widget_info(|| {
+                                    egui::WidgetInfo::labeled(
+                                        egui::Role::Button,
+                                        true,
+                                        format!("Label {} of {}: {name}", i + 1, self.queue.len()),
+                                    )
+                                });
+                                if response.clicked() {
+                                    action = Some(i);
+                                }
+                            }
+                        });
+                    });
+            }
             egui::CollapsingHeader::new("Queued labels")
                 .default_open(false)
                 .show(ui, |ui| {
@@ -1568,6 +1961,30 @@ impl ThermalPrint {
                 }
             });
             if ui
+                .checkbox(
+                    &mut self.settings.trust_auto_crop,
+                    crate::i18n::tr("Skip review for automatic crops"),
+                )
+                .on_hover_text(crate::i18n::tr(
+                    "Labels added from now on count as reviewed, so Print all does not wait for you to check each crop. Turn this on only for labels whose layout you trust.",
+                ))
+                .changed()
+            {
+                self.persist();
+            }
+            if ui
+                .checkbox(
+                    &mut self.settings.keep_going,
+                    crate::i18n::tr("Keep going if a label fails"),
+                )
+                .on_hover_text(crate::i18n::tr(
+                    "Print all skips a label that fails and continues with the rest. Failed labels stay in the queue.",
+                ))
+                .changed()
+            {
+                self.persist();
+            }
+            if ui
                 .add_enabled(
                     !self.busy
                         && !self.settings.printer.is_empty()
@@ -1626,7 +2043,7 @@ impl ThermalPrint {
             if self.settings.mode==Mode::Automatic && let Some(d)=self.detection.clone() && d.candidates.len()>1 && d.proposed==Crop::FULL
                 && ui.button(format!("Queue all {} detected regions",d.candidates.len())).clicked()
                 && let (Some(i),Some(page))=(self.selected,self.page.as_ref()) {
-                        let items=d.candidates.into_iter().map(|crop|QueueItem{path:page.path.clone(),page:page.index,crop,reviewed:false,mode:Mode::Automatic}).collect::<Vec<_>>();
+                        let items=d.candidates.into_iter().map(|crop|QueueItem{thumb:None,path:page.path.clone(),page:page.index,crop,reviewed:false,mode:Mode::Automatic}).collect::<Vec<_>>();
                         self.queue.splice(i..=i,items);
                         self.crop=self.queue[i].crop;
                         self.reviewed=false;
@@ -1676,6 +2093,21 @@ impl ThermalPrint {
             }
             ui.horizontal(|ui|{ui.label(crate::i18n::tr("Copies"));ui.add(egui::DragValue::new(&mut self.settings.copies).range(1..=999));if crate::designer_ui::icon_action(ui, "Refresh", "", "Refresh available CUPS printers", !self.busy, false).clicked(){self.refresh_printers();}});
             self.print_readiness(ui, true);
+            if !self.settings.printer.is_empty() {
+                ui.label(
+                    RichText::new(format!(
+                        "{}: {} × {:.1} × {:.1} mm · {} · {} dpi",
+                        crate::i18n::tr("Will print"),
+                        self.settings.copies,
+                        self.settings.width_mm,
+                        self.settings.height_mm,
+                        self.settings.printer,
+                        self.settings.dpi
+                    ))
+                    .small()
+                    .weak(),
+                );
+            }
             if ui.add_enabled(self.ready()&&!self.settings.printer.is_empty()&&!self.settings.media.is_empty(),egui::Button::new(RichText::new(crate::i18n::tr("Print label   Ctrl+P")).color(Color32::WHITE)).fill(Color32::from_rgb(28,111,100)).min_size(Vec2::new(ui.available_width(),42.))).clicked(){self.print();}
             ui.horizontal(|ui|{if crate::designer_ui::icon_action(ui, "Export document", "PDF", "Export the prepared label as PDF", self.ready(), false).clicked(){self.export(true);}
                 if crate::designer_ui::icon_action(ui, "Add image / logo...", "PNG", "Export the prepared label as PNG", self.ready(), false).clicked(){self.export(false);}});
@@ -1953,6 +2385,14 @@ impl eframe::App for ThermalPrint {
         let ctx = ui.ctx().clone();
         self.poll(&ctx);
         self.watch_tick(&ctx);
+        self.remember_queue();
+        // Errors are also shown as a message that stays until it has been read.
+        if self.error && self.status != self.last_error {
+            self.last_error = self.status.clone();
+            self.notices.push(self.status.clone(), true, None);
+        } else if !self.error {
+            self.last_error.clear();
+        }
         if let Some(mut capture) = self.capture.take() {
             capture.tick(self, &ctx);
             self.capture = Some(capture);
@@ -1991,6 +2431,31 @@ impl eframe::App for ThermalPrint {
                 && ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::P))
             {
                 self.print();
+            }
+            if self.area == Area::Import
+                && !self.about_open
+                && !self.license_open
+                && !self.terms_open
+            {
+                if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter))
+                    && self.ready()
+                {
+                    // Print this label, then show the next one.
+                    self.advance_next = true;
+                    self.print();
+                }
+                if let Some(i) = self.selected {
+                    if ctx.input_mut(|i| i.consume_key(egui::Modifiers::ALT, egui::Key::ArrowLeft))
+                        && i > 0
+                    {
+                        self.select(i - 1);
+                    } else if ctx
+                        .input_mut(|i| i.consume_key(egui::Modifiers::ALT, egui::Key::ArrowRight))
+                        && i + 1 < self.queue.len()
+                    {
+                        self.select(i + 1);
+                    }
+                }
             }
         }
         // F1 works everywhere, including while a dialog is open.
@@ -2215,8 +2680,18 @@ impl eframe::App for ThermalPrint {
                 } else {
                     ui.visuals().text_color()
                 }));
+                if ui
+                    .small_button(crate::i18n::tr("Messages"))
+                    .on_hover_text(crate::i18n::tr("Show recent messages"))
+                    .clicked()
+                {
+                    self.notices.toggle_history();
+                }
             });
         });
+        if let Some(notices::Action::Undo(moves)) = self.notices.show(&ctx, !self.busy) {
+            self.undo_moves(moves);
+        }
         match self.area {
             Area::Home => {
                 egui::CentralPanel::default().show(ui, |ui| {

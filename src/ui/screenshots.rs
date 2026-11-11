@@ -403,6 +403,7 @@ pub(super) fn seed(app: &mut ThermalPrint, ctx: &egui::Context) {
     app.detection = Some(detection::detect(&page.image));
     app.original_texture = Some(ThermalPrint::texture(ctx, "demo-original", &page.image));
     app.output_texture = Some(ThermalPrint::texture(ctx, "demo-output", &output.image));
+    let demo_thumb = ThermalPrint::thumbnail(ctx, &page.image);
     app.page = Some(page);
     app.output = Some(Arc::new(output));
     app.reviewed = true;
@@ -410,6 +411,7 @@ pub(super) fn seed(app: &mut ThermalPrint, ctx: &egui::Context) {
     app.selected = Some(0);
     app.queue = (1..=3)
         .map(|i| QueueItem {
+            thumb: Some(demo_thumb.clone()),
             path: PathBuf::from(format!("demo-order-{}.pdf", 1047 + i)),
             page: 0,
             crop: app.crop,

@@ -83,6 +83,23 @@ pub struct Settings {
     pub watch_enabled: bool,
     /// Move labels from the watch folder into a Processed subfolder once printed.
     pub move_printed: bool,
+    /// Treat every automatic crop as reviewed, so Print all does not wait for a review.
+    pub trust_auto_crop: bool,
+    /// When a label fails in Print all, skip it and continue with the rest.
+    pub keep_going: bool,
+    /// A printer to switch to whenever a label from the watch folder is shown.
+    pub watch_printer: Option<String>,
+    /// Labels still waiting in the queue when the app last closed.
+    pub saved_queue: Vec<SavedItem>,
+    /// The first-run checklist on Home was closed.
+    pub setup_dismissed: bool,
+}
+/// A queued label remembered between sessions.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SavedItem {
+    pub path: PathBuf,
+    pub page: usize,
+    pub crop: crate::detection::Crop,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -110,6 +127,11 @@ impl Default for Settings {
             watch_folder: None,
             watch_enabled: false,
             move_printed: false,
+            trust_auto_crop: false,
+            keep_going: false,
+            watch_printer: None,
+            saved_queue: vec![],
+            setup_dismissed: false,
         }
     }
 }

@@ -4,20 +4,22 @@ group: The app
 summary: Open PDF and image labels, crop away instructions, check the result, and print one or many in order.
 -->
 <p><strong>Import &amp; Convert</strong> turns a downloaded label into something your thermal printer can print at the right size. The label file you open is never changed; ThermalPrint works on a copy in memory.</p>
+<p><strong>Where labels come from.</strong> Most people import the PDF that a marketplace or carrier gives them after a sale: for example a prepaid label from <strong>Vinted</strong>, <strong>eBay</strong>, <strong>Etsy</strong>, <strong>Poshmark</strong>, <strong>Depop</strong>, or <strong>Mercari</strong>, a label bought from <strong>USPS</strong>, <strong>UPS</strong>, <strong>FedEx</strong>, or <strong>DHL</strong>, or one from a shipping service such as <strong>Pirate Ship</strong>, <strong>Shopify Shipping</strong>, or <strong>Amazon</strong>. These files are often a full A4 or Letter page with the label in one corner, followed by instructions, a receipt, or a packing slip. ThermalPrint finds the label and crops the rest away. The examples in this manual use these names only to describe where labels come from; ThermalPrint is not connected to, or endorsed by, any of these companies, and it does not buy postage.</p>
 
 {{figure:import-annotated|Import and Convert with numbered callouts on the Add labels button, watch folder, print queue, extract step, preview tabs, and preview|The Import &amp; Convert screen. (1) Add labels, (2) Watch a folder, (3) print queue, (4) the three steps, (5) preview tabs, (6) preview.}}
 
 <h2>Adding labels</h2>
 <p>You can add labels three ways:</p>
 <ul>
-  <li>Press <strong>Add labels…</strong> or <kbd>Ctrl</kbd>+<kbd>O</kbd> and choose one or more files.</li>
+  <li>Press <strong>Add labels…</strong> or <kbd>Ctrl</kbd>+<kbd>O</kbd> and choose one or more files. <kbd>Alt</kbd>+<kbd>←</kbd> and <kbd>Alt</kbd>+<kbd>→</kbd> move between queued labels.</li>
   <li>Drag files from your file manager onto the window.</li>
   <li>Set up a <a href="automation.html#watching-a-folder">watch folder</a> so new downloads appear by themselves. Tick <strong>Move printed labels to a Processed folder</strong> there to have each printed label leave the queue and move into a <code>Processed</code> subfolder.</li>
 </ul>
 <p><strong>Supported files:</strong> PDF, PNG, JPEG, TIFF, BMP, and WebP. Each page of a multi-page PDF becomes its own entry in the queue. Files can be up to 256 MB and 45 megapixels. If a PDF is encrypted or damaged, export it again from the place you got it.</p>
 
 <h2>The print queue</h2>
-<p>Everything you add joins the <strong>print queue</strong>. The queue shows <em>Label 1 of 3</em> with previous and next buttons, and a <strong>Queued labels</strong> list.</p>
+<p>Everything you add joins the <strong>print queue</strong>. The queue shows <em>Label 1 of 3</em> with previous and next buttons, a strip of small <strong>thumbnails</strong>, and a <strong>Queued labels</strong> list.</p>
+<p>The thumbnail strip appears when there are two or more labels. Click a thumbnail to show that label; the selected one is highlighted and hovering shows its position and file name. A label gets its picture the first time it is shown, so until then its button shows its number. The counters, thumbnails, and the Previous and Next buttons always follow the queue, including after a label is printed and removed.</p>
 <table>
   <tr><th>Control</th><th>What it does</th></tr>
   <tr><td>Previous / next</td><td>Move between labels in the queue.</td></tr>
@@ -27,7 +29,15 @@ summary: Open PDF and image labels, crop away instructions, check the result, an
   <tr><td>Printed labels (with <strong>Move printed labels to a Processed folder</strong> on)</td><td>After you print, the label leaves the queue, its file moves to the <code>Processed</code> folder inside your watch folder, and the next label is shown. The counters follow along. See <a href="automation.html#watching-a-folder">Watching a folder</a>.</td></tr>
   <tr><td><strong>Page</strong> box</td><td>For a multi-page PDF, jump to another page.</td></tr>
 </table>
-<p>Each label remembers its own crop, extraction mode, and review state. The queue lives in memory for the current session; it is not restored when you quit. Recent <em>file names</em> are remembered, so you can reopen files from Home.</p>
+<p>Each label remembers its own crop, extraction mode, and review state. Recent <em>file names</em> are remembered, so you can reopen files from Home.</p>
+<h3>Keeping the queue between sessions</h3>
+<p>The queue is saved as you work. If you quit or the app closes unexpectedly with labels still in the queue, the next start opens Import &amp; Convert with <strong>Restore your last queue?</strong> at the top of the sidebar. <strong>Restore</strong> puts the labels back with their crops and shows the first one; <strong>Discard</strong> forgets them. Restored labels must be reviewed again before you print (unless <strong>Skip review for automatic crops</strong> is on), and files that have been moved or deleted since are left out. Until you choose, the saved queue is kept and not overwritten.</p>
+<h3>Options for Print all</h3>
+<table>
+  <tr><th>Option</th><th>What it does</th></tr>
+  <tr><td><strong>Skip review for automatic crops</strong></td><td>Off by default. When on, labels you add from then on count as reviewed, so <strong>Print all</strong> does not wait for you to check each crop. Use it only for labels whose layout you trust, such as the same marketplace's or carrier's labels every day (for example a stack of Vinted or eBay labels that always look the same). Check a label from a new source by hand first. Labels already in the queue keep their review state, and you can still review any label by hand. The Print button still stays disabled if a label would be clipped.</td></tr>
+  <tr><td><strong>Keep going if a label fails</strong></td><td>Off by default. When on, a label that fails (a file that can no longer be read, a layout error, or a printer error) is skipped and the rest are still printed. Skipped labels stay in the queue and the message lists how many failed and why the first one failed. This suits a busy day of marketplace orders, where one bad file, such as an expired USPS or UPS label that cannot be opened, should not hold up the other twenty.</td></tr>
+</table>
 
 <h2>Step 01: Extract</h2>
 <p>Most carrier PDFs have a label plus instructions, a receipt, or a lot of empty space. <strong>Extract</strong> chooses which part to print.</p>
@@ -62,8 +72,10 @@ summary: Open PDF and image labels, crop away instructions, check the result, an
   <li>Choose the <strong>media size</strong> the printer advertises, matching the stock you loaded. See <a href="print-center.html#printer-and-media">Print Center</a> for how media works.</li>
   <li>Optionally open <strong>Advanced driver resolution</strong> to pick a resolution your printer offers.</li>
   <li>Set the number of <strong>Copies</strong>.</li>
-  <li>Press <strong>Print label</strong> (<kbd>Ctrl</kbd>+<kbd>P</kbd>).</li>
+  <li>Check the line under the readiness message, for example <em>Will print: 1 × 101.6 × 152.4 mm · Printer name · 203 dpi</em>. It shows exactly what will be sent, so a wrong copy count, size, or printer is easy to spot.</li>
+  <li>Press <strong>Print label</strong> (<kbd>Ctrl</kbd>+<kbd>P</kbd>), or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to print and move on to the next label in the queue.</li>
 </ol>
+<p>Not sure about the paper or alignment? Load plain paper and print the <strong>alignment test</strong> first; see <a href="print-center.html#alignment-and-printer-profiles">Alignment and printer profiles</a>. The readiness message above the Print button (<em>Ready to submit</em>, or a warning about the media size) appears before anything is sent.</p>
 <p>If the label came from your watch folder and <strong>Move printed labels to a Processed folder</strong> is ticked, a successful print also moves the file into <code>Processed</code> and shows the next label. Labels you added by hand from other folders stay where they are.</p>
 <p>The <strong>PDF</strong> and <strong>PNG</strong> buttons save the finished label as a file instead; see <a href="export.html">Exporting</a>. <strong>Job status</strong> asks the printer system what is waiting.</p>
 <div class="callout note"><p>The Print button stays disabled until the label has rendered, the crop is reviewed, a printer and matching media are chosen, and nothing is clipped. The status bar and the notice in Print Center say what is still missing.</p></div>
@@ -77,7 +89,7 @@ summary: Open PDF and image labels, crop away instructions, check the result, an
 </ul>
 
 <h2 id="printing-several-labels">Printing several labels</h2>
-<p>Add all the files, review each one, then press <strong>Print all N labels in order</strong>. The labels are submitted one after another in queue order. The batch <strong>stops at the first problem</strong> (a file that can no longer be read, a layout error, or a printer error) and tells you how many were sent. Paper size, resolution, rotation, margins, scale, copies, printer, and media are shared by the whole batch.</p>
+<p>Add all the files, review each one, then press <strong>Print all N labels in order</strong>. The labels are submitted one after another in queue order. Unless <strong>Keep going if a label fails</strong> is ticked, the batch <strong>stops at the first problem</strong> (a file that can no longer be read, a layout error, or a printer error) and tells you how many were sent. With that option on, only the failed labels are skipped and stay in the queue. Print all uses the printer that is selected when you press it. Paper size, resolution, rotation, margins, scale, copies, printer, and media are shared by the whole batch.</p>
 <div class="callout note"><p>Submission order is not a promise about physical printing. Use <strong>Job status</strong> and look at the printer to confirm what came out.</p></div>
 <p>If you want to print many <em>different</em> values on <em>one</em> design, such as a list of customers, use <a href="batch.html">Batch printing from CSV</a> instead.</p>
 

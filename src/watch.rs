@@ -52,6 +52,15 @@ impl Watcher {
         &self.dir
     }
 
+    /// Remember a file as already handled, so putting it back in the folder (for example
+    /// after an undo) does not import it a second time.
+    pub fn mark_seen(&mut self, path: &Path) {
+        if let Ok(metadata) = std::fs::symlink_metadata(path) {
+            self.seen
+                .insert(path.to_owned(), (metadata.len(), metadata.modified().ok()));
+        }
+    }
+
     /// Regular, supported, non-empty files. Symbolic links are ignored so a link cannot
     /// pull in a file from somewhere the user did not choose. The flag is true when the
     /// folder was too large to list completely.
@@ -144,6 +153,23 @@ pub fn archive(file: &Path, watch_dir: &Path) -> Result<Option<PathBuf>> {
     std::fs::rename(file, &target)
         .with_context(|| format!("Cannot move {} to {}", file.display(), target.display()))?;
     Ok(Some(target))
+}
+
+/// Put a file moved by [`archive`] back where it came from. Nothing is overwritten: if a
+/// file with the original name exists again, the archived one stays in `Processed`.
+/// Returns whether the file was restored.
+pub fn restore(original: &Path, archived: &Path) -> Result<bool> {
+    if original.symlink_metadata().is_ok() || archived.symlink_metadata().is_err() {
+        return Ok(false);
+    }
+    std::fs::rename(archived, original).with_context(|| {
+        format!(
+            "Cannot move {} back to {}",
+            archived.display(),
+            original.display()
+        )
+    })?;
+    Ok(true)
 }
 
 /// Explain why a folder may be unreadable from the Snap. `real_home` is the user's actual
@@ -259,6 +285,26 @@ mod tests {
             watcher.scan().unwrap().is_empty(),
             "Processed is not scanned"
         );
+    }
+
+    #[test]
+    fn restore_puts_a_label_back_without_overwriting_and_is_not_reimported() {
+        let dir = tempfile::tempdir().unwrap();
+        let original = write(dir.path(), "label.pdf", b"one");
+        let archived = archive(&original, dir.path()).unwrap().unwrap();
+        let mut watcher = Watcher::new(dir.path()).unwrap();
+        assert!(restore(&original, &archived).unwrap());
+        assert!(original.exists() && !archived.exists());
+        watcher.mark_seen(&original);
+        for _ in 0..3 {
+            assert!(watcher.scan().unwrap().is_empty());
+        }
+        let again = archive(&original, dir.path()).unwrap().unwrap();
+        write(dir.path(), "label.pdf", b"newer");
+        assert!(!restore(&original, &again).unwrap(), "never overwrites");
+        assert_eq!(std::fs::read(&original).unwrap(), b"newer");
+        assert!(again.exists());
+        assert!(!restore(&original, &dir.path().join("missing.pdf")).unwrap());
     }
 
     #[test]

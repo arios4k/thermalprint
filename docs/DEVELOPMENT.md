@@ -34,4 +34,4 @@ Contributions and reproducible sample labels with private addresses and tracking
 
 ## Documentation captures
 
-Run `sh scripts/capture-screenshots.sh` from a Linux desktop session to regenerate the real UI screenshots with fictional demo data. See [screenshot notes](screenshots/README.md).
+Every text passed to `tr("…")` in the interface must have a Spanish, German, and French entry in `src/i18n.rs`; `cargo test` fails and lists the missing ones otherwise. Run `sh scripts/capture-screenshots.sh` from a Linux desktop session to regenerate the real UI screenshots with fictional demo data. See [screenshot notes](screenshots/README.md).

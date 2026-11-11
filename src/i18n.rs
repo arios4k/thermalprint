@@ -82,6 +82,61 @@ pub fn tr(text: &str) -> &str {
 }
 
 const ES: &[(&str, &str)] = &[
+    ("Undo", "Deshacer"),
+    ("Dismiss", "Descartar"),
+    ("Watching", "Vigilando"),
+    ("Hide this", "Ocultar esto"),
+    ("Turn watching back on", "Reactivar la vigilancia"),
+    ("Recent messages", "Mensajes recientes"),
+    ("Show recent messages", "Mostrar mensajes recientes"),
+    ("Add from Processed…", "Añadir desde Processed…"),
+    (
+        "Keep going if a label fails",
+        "Continuar si una etiqueta falla",
+    ),
+    ("Open Import & Convert", "Abrir Importar y convertir"),
+    ("Messages", "Mensajes"),
+    ("Will print", "Se imprimirá"),
+    (
+        "Labels added from now on count as reviewed, so Print all does not wait for you to check each crop. Turn this on only for labels whose layout you trust.",
+        "Las etiquetas añadidas a partir de ahora cuentan como revisadas, así que Imprimir todo no espera a que compruebes cada recorte. Actívalo solo para etiquetas cuyo diseño conoces.",
+    ),
+    (
+        "Choose labels from the Processed folder to print them again",
+        "Elige etiquetas de la carpeta Processed para imprimirlas de nuevo",
+    ),
+    (
+        "Print all skips a label that fails and continues with the rest. Failed labels stay in the queue.",
+        "Imprimir todo omite una etiqueta que falla y continúa con el resto. Las etiquetas fallidas permanecen en la cola.",
+    ),
+    ("Nothing yet", "Aún nada"),
+    ("Current printer", "Impresora actual"),
+    (
+        "Printer for watched labels",
+        "Impresora para etiquetas vigiladas",
+    ),
+    (
+        "Skip review for automatic crops",
+        "Omitir la revisión de recortes automáticos",
+    ),
+    ("Get ready to print", "Prepárate para imprimir"),
+    (
+        "Choose your label printer in Import & Convert",
+        "Elige tu impresora de etiquetas en Importar y convertir",
+    ),
+    (
+        "Add your label printer in your system settings, then reopen the app",
+        "Añade tu impresora de etiquetas en los ajustes del sistema y vuelve a abrir la aplicación",
+    ),
+    (
+        "Choose the label size your printer has loaded",
+        "Elige el tamaño de etiqueta que tiene cargado tu impresora",
+    ),
+    (
+        "Optional: watch a folder such as Downloads so new labels appear by themselves",
+        "Opcional: vigila una carpeta como Descargas para que las etiquetas nuevas aparezcan solas",
+    ),
+    ("Restore your last queue?", "¿Restaurar la última cola?"),
     (
         "Move printed labels to a Processed folder",
         "Mover las etiquetas impresas a una carpeta Processed",
@@ -530,12 +585,18 @@ const ES: &[(&str, &str)] = &[
         "Desplazamiento vertical de impresión en milímetros",
     ),
     ("View", "Ver"),
-    ("View the next label", "Ver la etiqueta siguiente"),
+    (
+        "View the next label (Alt+Right)",
+        "Ver la etiqueta siguiente (Alt+Right)",
+    ),
     (
         "View the original document and adjust the crop",
         "Ver el documento original y ajustar el recorte",
     ),
-    ("View the previous label", "Ver la etiqueta anterior"),
+    (
+        "View the previous label (Alt+Left)",
+        "Ver la etiqueta anterior (Alt+Left)",
+    ),
     ("WORKSPACE", "ESPACIO DE TRABAJO"),
     ("Watch a folder", "Vigilar una carpeta"),
     ("Watch for new labels", "Vigilar etiquetas nuevas"),
@@ -999,6 +1060,64 @@ const ES: &[(&str, &str)] = &[
     ),
 ];
 const DE: &[(&str, &str)] = &[
+    ("Undo", "Rückgängig"),
+    ("Dismiss", "Schließen"),
+    ("Watching", "Überwacht:"),
+    ("Hide this", "Ausblenden"),
+    ("Turn watching back on", "Überwachung wieder einschalten"),
+    ("Recent messages", "Letzte Meldungen"),
+    ("Show recent messages", "Letzte Meldungen anzeigen"),
+    ("Add from Processed…", "Aus Processed hinzufügen…"),
+    (
+        "Keep going if a label fails",
+        "Bei einem Fehler mit dem Rest fortfahren",
+    ),
+    ("Open Import & Convert", "Importieren öffnen"),
+    ("Messages", "Meldungen"),
+    ("Will print", "Wird gedruckt"),
+    (
+        "Labels added from now on count as reviewed, so Print all does not wait for you to check each crop. Turn this on only for labels whose layout you trust.",
+        "Ab jetzt hinzugefügte Etiketten gelten als geprüft, sodass Alle drucken nicht auf die Prüfung jedes Zuschnitts wartet. Nur für Etiketten einschalten, deren Layout Sie kennen.",
+    ),
+    (
+        "Choose labels from the Processed folder to print them again",
+        "Etiketten aus dem Ordner Processed auswählen, um sie erneut zu drucken",
+    ),
+    (
+        "Print all skips a label that fails and continues with the rest. Failed labels stay in the queue.",
+        "Alle drucken überspringt ein fehlgeschlagenes Etikett und macht mit den übrigen weiter. Fehlgeschlagene Etiketten bleiben in der Warteschlange.",
+    ),
+    ("Nothing yet", "Noch nichts"),
+    ("Current printer", "Aktueller Drucker"),
+    (
+        "Printer for watched labels",
+        "Drucker für überwachte Etiketten",
+    ),
+    (
+        "Skip review for automatic crops",
+        "Prüfung bei automatischem Zuschnitt überspringen",
+    ),
+    ("Get ready to print", "Druck vorbereiten"),
+    (
+        "Choose your label printer in Import & Convert",
+        "Wählen Sie Ihren Etikettendrucker unter Importieren",
+    ),
+    (
+        "Add your label printer in your system settings, then reopen the app",
+        "Fügen Sie Ihren Etikettendrucker in den Systemeinstellungen hinzu und öffnen Sie die App erneut",
+    ),
+    (
+        "Choose the label size your printer has loaded",
+        "Wählen Sie die im Drucker eingelegte Etikettengröße",
+    ),
+    (
+        "Optional: watch a folder such as Downloads so new labels appear by themselves",
+        "Optional: Überwachen Sie einen Ordner wie Downloads, damit neue Etiketten von selbst erscheinen",
+    ),
+    (
+        "Restore your last queue?",
+        "Letzte Warteschlange wiederherstellen?",
+    ),
     (
         "Move printed labels to a Processed folder",
         "Gedruckte Etiketten in einen Ordner Processed verschieben",
@@ -1426,12 +1545,18 @@ const DE: &[(&str, &str)] = &[
         "Vertikaler Druckversatz in Millimetern",
     ),
     ("View", "Ansicht"),
-    ("View the next label", "Nächstes Etikett anzeigen"),
+    (
+        "View the next label (Alt+Right)",
+        "Nächstes Etikett anzeigen (Alt+Right)",
+    ),
     (
         "View the original document and adjust the crop",
         "Originaldokument ansehen und Zuschnitt anpassen",
     ),
-    ("View the previous label", "Vorheriges Etikett anzeigen"),
+    (
+        "View the previous label (Alt+Left)",
+        "Vorheriges Etikett anzeigen (Alt+Left)",
+    ),
     ("WORKSPACE", "ARBEITSBEREICH"),
     ("Watch a folder", "Ordner überwachen"),
     ("Watch for new labels", "Auf neue Etiketten achten"),
@@ -1883,6 +2008,61 @@ const DE: &[(&str, &str)] = &[
     ),
 ];
 const FR: &[(&str, &str)] = &[
+    ("Undo", "Annuler"),
+    ("Dismiss", "Fermer"),
+    ("Watching", "Surveillance de"),
+    ("Hide this", "Masquer"),
+    ("Turn watching back on", "Réactiver la surveillance"),
+    ("Recent messages", "Messages récents"),
+    ("Show recent messages", "Afficher les messages récents"),
+    ("Add from Processed…", "Ajouter depuis Processed…"),
+    (
+        "Keep going if a label fails",
+        "Continuer si une étiquette échoue",
+    ),
+    ("Open Import & Convert", "Ouvrir Importer et convertir"),
+    ("Messages", "Messages"),
+    ("Will print", "Impression prévue"),
+    (
+        "Labels added from now on count as reviewed, so Print all does not wait for you to check each crop. Turn this on only for labels whose layout you trust.",
+        "Les étiquettes ajoutées à partir de maintenant comptent comme vérifiées, donc Tout imprimer n'attend pas la vérification de chaque recadrage. À activer uniquement pour des étiquettes dont vous connaissez la mise en page.",
+    ),
+    (
+        "Choose labels from the Processed folder to print them again",
+        "Choisissez des étiquettes du dossier Processed pour les réimprimer",
+    ),
+    (
+        "Print all skips a label that fails and continues with the rest. Failed labels stay in the queue.",
+        "Tout imprimer ignore une étiquette en échec et continue avec les autres. Les étiquettes en échec restent dans la file.",
+    ),
+    ("Nothing yet", "Rien pour l'instant"),
+    ("Current printer", "Imprimante actuelle"),
+    (
+        "Printer for watched labels",
+        "Imprimante pour les étiquettes surveillées",
+    ),
+    (
+        "Skip review for automatic crops",
+        "Ignorer la vérification des recadrages automatiques",
+    ),
+    ("Get ready to print", "Préparez-vous à imprimer"),
+    (
+        "Choose your label printer in Import & Convert",
+        "Choisissez votre imprimante d'étiquettes dans Importer et convertir",
+    ),
+    (
+        "Add your label printer in your system settings, then reopen the app",
+        "Ajoutez votre imprimante d'étiquettes dans les réglages du système, puis rouvrez l'application",
+    ),
+    (
+        "Choose the label size your printer has loaded",
+        "Choisissez la taille d'étiquette chargée dans votre imprimante",
+    ),
+    (
+        "Optional: watch a folder such as Downloads so new labels appear by themselves",
+        "Facultatif : surveillez un dossier comme Téléchargements pour que les nouvelles étiquettes apparaissent d'elles-mêmes",
+    ),
+    ("Restore your last queue?", "Restaurer la dernière file ?"),
     (
         "Move printed labels to a Processed folder",
         "Déplacer les étiquettes imprimées vers un dossier Processed",
@@ -2328,12 +2508,18 @@ const FR: &[(&str, &str)] = &[
         "Décalage vertical d'impression en millimètres",
     ),
     ("View", "Affichage"),
-    ("View the next label", "Afficher l'étiquette suivante"),
+    (
+        "View the next label (Alt+Right)",
+        "Afficher l'étiquette suivante (Alt+Right)",
+    ),
     (
         "View the original document and adjust the crop",
         "Voir le document d'origine et ajuster le recadrage",
     ),
-    ("View the previous label", "Afficher l'étiquette précédente"),
+    (
+        "View the previous label (Alt+Left)",
+        "Afficher l'étiquette précédente (Alt+Left)",
+    ),
     ("WORKSPACE", "ESPACE DE TRAVAIL"),
     ("Watch a folder", "Surveiller un dossier"),
     (
@@ -2890,6 +3076,7 @@ mod tests {
         let sources = [
             include_str!("ui.rs"),
             include_str!("ui/about.rs"),
+            include_str!("ui/notices.rs"),
             include_str!("ui/window_chrome.rs"),
             include_str!("designer_ui.rs"),
             include_str!("design.rs"),
@@ -2904,6 +3091,80 @@ mod tests {
         assert!(
             missing.is_empty(),
             "translated but not used in the code: {missing:?}"
+        );
+    }
+
+    /// Every string the interface passes straight to `tr("…")` must be translated, so a new
+    /// feature cannot ship with English-only labels in the other languages.
+    #[test]
+    fn every_interface_string_has_a_translation_in_every_language() {
+        fn sources(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+            for entry in std::fs::read_dir(dir).unwrap().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    sources(&path, out);
+                } else if path.extension().is_some_and(|e| e == "rs")
+                    && path.file_name().is_some_and(|n| n != "i18n.rs")
+                {
+                    out.push(path);
+                }
+            }
+        }
+        let mut files = Vec::new();
+        sources(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
+            &mut files,
+        );
+        let mut missing = Vec::new();
+        for file in files {
+            let code = std::fs::read_to_string(&file).unwrap();
+            let bytes = code.as_bytes();
+            let mut at = 0;
+            while let Some(found) = code[at..].find("tr(") {
+                let start = at + found;
+                at = start + 3;
+                let before = code[..start].chars().next_back();
+                if before.is_some_and(|c| c.is_alphanumeric() || c == '_') {
+                    continue;
+                }
+                let mut i = at;
+                while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+                    i += 1;
+                }
+                if bytes.get(i) != Some(&b'"') {
+                    continue;
+                }
+                let mut text = String::new();
+                let mut chars = code[i + 1..].chars();
+                while let Some(c) = chars.next() {
+                    match c {
+                        '"' => break,
+                        '\\' => match chars.next() {
+                            Some('n') => text.push('\n'),
+                            Some('"') => text.push('"'),
+                            Some('\\') => text.push('\\'),
+                            Some('\n') => {
+                                // A line continuation skips the next line's indentation.
+                                let rest = chars.as_str();
+                                let trimmed = rest.trim_start();
+                                chars = trimmed.chars();
+                            }
+                            _ => {}
+                        },
+                        c => text.push(c),
+                    }
+                }
+                for (name, table) in TABLES {
+                    if !table.iter().any(|(k, _)| *k == text) {
+                        missing.push(format!("{name}: {text:?} ({})", file.display()));
+                    }
+                }
+            }
+        }
+        assert!(
+            missing.is_empty(),
+            "add these strings to the ES, DE and FR tables in src/i18n.rs:\n{}",
+            missing.join("\n")
         );
     }
 }

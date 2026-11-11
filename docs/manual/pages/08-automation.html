@@ -6,8 +6,8 @@ summary: Let new downloads join the queue automatically, and reopen anything you
 <p>Two features save clicks when you handle labels all day: a <strong>watch folder</strong> that picks up new downloads for you, and a <strong>print history</strong> that lets you reopen what you printed.</p>
 
 <h2 id="watching-a-folder">Watching a folder</h2>
-<p>Marketplaces and carriers save labels as PDFs in your Downloads folder. With a watch folder, ThermalPrint adds each new one to the print queue as soon as it appears.</p>
-{{figure:import-watch|Import and Convert with the Watch a folder section open, showing the chosen folder, the Watch for new labels checkbox, and the Move printed labels to a Processed folder checkbox|The Watch a folder section in Import &amp; Convert.}}
+<p>Marketplaces and carriers save labels as PDFs in your Downloads folder: a Vinted, eBay, Etsy, Poshmark, Depop, or Mercari order label, or one from USPS, UPS, FedEx, or DHL. With a watch folder, ThermalPrint adds each new one to the print queue as soon as it appears, so you can download labels in your browser all morning and print them in one go. Company names are used only as examples of where labels come from; ThermalPrint is not connected to them.</p>
+{{figure:import-watch|Import and Convert with the Watch a folder section open, showing the chosen folder, the Watch for new labels checkbox, the Move printed labels to a Processed folder checkbox, the printer for watched labels, the Add from Processed button, the Watching indicator, and the queue thumbnails|The Watch a folder section and print queue in Import &amp; Convert.}}
 <h3>Turn it on</h3>
 <ol>
   <li>Open <strong>Import &amp; Convert</strong> and expand <strong>Watch a folder</strong>.</li>
@@ -15,7 +15,12 @@ summary: Let new downloads join the queue automatically, and reopen anything you
   <li>Download a label. Within a couple of seconds it joins the queue, ready to review.</li>
 </ol>
 <p>Untick <strong>Watch for new labels</strong> to pause, or press <strong>Clear</strong> to forget the folder. ThermalPrint remembers the folder and the on/off choice for next time.</p>
-<p>To keep the folder tidy, also tick <strong>Move printed labels to a Processed folder</strong>. After a label prints, it is taken out of the queue and moved into a <code>Processed</code> subfolder, and the next label in the queue is shown in its place. The queue count, the <strong>Label X of N</strong> counter, and the Previous and Next buttons update to match. If you later want to print a moved label again, add it from the <code>Processed</code> folder with <strong>Add labels…</strong>, or open it from Print Center's recent list, which follows the file to its new place.</p>
+<p>To keep the folder tidy, also tick <strong>Move printed labels to a Processed folder</strong>. After a label prints, it is taken out of the queue and moved into a <code>Processed</code> subfolder, and the next label in the queue is shown in its place. The queue count, the <strong>Label X of N</strong> counter, and the Previous and Next buttons update to match.  This keeps Downloads from filling up with labels you have already sent out.</p>
+<h3>Undo, and printing a label again</h3>
+<p>When labels are moved, the message box offers <strong>Undo</strong> for 12 seconds. Undo moves the files back into the watch folder and adds them to the queue again; it never overwrites a file that has the same name, and it is not offered while the app is busy. To print an older label again at any time, press <strong>Add from Processed…</strong> in the Watch a folder section. It opens the file chooser in the <code>Processed</code> folder; labels you add that way are not moved again. Print Center's recent list follows a file to its new place.</p>
+<h3>A different printer for watched labels</h3>
+<p>If your watched labels always go to one printer, for example your thermal printer for marketplace and carrier labels while ordinary documents go to a laser printer, pick it under <strong>Printer for watched labels</strong>. Whenever a label from the watch folder (or its <code>Processed</code> folder) is shown, the app switches to that printer and its saved media and settings, and says so in a message. Leave it on <strong>Current printer</strong> to never switch. A queue that mixes labels from several places is printed with the printer selected when you press <strong>Print all</strong>.</p>
+<p>
 
 <h3>What is picked up</h3>
 <table>
@@ -29,7 +34,7 @@ summary: Let new downloads join the queue automatically, and reopen anything you
   <tr><td>Where you are</td><td>If you are on Home or Import &amp; Convert, the app switches to the queue. If you are in the Designer or Print Center, it stays put and the status bar says how many labels are waiting.</td></tr>
 </table>
 <div class="callout note"><p>The watch folder only <em>adds</em> labels to the queue. It never prints by itself. You still review each label and press Print.</p></div>
-<p>If the folder disappears or cannot be read, watching switches itself off and the status bar says why. The Snap can read your home folder and folders you pick in the file chooser; see <a href="snap.html#folders-and-the-watch-folder">Using the Snap</a>.</p>
+<p>While watching is on, a green <strong>● Watching</strong> line with the folder's name stays visible at the top of the sidebar, even when the <strong>Watch a folder</strong> section is closed. If the folder cannot be read later, for example because a drive was unplugged, watching keeps trying: a red message says what is wrong, and when the folder is readable again a message says so and new files are picked up. If the folder cannot be opened when you choose it or at startup, watching is switched off, the red message stays, and <strong>Turn watching back on</strong> restarts it once the folder is available. The Snap can read your home folder and folders you pick in the file chooser; see <a href="snap.html#folders-and-the-watch-folder">Using the Snap</a>.</p>
 
 <h2>Drag and drop</h2>
 <p>You can always drop files onto the window instead: PDFs and images go to the Import queue, and a single <code>.thermalprint</code> file opens in the Designer.</p>
