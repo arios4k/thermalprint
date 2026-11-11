@@ -65,8 +65,28 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
 <p>The supported types, what each accepts, and when to use them are in the <a href="barcodes.html">Barcode reference</a>, including <strong>GS1-128</strong> and <strong>GS1 Data Matrix</strong> for logistics labels.</p>
 
 <h2>QR codes</h2>
-<p>The QR tool adds a square QR code. Type the content in <strong>QR content</strong>; it can be a web address, plain text, or several lines. <strong>QR error correction level</strong> chooses how much damage the code survives: Low, Medium, Quartile, or High. More correction makes a denser code, so keep the default unless the label will be scuffed. Keep the object square and at least about 20 mm wide for reliable scanning. If the object is too small for the amount of data, you see <em>QR code is too small; enlarge the object</em>.</p>
+<p>The QR tool adds a square QR code. Type the content in <strong>QR content</strong>; it can be a web address, plain text, or several lines. <strong>QR error correction level</strong> chooses how much damage the code survives: Low, Medium, Quartile, or High. More correction makes a denser code, so keep the default unless the label will be scuffed. Keep the object square and at least about 20 mm wide for reliable scanning. If the object is too small for the amount of data, you see <em>QR code is too small; enlarge the object</em>. To put your logo in the middle of the code, see <a href="#a-logo-in-the-middle">A logo in the middle</a>.</p>
 
+<h3 id="a-logo-in-the-middle">A logo in the middle</h3>
+{{figure:designer-qr-logo|A QR code on the label canvas with a round logo in its center, and the Logo in the center section of the properties panel|A QR code with a logo in the middle. The error correction is locked to High while the logo is used.}}
+<p>Many QR codes carry a small logo in the center. Select a QR code and use <strong>Logo in the center</strong> in the properties panel:</p>
+<table>
+  <tr><th>Control</th><th>What it does</th></tr>
+  <tr><td><strong>Add logo…</strong> / <strong>Change logo…</strong></td><td>Choose a PNG, JPEG, WebP, or BMP picture. Large pictures are shrunk to at most 256 pixels on the longest side before they are stored in the design, so your <code>.thermalprint</code> file stays small.</td></tr>
+  <tr><td><strong>Choose a saved logo</strong></td><td>Pick one of your own logos from <em>Symbols and logos</em> (see <a href="designer.html">The Label Designer</a>). It appears when you have saved at least one.</td></tr>
+  <tr><td><strong>Remove logo</strong></td><td>Takes the logo off. The code goes back to normal; the error correction stays on High until you change it.</td></tr>
+  <tr><td><strong>Logo size</strong></td><td>The share of the code's width that is cleared for the logo, from 10 % up to the limit. The picture sits inside this clear box with a white border of one module, so the dark picture never touches the code's squares.</td></tr>
+  <tr><td>Black and white style, <strong>Cut-off</strong>, <strong>Invert black and white</strong></td><td>The same choices as for an image (see <a href="#images-and-logos">Images and logos</a>). A new logo starts as <em>Black and white</em>, which prints sharpest on a thermal printer.</td></tr>
+</table>
+<h4>How the size is kept safe</h4>
+<p>A logo hides some of the code's squares. A QR code carries extra data so that it can still be read when some squares are lost, and ThermalPrint makes sure a code with a logo stays readable:</p>
+<ul>
+  <li><strong>The highest error correction is used.</strong> While a logo is on, the level is set to High (30 %) and the level box is greyed out.</li>
+  <li><strong>The code is never too small.</strong> With a logo, the code has at least 37 × 37 squares (version 5), even for very short content such as a few letters. That also keeps the logo clear of the three large corner squares and the timing lines a scanner uses to find and measure the code.</li>
+  <li><strong>The logo box has a size limit.</strong> It can be at most <strong>30 %</strong> of the code's width, which is about 9 % of its area. The limit is checked in the app's own tests by reading rendered codes with a QR decoder, using the hardest logos (solid black, noise, a checkerboard), different amounts of content, and different print sizes. The codes still read when the logo is made 8 points larger than the limit, so the limit leaves a margin for blurred printing and ordinary phone cameras. Asking for more than the limit always gives the limit.</li>
+  <li><strong>The code must be printed large enough.</strong> A code with a logo needs squares of at least about 0.4 mm. When your QR object is narrower than that, a red note under the size slider tells you how wide to make it. If the object is so small that a square would be under three printed dots, the label is not drawn and you see <em>QR code is too small for a logo; enlarge the object or remove the logo</em>, instead of printing a code that might not scan.</li>
+</ul>
+<div class="callout note"><p>Even with these safeguards, <strong>scan one printed label with your phone</strong> before you print a whole roll. Printers, label stock, and cameras differ.</p></div>
 <h3>Building the content</h3>
 <p>Open <strong>Build the content</strong> under the QR content box to fill it in from a form instead of typing the special syntax yourself. Choose the kind, fill in the fields, and press <strong>Use this content</strong>; a field that cannot work is reported in red.</p>
 <table>

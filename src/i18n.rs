@@ -82,6 +82,32 @@ pub fn tr(text: &str) -> &str {
 }
 
 const ES: &[(&str, &str)] = &[
+    ("Logo in the center", "Logotipo en el centro"),
+    (
+        "A logo hides part of the code. ThermalPrint keeps it small enough, and uses the highest error correction, so phones can still scan it.",
+        "Un logotipo oculta parte del código. ThermalPrint lo mantiene lo bastante pequeño y usa la máxima corrección de errores, para que los teléfonos puedan escanearlo.",
+    ),
+    ("Add logo…", "Añadir logotipo…"),
+    ("Change logo…", "Cambiar logotipo…"),
+    ("Remove logo", "Quitar logotipo"),
+    ("Choose a saved logo", "Elegir un logotipo guardado"),
+    ("Logo size", "Tamaño del logotipo"),
+    (
+        "The share of the code's width that is cleared for the logo",
+        "La parte del ancho del código que se despeja para el logotipo",
+    ),
+    (
+        "Largest size that scans reliably:",
+        "Tamaño máximo que se escanea con fiabilidad:",
+    ),
+    (
+        "Error correction is set to High while a logo is used.",
+        "La corrección de errores se fija en Alta mientras se usa un logotipo.",
+    ),
+    (
+        "The code is small for a logo. Make it at least this wide:",
+        "El código es pequeño para un logotipo. Hazlo al menos así de ancho:",
+    ),
     ("No printer selected", "Ninguna impresora seleccionada"),
     (
         "No recent documents yet. Labels you open will appear here.",
@@ -1087,6 +1113,32 @@ const ES: &[(&str, &str)] = &[
     ),
 ];
 const DE: &[(&str, &str)] = &[
+    ("Logo in the center", "Logo in der Mitte"),
+    (
+        "A logo hides part of the code. ThermalPrint keeps it small enough, and uses the highest error correction, so phones can still scan it.",
+        "Ein Logo verdeckt einen Teil des Codes. ThermalPrint hält es klein genug und nutzt die höchste Fehlerkorrektur, damit Smartphones den Code weiterhin scannen können.",
+    ),
+    ("Add logo…", "Logo hinzufügen…"),
+    ("Change logo…", "Logo ändern…"),
+    ("Remove logo", "Logo entfernen"),
+    ("Choose a saved logo", "Gespeichertes Logo wählen"),
+    ("Logo size", "Logogröße"),
+    (
+        "The share of the code's width that is cleared for the logo",
+        "Der Anteil der Codebreite, der für das Logo freigehalten wird",
+    ),
+    (
+        "Largest size that scans reliably:",
+        "Größte Größe, die zuverlässig scannt:",
+    ),
+    (
+        "Error correction is set to High while a logo is used.",
+        "Die Fehlerkorrektur ist mit Logo auf „Hoch“ eingestellt.",
+    ),
+    (
+        "The code is small for a logo. Make it at least this wide:",
+        "Der Code ist für ein Logo zu klein. Machen Sie ihn mindestens so breit:",
+    ),
     ("No printer selected", "Kein Drucker ausgewählt"),
     (
         "No recent documents yet. Labels you open will appear here.",
@@ -2062,6 +2114,32 @@ const DE: &[(&str, &str)] = &[
     ),
 ];
 const FR: &[(&str, &str)] = &[
+    ("Logo in the center", "Logo au centre"),
+    (
+        "A logo hides part of the code. ThermalPrint keeps it small enough, and uses the highest error correction, so phones can still scan it.",
+        "Un logo masque une partie du code. ThermalPrint le garde assez petit et utilise la correction d'erreurs maximale, pour que les téléphones puissent toujours le scanner.",
+    ),
+    ("Add logo…", "Ajouter un logo…"),
+    ("Change logo…", "Changer le logo…"),
+    ("Remove logo", "Retirer le logo"),
+    ("Choose a saved logo", "Choisir un logo enregistré"),
+    ("Logo size", "Taille du logo"),
+    (
+        "The share of the code's width that is cleared for the logo",
+        "La part de la largeur du code libérée pour le logo",
+    ),
+    (
+        "Largest size that scans reliably:",
+        "Taille maximale qui se scanne de façon fiable :",
+    ),
+    (
+        "Error correction is set to High while a logo is used.",
+        "La correction d'erreurs est réglée sur Élevée tant qu'un logo est utilisé.",
+    ),
+    (
+        "The code is small for a logo. Make it at least this wide:",
+        "Le code est petit pour un logo. Donnez-lui au moins cette largeur :",
+    ),
     ("No printer selected", "Aucune imprimante sélectionnée"),
     (
         "No recent documents yet. Labels you open will appear here.",

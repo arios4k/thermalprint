@@ -1,6 +1,6 @@
 [package]
 name = "thermalprint"
-version = "0.7.2"
+version = "0.8.0"
 edition = "2024"
 authors = ["Alexis Rios-Negron"]
 rust-version = "1.96"
@@ -34,6 +34,9 @@ csv = "1"
 [profile.release]
 lto = "thin"
 strip = true
+
+[dev-dependencies]
+rqrr = { version = "0.11", default-features = false }
 
 [package.metadata.deb]
 name = "thermalprint"

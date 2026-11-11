@@ -2233,6 +2233,32 @@ impl Designer {
             .unwrap_or_default();
         self.logo_textures.clear();
     }
+    /// Put a picture in the middle of a QR code. The code switches to the highest error
+    /// correction, and the picture starts as plain black and white, which scans best.
+    fn set_qr_logo(&mut self, id: u64, path: &std::path::Path) {
+        let result = std::fs::read(path)
+            .map_err(anyhow::Error::from)
+            .and_then(|bytes| crate::design_render::prepare_qr_logo(&bytes));
+        match result {
+            Ok(logo) => {
+                if let Some(o) = self.doc.objects.iter_mut().find(|o| o.id == id) {
+                    o.options.qr_logo = logo;
+                    o.options.qr_level = design::QrLevel::High;
+                    if o.options.image_mode == design::ImageMode::Original {
+                        o.options.image_mode = design::ImageMode::Threshold;
+                    }
+                    self.status =
+                        "Logo added to the QR code · the code now uses High error correction"
+                            .into();
+                    self.error = false;
+                }
+            }
+            Err(error) => {
+                self.status = format!("Could not use that logo: {error:#}");
+                self.error = true;
+            }
+        }
+    }
     fn save_logo(&mut self, data_base64: &str) {
         let result = base64::engine::general_purpose::STANDARD
             .decode(data_base64)
@@ -2614,6 +2640,8 @@ impl Designer {
         let mut center = (false, false);
         let mut save_logo: Option<String> = None;
         let mut add_font = false;
+        let mut pick_qr_logo = false;
+        let mut qr_logo_path: Option<std::path::PathBuf> = None;
         let mut save_address: Option<String> = None;
         ui.add_enabled_ui(!locked, |ui| {
             ui.horizontal(|ui| {
@@ -2905,6 +2933,7 @@ impl Designer {
                 ui.add(egui::TextEdit::multiline(data).desired_rows(4))
                     .accessible_name(crate::i18n::tr("QR code content"));
                 qr_builder_ui(ui, &mut self.qr_form, data);
+                ui.add_enabled_ui(o.options.qr_logo.is_empty(), |ui| {
                 egui::ComboBox::from_id_salt("qr-level")
                     .selected_text(qr_level_name(o.options.qr_level))
                     .show_ui(ui, |ui| {
@@ -2922,6 +2951,116 @@ impl Designer {
                     })
                     .response
                     .accessible_name(crate::i18n::tr("QR error correction level"));
+                });
+                ui.separator();
+                ui.label(RichText::new(crate::i18n::tr("Logo in the center")).strong())
+                    .on_hover_text(crate::i18n::tr(
+                        "A logo hides part of the code. ThermalPrint keeps it small enough, and uses the highest error correction, so phones can still scan it.",
+                    ));
+                let has_logo = !o.options.qr_logo.is_empty();
+                ui.horizontal_wrapped(|ui| {
+                    let label = if has_logo {
+                        "Change logo…"
+                    } else {
+                        "Add logo…"
+                    };
+                    if ui.button(crate::i18n::tr(label)).clicked() {
+                        pick_qr_logo = true;
+                    }
+                    if has_logo && ui.button(crate::i18n::tr("Remove logo")).clicked() {
+                        o.options.qr_logo.clear();
+                    }
+                });
+                if !self.logos.is_empty() {
+                    egui::ComboBox::from_id_salt("qr-saved-logo")
+                        .selected_text(crate::i18n::tr("Choose a saved logo"))
+                        .show_ui(ui, |ui| {
+                            for logo in &self.logos {
+                                if ui.selectable_label(false, &logo.name).clicked() {
+                                    qr_logo_path = Some(logo.path.clone());
+                                }
+                            }
+                        });
+                }
+                if !o.options.qr_logo.is_empty() {
+                    // A logo always uses the highest correction, whatever was chosen above.
+                    o.options.qr_level = design::QrLevel::High;
+                    let modules = crate::design_render::qr_modules(data, &o.options).unwrap_or(37);
+                    let max = design::qr_logo_max_percent(modules);
+                    let mut percent = o
+                        .options
+                        .qr_logo_percent
+                        .clamp(design::QR_LOGO_MIN_PERCENT, max);
+                    ui.horizontal(|ui| {
+                        ui.label(crate::i18n::tr("Logo size"));
+                        ui.add(
+                            egui::Slider::new(&mut percent, design::QR_LOGO_MIN_PERCENT..=max)
+                                .suffix(" %"),
+                        )
+                        .on_hover_text(crate::i18n::tr(
+                            "The share of the code's width that is cleared for the logo",
+                        ));
+                    });
+                    o.options.qr_logo_percent = percent;
+                    ui.label(
+                        RichText::new(format!(
+                            "{} {max} %. {}",
+                            crate::i18n::tr("Largest size that scans reliably:"),
+                            crate::i18n::tr(
+                                "Error correction is set to High while a logo is used."
+                            )
+                        ))
+                        .small()
+                        .weak(),
+                    );
+                    let wanted_mm = (modules + 8) as f32 * QR_LOGO_MIN_MODULE_MM;
+                    if o.width_mm.min(o.height_mm) < wanted_mm {
+                        ui.label(
+                            RichText::new(format!(
+                                "{} {:.0} mm",
+                                crate::i18n::tr(
+                                    "The code is small for a logo. Make it at least this wide:"
+                                ),
+                                wanted_mm.ceil()
+                            ))
+                            .small()
+                            .color(Color32::from_rgb(200, 65, 55)),
+                        );
+                    }
+                    egui::ComboBox::from_id_salt("qr-logo-mode")
+                        .selected_text(image_mode_name(o.options.image_mode))
+                        .show_ui(ui, |ui| {
+                            for mode in [
+                                design::ImageMode::Original,
+                                design::ImageMode::Threshold,
+                                design::ImageMode::Dither,
+                            ] {
+                                ui.selectable_value(
+                                    &mut o.options.image_mode,
+                                    mode,
+                                    image_mode_name(mode),
+                                )
+                                .on_hover_text(crate::i18n::tr(image_mode_hint(mode)));
+                            }
+                        })
+                        .response
+                        .accessible_name(crate::i18n::tr(
+                            "How the image is reduced to black and white",
+                        ));
+                    if o.options.image_mode == design::ImageMode::Threshold {
+                        ui.horizontal(|ui| {
+                            ui.label(crate::i18n::tr("Cut-off"));
+                            ui.add(egui::Slider::new(&mut o.options.threshold, 1..=254))
+                                .on_hover_text(crate::i18n::tr(
+                                    "Pixels darker than this print black",
+                                ));
+                        });
+                    }
+                    ui.checkbox(
+                        &mut o.options.invert,
+                        crate::i18n::tr("Invert black and white"),
+                    );
+                }
             }
             Element::Shape {
                 kind,
@@ -3056,6 +3195,16 @@ impl Designer {
                     self.error = true;
                 }
             }
+        }
+        if pick_qr_logo
+            && let Some(path) = rfd::FileDialog::new()
+                .add_filter("Image", &["png", "jpg", "jpeg", "webp", "bmp"])
+                .pick_file()
+        {
+            qr_logo_path = Some(path);
+        }
+        if let Some(path) = qr_logo_path {
+            self.set_qr_logo(id, &path);
         }
         if let Some(text) = save_address {
             self.save_address(&text);
@@ -3657,6 +3806,10 @@ pub(crate) fn template_button(ui: &mut egui::Ui, name: &str) -> egui::Response {
     );
     response
 }
+
+/// The smallest printed module width, in millimeters, at which a QR code with a logo scans
+/// reliably on ordinary phone cameras and handheld scanners.
+const QR_LOGO_MIN_MODULE_MM: f32 = 0.4;
 
 fn qr_level_name(level: design::QrLevel) -> &'static str {
     match level {

@@ -22,6 +22,8 @@ Paper size, DPI, rotation, margins, scaling, enhancement, printer, media, resolu
 
 ## 🎨 Design a label from scratch
 
+A QR code can carry a logo in its center (**Logo in the center** in the properties panel). The code then uses the highest error correction and at least 37 × 37 squares, and the logo box is limited to 30 % of the code's width; tests decode rendered codes to check that this still scans. Scan one printed label before a large batch.
+
 Open **Label Designer** and choose a blank canvas or one of the built-in templates. Set width and height in millimeters, then add text, a proper Code 128/Code 39/EAN-13/UPC-A barcode, a QR code, a shape, or an image. Click an object to edit its content and exact geometry in the properties inspector. Drag it on the canvas or drag its resize handle; Shift-click selects several objects. The toolbar provides undo/redo, zoom, grid/snap controls, save/open, export, and printing. Designs are saved as `.thermalprint` files with a versioned JSON schema and embedded image data.
 
 The editor renders output at the selected printer DPI in a background worker. Save/print/export jobs run separately from the canvas. Design PDF and PNG export use the full-resolution output, while SVG export wraps that raster output in an SVG container. ZPL export uses `^GFA` raster data at the selected DPI; direct ZPL printing requires a CUPS raw queue configured for a ZPL-compatible printer. Selecting a regular PDF queue for raw ZPL will not work. The app does not create or certify postage, carrier service marks, or tracking numbers.

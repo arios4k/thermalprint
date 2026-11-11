@@ -45,6 +45,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.8.0" date="2026-11-11">
+      <description>
+        <p>Put your logo in the middle of a QR code.</p>
+        <ul>
+          <li>Add a logo to the center of any QR code in the Label Designer. It uses the highest error correction, the code is never smaller than version 5, and the logo size is limited so the code still scans.</li>
+          <li>A note tells you how wide to make the code so the logo scans, and a code that is too small for a logo is refused instead of printed unreadable.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.7.2" date="2026-11-11">
       <description>
         <p>Always start on Home.</p>

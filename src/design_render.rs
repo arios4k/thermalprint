@@ -518,36 +518,147 @@ fn draw_barcode(
     }
     Ok(())
 }
-fn draw_qr(im: &mut RgbaImage, data: &str, serial: u64, level: QrLevel) -> Result<()> {
-    let level = match level {
+/// Prepare a picture to go in the middle of a QR code: shrink it so the design file stays
+/// small, and store it as base64 PNG. Anything the app can read is accepted.
+pub fn prepare_qr_logo(bytes: &[u8]) -> Result<String> {
+    if bytes.len() > 9_000_000 {
+        bail!("The image is larger than 9 MB");
+    }
+    let mut image = image::load_from_memory(bytes)
+        .context("The image could not be read")?
+        .to_rgba8();
+    let longest = image.width().max(image.height());
+    if longest > crate::design::QR_LOGO_MAX_PIXELS {
+        let scale = crate::design::QR_LOGO_MAX_PIXELS as f32 / longest as f32;
+        let w = ((image.width() as f32 * scale).round() as u32).max(1);
+        let h = ((image.height() as f32 * scale).round() as u32).max(1);
+        image = imageops::resize(&image, w, h, imageops::FilterType::Lanczos3);
+    }
+    let png = crate::symbols::png_bytes(&image)?;
+    let text = base64::engine::general_purpose::STANDARD.encode(png);
+    if text.len() > crate::design::QR_LOGO_MAX_BASE64 {
+        bail!("The logo is too detailed; use a simpler image");
+    }
+    Ok(text)
+}
+fn qr_ec_level(level: QrLevel) -> qrcode::EcLevel {
+    match level {
         QrLevel::Low => qrcode::EcLevel::L,
         QrLevel::Medium => qrcode::EcLevel::M,
         QrLevel::Quartile => qrcode::EcLevel::Q,
         QrLevel::High => qrcode::EcLevel::H,
-    };
-    let code = QrCode::with_error_correction_level(expand(data, serial).as_bytes(), level)
+    }
+}
+/// The QR code for the data. With a logo it uses the highest error correction and is never
+/// smaller than version 5, which keeps the logo box away from the corner and timing patterns.
+fn build_qr(text: &str, level: QrLevel, with_logo: bool) -> Result<QrCode> {
+    let level = if with_logo { QrLevel::High } else { level };
+    let level = qr_ec_level(level);
+    let code = QrCode::with_error_correction_level(text.as_bytes(), level)
         .context("QR data cannot be encoded")?;
+    if with_logo && (code.width() as u32) < crate::design::QR_LOGO_MIN_MODULES {
+        return QrCode::with_version(text.as_bytes(), qrcode::Version::Normal(5), level)
+            .context("QR data cannot be encoded");
+    }
+    Ok(code)
+}
+/// How many modules wide the code is, not counting the quiet zone. Used by the editor to
+/// say how large the code has to be printed for a logo to scan.
+pub fn qr_modules(data: &str, options: &ObjectOptions) -> Option<u32> {
+    build_qr(
+        &expand(data, 1),
+        options.qr_level,
+        !options.qr_logo.is_empty(),
+    )
+    .ok()
+    .map(|code| code.width() as u32)
+}
+/// The box cleared for the logo, as `(first module, modules per side)`. The box is centered on
+/// the module grid, and its size never goes past [`crate::design::qr_logo_max_percent`].
+pub fn qr_logo_box(modules: u32, percent: u8) -> (u32, u32) {
+    let percent = percent.clamp(
+        crate::design::QR_LOGO_MIN_PERCENT,
+        crate::design::qr_logo_max_percent(modules),
+    );
+    let mut side = (modules as f32 * percent as f32 / 100.).floor() as u32;
+    if side % 2 != modules % 2 {
+        side -= 1;
+    }
+    let side = side.max(5);
+    ((modules - side) / 2, side)
+}
+fn draw_qr(im: &mut RgbaImage, data: &str, serial: u64, options: &ObjectOptions) -> Result<()> {
+    let with_logo = !options.qr_logo.is_empty();
+    let code = build_qr(&expand(data, serial), options.qr_level, with_logo)?;
     let modules = code.width() as u32 + 8;
     let module = im.width().min(im.height()) / modules;
     if module < 2 {
         bail!("QR code is too small; enlarge the object");
     }
+    if with_logo && module < 3 {
+        bail!("QR code is too small for a logo; enlarge the object or remove the logo");
+    }
     let left = (im.width() - modules * module) / 2 + 4 * module;
     let top = (im.height() - modules * module) / 2 + 4 * module;
-    for y in 0..code.width() {
-        for x in 0..code.width() {
-            if code[(x, y)] == Color::Dark {
+    let width = code.width() as u32;
+    let clear = with_logo.then(|| qr_logo_box(width, options.qr_logo_percent));
+    for y in 0..width {
+        for x in 0..width {
+            if let Some((first, side)) = clear
+                && (first..first + side).contains(&x)
+                && (first..first + side).contains(&y)
+            {
+                continue;
+            }
+            if code[(x as usize, y as usize)] == Color::Dark {
                 fill(
                     im,
-                    (left + x as u32 * module) as i32,
-                    (top + y as u32 * module) as i32,
-                    (left + (x as u32 + 1) * module) as i32,
-                    (top + (y as u32 + 1) * module) as i32,
+                    (left + x * module) as i32,
+                    (top + y * module) as i32,
+                    (left + (x + 1) * module) as i32,
+                    (top + (y + 1) * module) as i32,
                     black(),
                 );
             }
         }
     }
+    if let Some((first, side)) = clear {
+        draw_qr_logo(
+            im,
+            &options.qr_logo,
+            options,
+            (left + first * module, top + first * module),
+            side * module,
+            module,
+        )?;
+    }
+    Ok(())
+}
+/// Draw the logo inside its cleared box, leaving one module of white around it.
+fn draw_qr_logo(
+    im: &mut RgbaImage,
+    data: &str,
+    options: &ObjectOptions,
+    origin: (u32, u32),
+    box_side: u32,
+    module: u32,
+) -> Result<()> {
+    let bytes = base64::engine::general_purpose::STANDARD.decode(data)?;
+    let src = image::load_from_memory(&bytes)
+        .context("The QR logo could not be read")?
+        .to_rgba8();
+    let inner = box_side.saturating_sub(2 * module).max(1);
+    let fit = (inner as f32 / src.width() as f32).min(inner as f32 / src.height() as f32);
+    let w = (src.width() as f32 * fit).round().max(1.) as u32;
+    let h = (src.height() as f32 * fit).round().max(1.) as u32;
+    let mut scaled = imageops::resize(&src, w, h, imageops::FilterType::Lanczos3);
+    adjust_image(&mut scaled, options);
+    imageops::overlay(
+        im,
+        &scaled,
+        (origin.0 + (box_side - w) / 2) as i64,
+        (origin.1 + (box_side - h) / 2) as i64,
+    );
     Ok(())
 }
 /// Reduce an image to black and white for a thermal printer, or adjust its contrast.
@@ -655,7 +766,7 @@ fn render_object(o: &DesignObject, dpi: u32, serial: u64) -> Result<RgbaImage> {
             data,
             show_text,
         } => draw_barcode(&mut im, *kind, data, *show_text, dpi, serial, options)?,
-        Element::Qr { data } => draw_qr(&mut im, data, serial, options.qr_level)?,
+        Element::Qr { data } => draw_qr(&mut im, data, serial, options)?,
         Element::Shape {
             kind,
             stroke_mm,
@@ -1398,7 +1509,10 @@ mod option_render_tests {
                 &mut im,
                 "https://example.com/a/fairly/long/address?x=1",
                 1,
-                level,
+                &ObjectOptions {
+                    qr_level: level,
+                    ..Default::default()
+                },
             )
             .unwrap();
             ink(&im)
@@ -1429,5 +1543,191 @@ mod option_render_tests {
         doc.objects[0].flip_y = true;
         assert_ne!(plain.image, render_label(&doc, 203).unwrap().image);
         let _ = DesignObject::label;
+    }
+
+    /// Decode a rendered QR code the way a phone would, or `None` if it cannot be read.
+    fn decode_qr(im: &RgbaImage) -> Option<String> {
+        let (w, h) = (im.width() as usize, im.height() as usize);
+        let mut prepared = rqrr::PreparedImage::prepare_from_greyscale(w, h, |x, y| {
+            let p = im.get_pixel(x as u32, y as u32);
+            let a = p[3] as f32 / 255.;
+            let luma = 0.299 * p[0] as f32 + 0.587 * p[1] as f32 + 0.114 * p[2] as f32;
+            (luma * a + 255. * (1. - a)).round() as u8
+        });
+        let grids = prepared.detect_grids();
+        let (_, content) = grids.first()?.decode().ok()?;
+        Some(content)
+    }
+    fn solid_logo(side: u32, value: u8) -> String {
+        let image = RgbaImage::from_pixel(side, side, Rgba([value, value, value, 255]));
+        let bytes = crate::symbols::png_bytes(&image).unwrap();
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    }
+    fn noise_logo(side: u32) -> String {
+        let mut state = 12345u32;
+        let image = RgbaImage::from_fn(side, side, |_, _| {
+            state = state.wrapping_mul(1664525).wrapping_add(1013904223);
+            let v = if (state >> 16) & 1 == 1 { 0 } else { 255 };
+            Rgba([v, v, v, 255])
+        });
+        let bytes = crate::symbols::png_bytes(&image).unwrap();
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    }
+    fn payload(length: usize) -> String {
+        let mut text = String::from("https://example.com/p/");
+        let mut n = 7u32;
+        while text.len() < length {
+            n = n.wrapping_mul(1103515245).wrapping_add(12345);
+            text.push(char::from(b'a' + ((n >> 16) % 26) as u8));
+        }
+        text
+    }
+
+    fn logo_options(logo: String, percent: u8) -> ObjectOptions {
+        ObjectOptions {
+            qr_logo: logo,
+            qr_logo_percent: percent,
+            ..Default::default()
+        }
+    }
+    fn render_qr(text: &str, options: &ObjectOptions, module_px: u32) -> RgbaImage {
+        let modules = qr_modules(text, options).unwrap();
+        let side = (modules + 8) * module_px;
+        let mut im = RgbaImage::new(side, side);
+        draw_qr(&mut im, text, 1, options).unwrap();
+        im
+    }
+    fn checker_logo(side: u32) -> String {
+        let image = RgbaImage::from_fn(side, side, |x, y| {
+            let v = if (x / 4 + y / 4) % 2 == 0 { 0 } else { 255 };
+            Rgba([v, v, v, 255])
+        });
+        base64::engine::general_purpose::STANDARD.encode(crate::symbols::png_bytes(&image).unwrap())
+    }
+
+    /// The limit on the logo size is only worth anything if codes at that size still scan, so
+    /// decode real renders: short and long content, small and large modules, and the hardest
+    /// logos (solid black, noise, a checkerboard).
+    #[test]
+    fn codes_scan_with_the_largest_allowed_logo() {
+        let logos = [
+            solid_logo(64, 0),
+            noise_logo(64),
+            checker_logo(64),
+            solid_logo(64, 255),
+        ];
+        for logo in logos {
+            for length in [5usize, 60, 200, 600] {
+                let text = payload(length);
+                for module_px in [3u32, 5, 8] {
+                    // Asking for more than the limit must give the limit, not a bigger box.
+                    let im = render_qr(&text, &logo_options(logo.clone(), 100), module_px);
+                    assert_eq!(
+                        decode_qr(&im).as_deref(),
+                        Some(text.as_str()),
+                        "length {length}, {module_px}px modules"
+                    );
+                }
+            }
+        }
+    }
+
+    /// Scanners are not as forgiving as a test decoder, and printing blurs edges, so the limit
+    /// must sit well inside what even a perfect decoder can read.
+    #[test]
+    fn the_limit_keeps_a_safety_margin_over_what_a_decoder_can_read() {
+        let limit = crate::design::qr_logo_max_percent(37);
+        crate::design::TEST_LIMIT.with(|cell| cell.set(Some(limit + 8)));
+        for length in [20usize, 120, 350, 600] {
+            let text = payload(length);
+            let im = render_qr(&text, &logo_options(solid_logo(64, 0), limit + 8), 4);
+            assert_eq!(
+                decode_qr(&im).as_deref(),
+                Some(text.as_str()),
+                "length {length} must still scan 8 points past the limit"
+            );
+        }
+        crate::design::TEST_LIMIT.with(|cell| cell.set(None));
+    }
+
+    #[test]
+    fn a_logo_forces_high_correction_and_a_code_of_at_least_version_five() {
+        let plain = ObjectOptions {
+            qr_level: QrLevel::Low,
+            ..Default::default()
+        };
+        let with = ObjectOptions {
+            qr_level: QrLevel::Low,
+            ..logo_options(solid_logo(16, 0), 20)
+        };
+        let short = qr_modules("abc", &plain).unwrap();
+        assert!(short < crate::design::QR_LOGO_MIN_MODULES);
+        assert!(qr_modules("abc", &with).unwrap() >= crate::design::QR_LOGO_MIN_MODULES);
+        // The same content at the logo's forced High level is at least as large as at Low.
+        let long = payload(300);
+        assert!(qr_modules(&long, &with).unwrap() >= qr_modules(&long, &plain).unwrap());
+    }
+
+    #[test]
+    fn the_logo_box_stays_centered_inside_the_limit_and_clear_of_the_corners() {
+        for modules in 37u32..=177 {
+            if (modules - 17) % 4 != 0 {
+                continue;
+            }
+            for percent in [1u8, 10, 20, 30, 60, 100] {
+                let (first, side) = qr_logo_box(modules, percent);
+                assert_eq!(first * 2 + side, modules, "centered on the grid");
+                assert!(side >= 5);
+                let limit = crate::design::qr_logo_max_percent(modules) as f32;
+                assert!(
+                    side as f32 <= (modules as f32 * limit / 100.).max(5.),
+                    "{modules} modules at {percent}% gives {side}"
+                );
+                // The corner and timing patterns end 9 modules from each edge.
+                assert!(first >= 9, "{modules} modules, box starts at {first}");
+            }
+        }
+    }
+
+    #[test]
+    fn logos_of_any_shape_and_transparency_still_scan() {
+        let wide = RgbaImage::from_fn(120, 30, |x, _| {
+            Rgba([0, 0, 0, if x % 3 == 0 { 0 } else { 255 }])
+        });
+        let tall = RgbaImage::from_pixel(20, 90, Rgba([10, 10, 10, 255]));
+        for image in [wide, tall] {
+            let logo = base64::engine::general_purpose::STANDARD
+                .encode(crate::symbols::png_bytes(&image).unwrap());
+            let text = payload(80);
+            let im = render_qr(&text, &logo_options(logo, 30), 5);
+            assert_eq!(decode_qr(&im).as_deref(), Some(text.as_str()));
+        }
+    }
+
+    #[test]
+    fn a_logo_changes_the_middle_of_the_code_and_nothing_else_changes_without_one() {
+        let text = payload(60);
+        let plain = render_qr(&text, &ObjectOptions::default(), 5);
+        let again = render_qr(&text, &ObjectOptions::default(), 5);
+        assert_eq!(plain, again, "no logo means no change");
+        let with = render_qr(&text, &logo_options(solid_logo(32, 0), 20), 5);
+        assert_ne!(plain.dimensions(), (0, 0));
+        assert!(ink(&with) != ink(&plain));
+    }
+
+    #[test]
+    fn a_code_too_small_for_a_logo_is_refused_instead_of_printed_unreadable() {
+        let options = logo_options(solid_logo(16, 0), 20);
+        let modules = qr_modules("abc", &options).unwrap();
+        let mut im = RgbaImage::new((modules + 8) * 2, (modules + 8) * 2);
+        let error = draw_qr(&mut im, "abc", 1, &options).unwrap_err();
+        assert!(format!("{error:#}").contains("too small for a logo"));
+    }
+
+    #[test]
+    fn a_damaged_logo_is_an_error_not_a_blank_hole() {
+        let options = logo_options("not an image".into(), 20);
+        let mut im = RgbaImage::new(400, 400);
+        assert!(draw_qr(&mut im, "abc", 1, &options).is_err());
     }
 }

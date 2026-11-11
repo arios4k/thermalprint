@@ -139,6 +139,11 @@ pub struct ObjectOptions {
     /// Barcode: put the readable text above the bars.
     pub text_above: bool,
     pub qr_level: QrLevel,
+    /// QR: a picture shown in the middle of the code, as base64 PNG data. Empty for none.
+    pub qr_logo: String,
+    /// QR: the width of the cleared box behind the logo, in percent of the code's width.
+    /// It is limited so the code still scans; see [`qr_logo_max_percent`].
+    pub qr_logo_percent: u8,
     /// Text: the name of a font installed in the fonts folder; empty is the built-in font.
     pub font: String,
 }
@@ -157,6 +162,8 @@ impl Default for ObjectOptions {
             barcode_text_pt: 0.,
             text_above: false,
             qr_level: QrLevel::Medium,
+            qr_logo: String::new(),
+            qr_logo_percent: QR_LOGO_DEFAULT_PERCENT,
             font: String::new(),
         }
     }
@@ -180,9 +187,43 @@ impl ObjectOptions {
         if !self.font.is_empty() && !crate::fonts::is_valid_name(&self.font) {
             bail!("Invalid font name");
         }
+        if self.qr_logo.len() > QR_LOGO_MAX_BASE64 {
+            bail!("QR logo is too large");
+        }
+        if !(1..=100).contains(&self.qr_logo_percent) {
+            bail!("Invalid QR logo size");
+        }
         Ok(())
     }
 }
+
+/// A QR code with a logo always uses the highest error correction and at least this many modules
+/// per side (version 5), so the logo box can never reach a corner pattern or the timing lines.
+pub const QR_LOGO_MIN_MODULES: u32 = 37;
+pub const QR_LOGO_DEFAULT_PERCENT: u8 = 20;
+pub const QR_LOGO_MIN_PERCENT: u8 = 10;
+/// The longest base64 text kept for a QR logo (about 1 MB of image data).
+pub const QR_LOGO_MAX_BASE64: usize = 1_400_000;
+/// The longest side, in pixels, of a QR logo once it is stored in the design.
+pub const QR_LOGO_MAX_PIXELS: u32 = 256;
+
+/// The largest logo box, as a percent of the QR code's width, that still scans. A logo hides
+/// the modules behind it, and High error correction can rebuild a limited share of them, so the
+/// box is held well below that limit. The figure is checked by decoding rendered codes in the
+/// tests, for a solid black logo, which is the hardest case.
+pub fn qr_logo_max_percent(_modules: u32) -> u8 {
+    #[cfg(test)]
+    if let Some(limit) = TEST_LIMIT.with(|cell| cell.get()) {
+        return limit;
+    }
+    QR_LOGO_LIMIT_PERCENT
+}
+#[cfg(test)]
+thread_local! {
+    /// Lets a test look past the limit to see where scanning really stops.
+    pub(crate) static TEST_LIMIT: std::cell::Cell<Option<u8>> = const { std::cell::Cell::new(None) };
+}
+const QR_LOGO_LIMIT_PERCENT: u8 = 30;
 
 /// Where objects are aligned to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

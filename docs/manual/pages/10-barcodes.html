@@ -53,6 +53,8 @@ summary: The eleven barcode types plus QR codes: what each accepts and how to ma
   <tr><td>Barcode is too narrow at N DPI. Widen it or use a shorter value.</td><td>Make the object wider or the value shorter. Each bar needs at least two printed dots.</td></tr>
   <tr><td>Data Matrix is too small; enlarge the object or use shorter data</td><td>Make the box bigger. Keep it roughly square.</td></tr>
   <tr><td>QR code is too small; enlarge the object</td><td>Make the box bigger.</td></tr>
+  <tr><td>QR code is too small for a logo; enlarge the object or remove the logo</td><td>A code with a logo needs squares of at least three printed dots. Make the QR object bigger, or take the logo off. See <a href="objects.html#a-logo-in-the-middle">A logo in the middle</a>.</td></tr>
+  <tr><td>The QR logo could not be read</td><td>The picture stored in the design is damaged. Press <strong>Change logo…</strong> and choose it again.</td></tr>
   <tr><td>(01) has a wrong check digit</td><td>Fix the last digit, or leave it off and it is added.</td></tr>
   <tr><td>In a GS1 Data Matrix, put the variable-length field … last</td><td>Reorder the elements, or use GS1-128.</td></tr>
   <tr><td>Barcode data is too long</td><td>The limit is 2,048 characters.</td></tr>
@@ -64,6 +66,7 @@ summary: The eleven barcode types plus QR codes: what each accepts and how to ma
   <li><strong>Print large enough.</strong> Thin bars are the usual cause of failed scans. Prefer wider objects, and print at your printer's real DPI (203 DPI is common).</li>
   <li><strong>Keep it black and white.</strong> Avoid gray fills behind or inside a barcode.</li>
   <li><strong>Test a real label.</strong> Scan the first label with your phone or a scanner. ThermalPrint does not read a barcode back to test it, and it cannot read barcodes in imported labels.</li>
+  <li><strong>A logo in a QR code needs a bigger code.</strong> Keep the logo at or below the limit shown next to the size slider, and make the code at least the width the red note asks for. Test one printed label with your phone first.</li>
   <li><strong>Data Matrix and QR need to be square-ish.</strong> A symbol is drawn as a square in the middle of its box; a very wide box wastes space.</li>
 </ul>
 <p>You can use <code>${date}</code>, <code>${serial}</code>, and (in a batch) <code>${Column}</code> placeholders inside any barcode value. See <a href="objects.html#dynamic-text-date-and-serial-number">Dynamic text</a> and <a href="batch.html">Batch printing</a>.</p>

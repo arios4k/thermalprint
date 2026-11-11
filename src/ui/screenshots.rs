@@ -21,6 +21,7 @@ const SCREENS: &[&str] = &[
 /// `THERMALPRINT_SCREENSHOTS_ONLY` (comma separated), so the README set stays small.
 const MANUAL_SCREENS: &[&str] = &[
     "home-restore",
+    "designer-qr-logo",
     "designer-text",
     "import-watch",
     "print-center-full",
@@ -104,9 +105,8 @@ impl Capture {
             app.area = match scene {
                 "designer" | "rotation" | "save-changes" | "designer-text" | "batch"
                 | "designer-arrange" | "designer-printable" | "designer-image"
-                | "designer-gallery" | "designer-sheet" | "designer-range" | "designer-gs1" => {
-                    Area::Designer
-                }
+                | "designer-gallery" | "designer-sheet" | "designer-range" | "designer-gs1"
+                | "designer-qr-logo" => Area::Designer,
                 "import" | "import-watch" => Area::Import,
                 "print-center" | "print-center-full" => Area::PrintCenter,
                 _ => Area::Home,
@@ -226,6 +226,41 @@ impl Capture {
                     if let Some(object) = doc.objects.iter_mut().find(|o| o.id == id) {
                         object.options.image_mode = crate::design::ImageMode::Dither;
                         object.options.contrast = 0.3;
+                    }
+                    app.designer.doc = doc;
+                    app.designer.select_object(id);
+                }
+                "designer-qr-logo" => {
+                    // A simple round badge: a black ring around a black dot.
+                    let badge = image::RgbaImage::from_fn(160, 160, |x, y| {
+                        let distance = ((x as f32 - 80.).powi(2) + (y as f32 - 80.).powi(2)).sqrt();
+                        if distance <= 76. && (distance >= 54. || distance <= 26.) {
+                            image::Rgba([0, 0, 0, 255])
+                        } else if distance <= 76. {
+                            image::Rgba([255, 255, 255, 255])
+                        } else {
+                            image::Rgba([0, 0, 0, 0])
+                        }
+                    });
+                    let png = crate::symbols::png_bytes(&badge).expect("encode demo logo");
+                    let mut doc = app.designer.doc.clone();
+                    doc.objects.clear();
+                    doc.title = "Scan to track".into();
+                    let id = doc.add(
+                        Element::Qr {
+                            data: "https://example.com/track/TP-1048".into(),
+                        },
+                        25.,
+                        35.,
+                        50.,
+                        50.,
+                    );
+                    if let Some(object) = doc.objects.iter_mut().find(|o| o.id == id) {
+                        object.options.qr_level = crate::design::QrLevel::High;
+                        object.options.qr_logo = crate::design_render::prepare_qr_logo(&png)
+                            .expect("prepare demo logo");
+                        object.options.image_mode = crate::design::ImageMode::Threshold;
+                        object.options.qr_logo_percent = 28;
                     }
                     app.designer.doc = doc;
                     app.designer.select_object(id);
