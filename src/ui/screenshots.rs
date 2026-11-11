@@ -232,6 +232,7 @@ impl Capture {
                 "import-watch" => {
                     app.settings.watch_folder = Some(PathBuf::from("/home/demo/Downloads"));
                     app.settings.watch_enabled = true;
+                    app.settings.move_printed = true;
                 }
                 "print-center-full" => app.history = demo_history(),
                 "batch" => {
