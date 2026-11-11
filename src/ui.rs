@@ -250,9 +250,9 @@ impl ThermalPrint {
                 .filter(|item| item.path.is_file())
                 .cloned()
                 .collect();
+            // The app always starts on Home; the offer is shown there and in Import & Convert.
             if !saved.is_empty() {
                 app.restore_offer = Some(saved);
-                app.area = Area::Import;
             }
         }
         app
@@ -667,6 +667,7 @@ impl ThermalPrint {
     /// Put labels from the last session back in the queue. They need to be reviewed again.
     fn restore_queue(&mut self, offer: Vec<crate::settings::SavedItem>) {
         self.restore_offer = None;
+        self.area = Area::Import;
         for saved in offer {
             self.queue.push(QueueItem {
                 thumb: None,
@@ -1209,6 +1210,7 @@ impl ThermalPrint {
             });
         });
         ui.add_space(22.);
+        self.restore_card(ui);
         ui.columns(2, |columns| {
             if Self::home_card(
                 &mut columns[0],
@@ -1278,6 +1280,63 @@ impl ThermalPrint {
             self.append_files(vec![path]);
         }
         ui.add_space(28.);
+    }
+    /// Offer to bring back the queue from the last session, above the start cards on Home.
+    fn restore_card(&mut self, ui: &mut egui::Ui) {
+        let Some(offer) = self.restore_offer.clone() else {
+            return;
+        };
+        let accent = Color32::from_rgb(71, 119, 205);
+        Self::section_frame(ui)
+            .inner_margin(20)
+            .corner_radius(16)
+            .stroke(Stroke::new(1.5, accent))
+            .show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.label(
+                    RichText::new(crate::i18n::tr("Restore your last queue?"))
+                        .size(18.)
+                        .strong(),
+                );
+                ui.label(
+                    RichText::new(format!(
+                        "{} label(s) were still in the queue when you last closed the app.",
+                        offer.len()
+                    ))
+                    .weak(),
+                );
+                ui.add_space(10.);
+                ui.horizontal(|ui| {
+                    if ui
+                        .add_enabled(
+                            !self.busy,
+                            egui::Button::new(
+                                RichText::new(crate::i18n::tr("Restore"))
+                                    .size(16.)
+                                    .strong()
+                                    .color(Color32::WHITE),
+                            )
+                            .fill(accent)
+                            .corner_radius(10.)
+                            .min_size(Vec2::new(150., 44.)),
+                        )
+                        .clicked()
+                    {
+                        self.restore_queue(offer);
+                    }
+                    if ui
+                        .add(
+                            egui::Button::new(RichText::new(crate::i18n::tr("Discard")).size(16.))
+                                .corner_radius(10.)
+                                .min_size(Vec2::new(120., 44.)),
+                        )
+                        .clicked()
+                    {
+                        self.restore_offer = None;
+                    }
+                });
+            });
+        ui.add_space(16.);
     }
     fn section_title(ui: &mut egui::Ui, title: &str) {
         ui.label(RichText::new(crate::i18n::tr(title)).size(20.).strong());

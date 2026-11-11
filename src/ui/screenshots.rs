@@ -20,6 +20,7 @@ const SCREENS: &[&str] = &[
 /// Extra screens for the user manual. They are produced only when named in
 /// `THERMALPRINT_SCREENSHOTS_ONLY` (comma separated), so the README set stays small.
 const MANUAL_SCREENS: &[&str] = &[
+    "home-restore",
     "designer-text",
     "import-watch",
     "print-center-full",
@@ -228,6 +229,17 @@ impl Capture {
                     }
                     app.designer.doc = doc;
                     app.designer.select_object(id);
+                }
+                "home-restore" => {
+                    app.restore_offer = Some(
+                        (1..=3)
+                            .map(|i| crate::settings::SavedItem {
+                                path: PathBuf::from(format!("demo-order-{}.pdf", 1047 + i)),
+                                page: 0,
+                                crop: crate::detection::Crop::FULL,
+                            })
+                            .collect(),
+                    );
                 }
                 "home" => {
                     app.settings.recent = vec![

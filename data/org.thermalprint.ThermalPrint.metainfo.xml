@@ -45,6 +45,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.7.2" date="2026-11-11">
+      <description>
+        <p>Always start on Home.</p>
+        <ul>
+          <li>The app opens on Home again. If labels were left in the queue, a Restore your last queue card on Home offers to bring them back.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.7.1" date="2026-11-10">
       <description>
         <p>Print without scrolling.</p>

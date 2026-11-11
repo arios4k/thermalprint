@@ -106,7 +106,7 @@ Other current limits:
 - A PDF page is rasterized at 300 DPI. Details already missing from the source cannot be recovered.
 - The preview cannot predict physical printer calibration, heat, driver margins, or carrier scanner behavior.
 - Printer capabilities depend on what the CUPS queue advertises; the app does not install or repair drivers.
-- The queue is saved as you work. After the app closes, the next start offers to **Restore** or **Discard** it; restored labels keep their crops but must be reviewed again, and files that were moved or deleted are left out.
+- The queue is saved as you work. After the app closes, the next start opens on Home and offers to **Restore** or **Discard** it; restored labels keep their crops but must be reviewed again, and files that were moved or deleted are left out.
 - There is no imported-barcode decoder, marketplace integration, or automatic download feature yet (the watch folder picks up files you download yourself). Designer ZPL is raster based and requires a compatible raw queue.
 
 
