@@ -82,6 +82,28 @@ pub fn tr(text: &str) -> &str {
 }
 
 const ES: &[(&str, &str)] = &[
+    ("Reviewed", "Revisada"),
+    (
+        "Print this label (Ctrl+P)",
+        "Imprimir esta etiqueta (Ctrl+P)",
+    ),
+    ("Add a label first", "Añade primero una etiqueta"),
+    (
+        "The preview is still being prepared",
+        "La vista previa aún se está preparando",
+    ),
+    (
+        "The label would be clipped. Adjust the layout",
+        "La etiqueta quedaría recortada. Ajusta el diseño",
+    ),
+    (
+        "Tick Reviewed once you have checked the crop",
+        "Marca Revisada cuando hayas comprobado el recorte",
+    ),
+    (
+        "Wait for the current operation to finish",
+        "Espera a que termine la operación actual",
+    ),
     ("Undo", "Deshacer"),
     ("Dismiss", "Descartar"),
     ("Watching", "Vigilando"),
@@ -1060,6 +1082,28 @@ const ES: &[(&str, &str)] = &[
     ),
 ];
 const DE: &[(&str, &str)] = &[
+    ("Reviewed", "Geprüft"),
+    (
+        "Print this label (Ctrl+P)",
+        "Dieses Etikett drucken (Strg+P)",
+    ),
+    ("Add a label first", "Fügen Sie zuerst ein Etikett hinzu"),
+    (
+        "The preview is still being prepared",
+        "Die Vorschau wird noch erstellt",
+    ),
+    (
+        "The label would be clipped. Adjust the layout",
+        "Das Etikett würde abgeschnitten. Passen Sie das Layout an",
+    ),
+    (
+        "Tick Reviewed once you have checked the crop",
+        "Setzen Sie Geprüft, sobald Sie den Zuschnitt kontrolliert haben",
+    ),
+    (
+        "Wait for the current operation to finish",
+        "Warten Sie, bis der aktuelle Vorgang beendet ist",
+    ),
     ("Undo", "Rückgängig"),
     ("Dismiss", "Schließen"),
     ("Watching", "Überwacht:"),
@@ -2008,6 +2052,28 @@ const DE: &[(&str, &str)] = &[
     ),
 ];
 const FR: &[(&str, &str)] = &[
+    ("Reviewed", "Vérifiée"),
+    (
+        "Print this label (Ctrl+P)",
+        "Imprimer cette étiquette (Ctrl+P)",
+    ),
+    ("Add a label first", "Ajoutez d'abord une étiquette"),
+    (
+        "The preview is still being prepared",
+        "L'aperçu est encore en préparation",
+    ),
+    (
+        "The label would be clipped. Adjust the layout",
+        "L'étiquette serait coupée. Ajustez la mise en page",
+    ),
+    (
+        "Tick Reviewed once you have checked the crop",
+        "Cochez Vérifiée une fois le recadrage contrôlé",
+    ),
+    (
+        "Wait for the current operation to finish",
+        "Attendez la fin de l'opération en cours",
+    ),
     ("Undo", "Annuler"),
     ("Dismiss", "Fermer"),
     ("Watching", "Surveillance de"),

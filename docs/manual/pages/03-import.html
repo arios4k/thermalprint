@@ -48,7 +48,7 @@ summary: Open PDF and image labels, crop away instructions, check the result, an
 <h3>Full page</h3>
 <p>Prints the whole page. Use it when the file is already a label or when the edges are unclear.</p>
 <h3>Reviewing the crop</h3>
-<p>When a crop leaves something out, ThermalPrint asks you to confirm it before you can print. Check the address, tracking number, carrier marks, and the empty margin (the <em>quiet zone</em>) around each barcode, then tick <strong>I checked the crop and barcode edges</strong>. <strong>Print all</strong> needs every queue entry to be reviewed.</p>
+<p>When a crop leaves something out, ThermalPrint asks you to confirm it before you can print. Check the address, tracking number, carrier marks, and the empty margin (the <em>quiet zone</em>) around each barcode, then tick <strong>I checked the crop and barcode edges</strong> (or <strong>Reviewed</strong> above the preview). <strong>Print all</strong> needs every queue entry to be reviewed.</p>
 
 <h2>Step 02: Paper and layout</h2>
 <table>
@@ -73,7 +73,7 @@ summary: Open PDF and image labels, crop away instructions, check the result, an
   <li>Optionally open <strong>Advanced driver resolution</strong> to pick a resolution your printer offers.</li>
   <li>Set the number of <strong>Copies</strong>.</li>
   <li>Check the line under the readiness message, for example <em>Will print: 1 × 101.6 × 152.4 mm · Printer name · 203 dpi</em>. It shows exactly what will be sent, so a wrong copy count, size, or printer is easy to spot.</li>
-  <li>Press <strong>Print label</strong> (<kbd>Ctrl</kbd>+<kbd>P</kbd>), or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to print and move on to the next label in the queue.</li>
+  <li>Press <strong>Print label</strong> at the bottom of the sidebar, or the green <strong>Print</strong> button above the preview, or <kbd>Ctrl</kbd>+<kbd>P</kbd>. Use <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to print and move on to the next label in the queue.</li>
 </ol>
 <p>Not sure about the paper or alignment? Load plain paper and print the <strong>alignment test</strong> first; see <a href="print-center.html#alignment-and-printer-profiles">Alignment and printer profiles</a>. The readiness message above the Print button (<em>Ready to submit</em>, or a warning about the media size) appears before anything is sent.</p>
 <p>If the label came from your watch folder and <strong>Move printed labels to a Processed folder</strong> is ticked, a successful print also moves the file into <code>Processed</code> and shows the next label. Labels you added by hand from other folders stay where they are.</p>
@@ -87,6 +87,14 @@ summary: Open PDF and image labels, crop away instructions, check the result, an
   <li><strong>Thermal label</strong> shows the final result at print resolution, exactly as it will be sent.</li>
   <li>The zoom buttons and <strong>Fit</strong> change the preview size.</li>
 </ul>
+<p>Under those buttons, a second row keeps the everyday actions next to the label, so you do not have to scroll the sidebar to find them:</p>
+<table>
+  <tr><th>Control</th><th>What it does</th></tr>
+  <tr><td>Previous / next, with <em>Label 2 of 5</em></td><td>Move through the queue. They appear when there are two or more labels, and match the buttons in the sidebar and <kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>Alt</kbd>+<kbd>→</kbd>.</td></tr>
+  <tr><td><strong>Reviewed</strong></td><td>The same check as <em>I checked the crop and barcode edges</em> in Step 01. Tick it once you have looked at the crop; the Print button stays disabled until you do (unless <strong>Skip review for automatic crops</strong> is on).</td></tr>
+  <tr><td><strong>Print</strong> (green, with a printer icon)</td><td>Prints the current label, exactly like <strong>Print label</strong> in the sidebar and <kbd>Ctrl</kbd>+<kbd>P</kbd>. While it is unavailable, point at it to read why: for example <em>Tick Reviewed once you have checked the crop</em>, <em>Choose a printer</em>, <em>Choose printer media</em>, <em>The label would be clipped</em>, or <em>The preview is still being prepared</em>.</td></tr>
+</table>
+<p>The row appears once a label is open. <strong>Print all</strong> stays in the sidebar, next to the queue, on purpose: printing every label in one click is easy to do by accident, so it is not on the toolbar.</p>
 
 <h2 id="printing-several-labels">Printing several labels</h2>
 <p>Add all the files, review each one, then press <strong>Print all N labels in order</strong>. The labels are submitted one after another in queue order. Unless <strong>Keep going if a label fails</strong> is ticked, the batch <strong>stops at the first problem</strong> (a file that can no longer be read, a layout error, or a printer error) and tells you how many were sent. With that option on, only the failed labels are skipped and stay in the queue. Print all uses the printer that is selected when you press it. Paper size, resolution, rotation, margins, scale, copies, printer, and media are shared by the whole batch.</p>

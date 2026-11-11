@@ -878,6 +878,26 @@ impl ThermalPrint {
             self.error = true;
         }
     }
+    /// Why the Print button is unavailable, in words, or `None` when printing can start.
+    fn print_blocker(&self) -> Option<&'static str> {
+        if self.busy {
+            Some("Wait for the current operation to finish")
+        } else if self.page.is_none() {
+            Some("Add a label first")
+        } else if self.dirty || self.output.is_none() {
+            Some("The preview is still being prepared")
+        } else if self.output.as_ref().is_some_and(|o| o.clipped) {
+            Some("The label would be clipped. Adjust the layout")
+        } else if !self.reviewed {
+            Some("Tick Reviewed once you have checked the crop")
+        } else if self.settings.printer.is_empty() {
+            Some("Choose a printer")
+        } else if self.settings.media.is_empty() {
+            Some("Choose printer media")
+        } else {
+            None
+        }
+    }
     fn ready(&self) -> bool {
         !self.busy
             && !self.dirty
@@ -2108,12 +2128,122 @@ impl ThermalPrint {
                     .weak(),
                 );
             }
-            if ui.add_enabled(self.ready()&&!self.settings.printer.is_empty()&&!self.settings.media.is_empty(),egui::Button::new(RichText::new(crate::i18n::tr("Print label   Ctrl+P")).color(Color32::WHITE)).fill(Color32::from_rgb(28,111,100)).min_size(Vec2::new(ui.available_width(),42.))).clicked(){self.print();}
+            let can_print = self.ready() && !self.settings.printer.is_empty() && !self.settings.media.is_empty();
+            if Self::print_button(ui, crate::i18n::tr("Print label   Ctrl+P"), Vec2::new(ui.available_width(), 42.), can_print).clicked() {
+                self.print();
+            }
             ui.horizontal(|ui|{if crate::designer_ui::icon_action(ui, "Export document", "PDF", "Export the prepared label as PDF", self.ready(), false).clicked(){self.export(true);}
                 if crate::designer_ui::icon_action(ui, "Add image / logo...", "PNG", "Export the prepared label as PNG", self.ready(), false).clicked(){self.export(false);}});
             if crate::designer_ui::icon_action(ui, "Status", "Job status", "Check jobs submitted to the selected CUPS printer", !self.settings.printer.is_empty() && !self.busy, false).clicked(){let p=self.settings.printer.clone();self.task("Checking CUPS queue…",move||Ok(Message::Done(printing::job_status(&p)?)));}
             });
         });
+    }
+    /// Moving through the queue, confirming the crop, and printing, next to the preview.
+    /// The main print button: a filled button with the printer icon and a label.
+    fn print_button(ui: &mut egui::Ui, label: &str, size: Vec2, enabled: bool) -> egui::Response {
+        let font = egui::TextStyle::Button.resolve(ui.style());
+        let text_width = ui
+            .painter()
+            .layout_no_wrap(label.into(), font.clone(), Color32::WHITE)
+            .size()
+            .x;
+        let size = Vec2::new(size.x.max(text_width + 62.), size.y);
+        let response = ui.add_enabled(
+            enabled,
+            egui::Button::new("")
+                .min_size(size)
+                .corner_radius(8.)
+                .fill(Color32::from_rgb(28, 111, 100)),
+        );
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, label));
+        let color = if enabled {
+            Color32::WHITE
+        } else {
+            ui.visuals().weak_text_color()
+        };
+        // The icon, a gap, and the label are centered together.
+        let left = response.rect.center().x - (22. + 8. + text_width) / 2.;
+        let y = response.rect.center().y;
+        crate::designer_ui::paint_tool_icon(
+            ui.painter(),
+            Pos2::new(left + 11., y),
+            color,
+            "Print device",
+        );
+        ui.painter().text(
+            Pos2::new(left + 30., y),
+            egui::Align2::LEFT_CENTER,
+            label,
+            font,
+            color,
+        );
+        response
+    }
+    fn action_bar(&mut self, ui: &mut egui::Ui) {
+        let blocker = self.print_blocker();
+        let (count, busy) = (self.queue.len(), self.busy);
+        let shown = self.loading_selection.or(self.selected);
+        let selected = self.selected;
+        let mut reviewed = self.reviewed;
+        let (mut go_to, mut print) = (None, false);
+        egui::containers::Sides::new().show(
+            ui,
+            |ui| {
+                if count > 1 {
+                    if crate::designer_ui::icon_action(
+                        ui,
+                        "Previous",
+                        "",
+                        "View the previous label (Alt+Left)",
+                        !busy && selected.is_some_and(|i| i > 0),
+                        false,
+                    )
+                    .clicked()
+                    {
+                        go_to = selected.map(|i| i - 1);
+                    }
+                    ui.label(
+                        RichText::new(format!("Label {} of {}", shown.map_or(0, |i| i + 1), count))
+                            .strong(),
+                    );
+                    if crate::designer_ui::icon_action(
+                        ui,
+                        "Next",
+                        "",
+                        "View the next label (Alt+Right)",
+                        !busy && selected.is_some_and(|i| i + 1 < count),
+                        false,
+                    )
+                    .clicked()
+                    {
+                        go_to = selected.map(|i| i + 1);
+                    }
+                }
+            },
+            |ui| {
+                // This side is laid out right to left, so Print comes first.
+                let response = Self::print_button(
+                    ui,
+                    crate::i18n::tr("Print"),
+                    Vec2::new(96., 36.),
+                    blocker.is_none(),
+                );
+                let response = match blocker {
+                    Some(reason) => response.on_disabled_hover_text(crate::i18n::tr(reason)),
+                    None => response.on_hover_text(crate::i18n::tr("Print this label (Ctrl+P)")),
+                };
+                print = response.clicked();
+                ui.checkbox(&mut reviewed, crate::i18n::tr("Reviewed"))
+                    .on_hover_text(crate::i18n::tr("I checked the crop and barcode edges"));
+            },
+        );
+        self.reviewed = reviewed;
+        if let Some(i) = go_to {
+            self.select(i);
+        }
+        if print {
+            self.print();
+        }
     }
     fn preview(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
@@ -2173,6 +2303,9 @@ impl ThermalPrint {
             }
             ui.label(format!("{:.0}%", self.zoom * 100.));
         });
+        if self.page.is_some() {
+            self.action_bar(ui);
+        }
         ui.separator();
         if self.page.is_none() {
             ui.vertical_centered(|ui| {

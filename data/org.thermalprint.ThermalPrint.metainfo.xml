@@ -45,6 +45,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.7.1" date="2026-11-10">
+      <description>
+        <p>Print without scrolling.</p>
+        <ul>
+          <li>A new row above the preview has previous and next buttons, a Reviewed checkbox, and a green Print button.</li>
+          <li>When Print is unavailable, pointing at it says why, such as "Tick Reviewed once you have checked the crop".</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.7.0" date="2026-11-10">
       <description>
         <p>A smoother day of printing labels.</p>

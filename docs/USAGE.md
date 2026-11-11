@@ -16,7 +16,7 @@ For a correctly sized 4 × 6 source, the automatic proposal may be the whole pag
 
 Choose several files in **Add labels**, or drop several files together. Each PDF page is added as a queue entry. When Automatic mode finds multiple separated regions on one page, **Queue all detected regions** replaces that page's current queue entry with one entry per proposed region.
 
-Select each entry in the queue to inspect and adjust it. Crops, extraction mode, and review state are remembered per queue entry. Use **Move up**, **Move down**, and **Remove** to arrange the print order. **Print all** requires every entry to be reviewed and submits the jobs to CUPS **one after another in queue order**. The batch stops at the first load, layout, or CUPS error and reports how many jobs were submitted. Submission order is not a guarantee of physical print completion; use **Job status** and the printer itself to check progress.
+Select each entry in the queue to inspect and adjust it. Crops, extraction mode, and review state are remembered per queue entry. Use **Move up**, **Move down**, and **Remove** to arrange the print order. **Print all** requires every entry to be reviewed and submits the jobs to CUPS **one after another in queue order**. Unless **Keep going if a label fails** is ticked, the batch stops at the first load, layout, or CUPS error and reports how many jobs were submitted; with that option on, failed labels are skipped, stay in the queue, and are listed in the message. **Skip review for automatic crops** treats labels added afterwards as reviewed, so use it only for layouts you trust. A thumbnail strip, **Alt+Left** / **Alt+Right**, and a second row above the preview (previous/next, **Reviewed**, and a green **Print** button) make it quicker to move through and print the queue; **Ctrl+Enter** prints the current label and shows the next one. Submission order is not a guarantee of physical print completion; use **Job status** and the printer itself to check progress.
 
 Paper size, DPI, rotation, margins, scaling, enhancement, printer, media, resolution, and copies are shared settings for the batch. The app re-renders each queued page at print resolution when submitting it. A label that would clip is blocked rather than silently cut off.
 
@@ -106,8 +106,8 @@ Other current limits:
 - A PDF page is rasterized at 300 DPI. Details already missing from the source cannot be recovered.
 - The preview cannot predict physical printer calibration, heat, driver margins, or carrier scanner behavior.
 - Printer capabilities depend on what the CUPS queue advertises; the app does not install or repair drivers.
-- The queue is held in memory for the current session. Recent paths and preferences persist, but the queue itself is not restored after closing the app.
-- There is no imported-barcode decoder, marketplace integration, or automatic download feature yet. Designer ZPL is raster based and requires a compatible raw queue.
+- The queue is saved as you work. After the app closes, the next start offers to **Restore** or **Discard** it; restored labels keep their crops but must be reviewed again, and files that were moved or deleted are left out.
+- There is no imported-barcode decoder, marketplace integration, or automatic download feature yet (the watch folder picks up files you download yourself). Designer ZPL is raster based and requires a compatible raw queue.
 
 
 ## Saved label files
