@@ -12,7 +12,7 @@ summary: Open PDF and image labels, crop away instructions, check the result, an
 <ul>
   <li>Press <strong>Add labels…</strong> or <kbd>Ctrl</kbd>+<kbd>O</kbd> and choose one or more files.</li>
   <li>Drag files from your file manager onto the window.</li>
-  <li>Set up a <a href="automation.html#watching-a-folder">watch folder</a> so new downloads appear by themselves.</li>
+  <li>Set up a <a href="automation.html#watching-a-folder">watch folder</a> so new downloads appear by themselves. Tick <strong>Move printed labels to a Processed folder</strong> there to have each printed label leave the queue and move into a <code>Processed</code> subfolder.</li>
 </ul>
 <p><strong>Supported files:</strong> PDF, PNG, JPEG, TIFF, BMP, and WebP. Each page of a multi-page PDF becomes its own entry in the queue. Files can be up to 256 MB and 45 megapixels. If a PDF is encrypted or damaged, export it again from the place you got it.</p>
 
@@ -24,6 +24,7 @@ summary: Open PDF and image labels, crop away instructions, check the result, an
   <tr><td>Move up / move down</td><td>Change the printing order.</td></tr>
   <tr><td>Remove (trash)</td><td>Take the selected label out of the queue. The file itself is not deleted.</td></tr>
   <tr><td><strong>Print all N labels in order</strong></td><td>Send every label to the printer, one after another, in queue order. See <a href="#printing-several-labels">below</a>.</td></tr>
+  <tr><td>Printed labels (with <strong>Move printed labels to a Processed folder</strong> on)</td><td>After you print, the label leaves the queue, its file moves to the <code>Processed</code> folder inside your watch folder, and the next label is shown. The counters follow along. See <a href="automation.html#watching-a-folder">Watching a folder</a>.</td></tr>
   <tr><td><strong>Page</strong> box</td><td>For a multi-page PDF, jump to another page.</td></tr>
 </table>
 <p>Each label remembers its own crop, extraction mode, and review state. The queue lives in memory for the current session; it is not restored when you quit. Recent <em>file names</em> are remembered, so you can reopen files from Home.</p>
@@ -63,6 +64,7 @@ summary: Open PDF and image labels, crop away instructions, check the result, an
   <li>Set the number of <strong>Copies</strong>.</li>
   <li>Press <strong>Print label</strong> (<kbd>Ctrl</kbd>+<kbd>P</kbd>).</li>
 </ol>
+<p>If the label came from your watch folder and <strong>Move printed labels to a Processed folder</strong> is ticked, a successful print also moves the file into <code>Processed</code> and shows the next label. Labels you added by hand from other folders stay where they are.</p>
 <p>The <strong>PDF</strong> and <strong>PNG</strong> buttons save the finished label as a file instead; see <a href="export.html">Exporting</a>. <strong>Job status</strong> asks the printer system what is waiting.</p>
 <div class="callout note"><p>The Print button stays disabled until the label has rendered, the crop is reviewed, a printer and matching media are chosen, and nothing is clipped. The status bar and the notice in Print Center say what is still missing.</p></div>
 
