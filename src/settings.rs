@@ -101,6 +101,14 @@ pub struct Settings {
     pub saved_queue: Vec<SavedItem>,
     /// The first-run checklist on Home was closed.
     pub setup_dismissed: bool,
+    /// Print labels that land in the watch folder by themselves. Off until you turn it on.
+    pub auto_print: bool,
+    /// The warning about automatic printing was shown and accepted once.
+    pub auto_print_warned: bool,
+    /// Only files whose names match this filter print automatically; empty allows every file.
+    pub auto_print_pattern: String,
+    /// The most labels printed automatically per minute.
+    pub auto_print_per_minute: u8,
 }
 /// A queued label remembered between sessions.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -141,6 +149,10 @@ impl Default for Settings {
             watch_printer: None,
             saved_queue: vec![],
             setup_dismissed: false,
+            auto_print: false,
+            auto_print_warned: false,
+            auto_print_pattern: String::new(),
+            auto_print_per_minute: crate::autoprint::DEFAULT_PER_MINUTE,
         }
     }
 }
@@ -171,6 +183,14 @@ impl Settings {
                 s.offset_x_mm = finite(s.offset_x_mm, 0.).clamp(-MAX_OFFSET_MM, MAX_OFFSET_MM);
                 s.offset_y_mm = finite(s.offset_y_mm, 0.).clamp(-MAX_OFFSET_MM, MAX_OFFSET_MM);
                 s.safe_margin_mm = finite(s.safe_margin_mm, 0.).clamp(0., MAX_SAFE_MARGIN_MM);
+                s.auto_print_per_minute = s
+                    .auto_print_per_minute
+                    .clamp(1, crate::autoprint::MAX_PER_MINUTE);
+                s.auto_print_pattern = s
+                    .auto_print_pattern
+                    .chars()
+                    .take(crate::autoprint::MAX_PATTERN_CHARS)
+                    .collect();
                 while s.profiles.len() > MAX_PROFILES {
                     s.profiles.pop_last();
                 }
@@ -317,6 +337,35 @@ mod profile_tests {
         s.store_profile();
         let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
         assert_eq!(back.profiles["A"].offset_x_mm, 2.);
+    }
+
+    #[test]
+    fn automatic_printing_is_off_by_default_and_the_choice_is_remembered() {
+        let fresh = Settings::default();
+        assert!(!fresh.auto_print && !fresh.auto_print_warned);
+        assert_eq!(
+            fresh.auto_print_per_minute,
+            crate::autoprint::DEFAULT_PER_MINUTE
+        );
+        let old: Settings = serde_json::from_str(r#"{"copies": 2}"#).unwrap();
+        assert!(
+            !old.auto_print,
+            "settings saved before this feature stay off"
+        );
+        let chosen = Settings {
+            auto_print: true,
+            auto_print_warned: true,
+            auto_print_pattern: "label*.pdf".into(),
+            auto_print_per_minute: 4,
+            ..Settings::default()
+        };
+        let back: Settings =
+            serde_json::from_str(&serde_json::to_string(&chosen).unwrap()).unwrap();
+        assert!(back.auto_print && back.auto_print_warned);
+        assert_eq!(
+            (back.auto_print_pattern.as_str(), back.auto_print_per_minute),
+            ("label*.pdf", 4)
+        );
     }
 
     #[test]

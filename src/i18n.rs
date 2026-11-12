@@ -82,6 +82,58 @@ pub fn tr(text: &str) -> &str {
 }
 
 const ES: &[(&str, &str)] = &[
+    ("Printing", "Imprimiendo"),
+    (
+        "Print labels automatically?",
+        "¿Imprimir etiquetas automáticamente?",
+    ),
+    (
+        "Every label that lands in the watch folder will print by itself, without you pressing Print. A folder used only for labels is safest.",
+        "Cada etiqueta que llegue a la carpeta vigilada se imprimirá sola, sin que pulses Imprimir. Lo más seguro es una carpeta usada solo para etiquetas.",
+    ),
+    (
+        "This looks like your Downloads folder: an invoice or any other PDF saved there could print too. A separate folder just for labels is safer.",
+        "Parece tu carpeta de Descargas: una factura o cualquier otro PDF guardado allí también podría imprimirse. Es más seguro usar una carpeta aparte solo para etiquetas.",
+    ),
+    (
+        "Only single-page labels whose crop needs no review print. Each one waits 5 seconds with a Cancel button, and Pause stops everything.",
+        "Solo se imprimen las etiquetas de una página cuyo recorte no necesita revisión. Cada una espera 5 segundos con un botón Cancelar, y Pausar lo detiene todo.",
+    ),
+    ("Turn on", "Activar"),
+    ("auto-print paused", "impresión automática en pausa"),
+    ("auto-print on", "impresión automática activada"),
+    ("Resume auto-print", "Reanudar impresión automática"),
+    ("Pause auto-print", "Pausar impresión automática"),
+    (
+        "Stop or restart printing labels by themselves. Waiting labels stay in the queue.",
+        "Detiene o reanuda la impresión automática de etiquetas. Las etiquetas en espera permanecen en la cola.",
+    ),
+    (
+        "Print labels automatically",
+        "Imprimir etiquetas automáticamente",
+    ),
+    (
+        "Print labels that land in this folder by themselves. Only single-page labels whose crop needs no review print; the rest wait in the queue. Off until you turn it on.",
+        "Imprime solas las etiquetas que llegan a esta carpeta. Solo se imprimen las de una página cuyo recorte no necesita revisión; las demás esperan en la cola. Desactivado hasta que lo actives.",
+    ),
+    ("Only files named", "Solo archivos llamados"),
+    (
+        "Leave empty to print every label. Use * for any letters and ? for one letter; separate several names with commas.",
+        "Déjalo vacío para imprimir todas las etiquetas. Usa * para cualquier grupo de letras y ? para una letra; separa varios nombres con comas.",
+    ),
+    (
+        "File names that print automatically",
+        "Nombres de archivo que se imprimen automáticamente",
+    ),
+    ("Most per minute", "Máximo por minuto"),
+    (
+        "A burst of files cannot print more labels than this in one minute; the rest wait.",
+        "Una ráfaga de archivos no puede imprimir más etiquetas que esto en un minuto; el resto espera.",
+    ),
+    (
+        "Most labels printed automatically per minute",
+        "Máximo de etiquetas impresas automáticamente por minuto",
+    ),
     ("Safe margin", "Margen de seguridad"),
     (
         "Keep content this far from the label's edge. It is shaded on the canvas and objects inside it are flagged, even when the printer's driver reports no unprintable border. It is remembered for each printer.",
@@ -1146,6 +1198,58 @@ const ES: &[(&str, &str)] = &[
     ),
 ];
 const DE: &[(&str, &str)] = &[
+    ("Printing", "Druckt"),
+    (
+        "Print labels automatically?",
+        "Etiketten automatisch drucken?",
+    ),
+    (
+        "Every label that lands in the watch folder will print by itself, without you pressing Print. A folder used only for labels is safest.",
+        "Jedes Etikett, das im überwachten Ordner landet, wird von selbst gedruckt, ohne dass Sie auf Drucken klicken. Am sichersten ist ein Ordner, der nur für Etiketten verwendet wird.",
+    ),
+    (
+        "This looks like your Downloads folder: an invoice or any other PDF saved there could print too. A separate folder just for labels is safer.",
+        "Das sieht nach Ihrem Download-Ordner aus: Eine Rechnung oder jedes andere dort gespeicherte PDF könnte ebenfalls gedruckt werden. Ein eigener Ordner nur für Etiketten ist sicherer.",
+    ),
+    (
+        "Only single-page labels whose crop needs no review print. Each one waits 5 seconds with a Cancel button, and Pause stops everything.",
+        "Es werden nur einseitige Etiketten gedruckt, deren Zuschnitt keine Prüfung braucht. Jedes wartet 5 Sekunden mit einer Schaltfläche „Abbrechen“, und „Pause“ stoppt alles.",
+    ),
+    ("Turn on", "Einschalten"),
+    ("auto-print paused", "Auto-Druck pausiert"),
+    ("auto-print on", "Auto-Druck an"),
+    ("Resume auto-print", "Auto-Druck fortsetzen"),
+    ("Pause auto-print", "Auto-Druck pausieren"),
+    (
+        "Stop or restart printing labels by themselves. Waiting labels stay in the queue.",
+        "Stoppt oder startet das automatische Drucken von Etiketten. Wartende Etiketten bleiben in der Warteschlange.",
+    ),
+    (
+        "Print labels automatically",
+        "Etiketten automatisch drucken",
+    ),
+    (
+        "Print labels that land in this folder by themselves. Only single-page labels whose crop needs no review print; the rest wait in the queue. Off until you turn it on.",
+        "Druckt Etiketten, die in diesem Ordner landen, von selbst. Es werden nur einseitige Etiketten gedruckt, deren Zuschnitt keine Prüfung braucht; die übrigen warten in der Warteschlange. Aus, bis Sie es einschalten.",
+    ),
+    ("Only files named", "Nur Dateien namens"),
+    (
+        "Leave empty to print every label. Use * for any letters and ? for one letter; separate several names with commas.",
+        "Leer lassen, um jedes Etikett zu drucken. * steht für beliebige Zeichen, ? für ein Zeichen; mehrere Namen mit Kommas trennen.",
+    ),
+    (
+        "File names that print automatically",
+        "Dateinamen, die automatisch gedruckt werden",
+    ),
+    ("Most per minute", "Höchstens pro Minute"),
+    (
+        "A burst of files cannot print more labels than this in one minute; the rest wait.",
+        "Eine Flut von Dateien kann nicht mehr Etiketten als diese Zahl pro Minute drucken; der Rest wartet.",
+    ),
+    (
+        "Most labels printed automatically per minute",
+        "Höchstzahl automatisch gedruckter Etiketten pro Minute",
+    ),
     ("Safe margin", "Sicherheitsrand"),
     (
         "Keep content this far from the label's edge. It is shaded on the canvas and objects inside it are flagged, even when the printer's driver reports no unprintable border. It is remembered for each printer.",
@@ -2180,6 +2284,58 @@ const DE: &[(&str, &str)] = &[
     ),
 ];
 const FR: &[(&str, &str)] = &[
+    ("Printing", "Impression de"),
+    (
+        "Print labels automatically?",
+        "Imprimer les étiquettes automatiquement ?",
+    ),
+    (
+        "Every label that lands in the watch folder will print by itself, without you pressing Print. A folder used only for labels is safest.",
+        "Chaque étiquette qui arrive dans le dossier surveillé s'imprimera toute seule, sans que vous appuyiez sur Imprimer. Un dossier réservé aux étiquettes est le plus sûr.",
+    ),
+    (
+        "This looks like your Downloads folder: an invoice or any other PDF saved there could print too. A separate folder just for labels is safer.",
+        "Cela ressemble à votre dossier Téléchargements : une facture ou tout autre PDF enregistré là pourrait aussi s'imprimer. Un dossier séparé réservé aux étiquettes est plus sûr.",
+    ),
+    (
+        "Only single-page labels whose crop needs no review print. Each one waits 5 seconds with a Cancel button, and Pause stops everything.",
+        "Seules les étiquettes d'une page dont le recadrage ne demande aucune vérification s'impriment. Chacune attend 5 secondes avec un bouton Annuler, et Pause arrête tout.",
+    ),
+    ("Turn on", "Activer"),
+    ("auto-print paused", "impression auto en pause"),
+    ("auto-print on", "impression auto activée"),
+    ("Resume auto-print", "Reprendre l'impression auto"),
+    ("Pause auto-print", "Mettre l'impression auto en pause"),
+    (
+        "Stop or restart printing labels by themselves. Waiting labels stay in the queue.",
+        "Arrête ou relance l'impression automatique des étiquettes. Les étiquettes en attente restent dans la file.",
+    ),
+    (
+        "Print labels automatically",
+        "Imprimer les étiquettes automatiquement",
+    ),
+    (
+        "Print labels that land in this folder by themselves. Only single-page labels whose crop needs no review print; the rest wait in the queue. Off until you turn it on.",
+        "Imprime toutes seules les étiquettes qui arrivent dans ce dossier. Seules les étiquettes d'une page dont le recadrage ne demande aucune vérification s'impriment ; les autres attendent dans la file. Désactivé tant que vous ne l'activez pas.",
+    ),
+    ("Only files named", "Seulement les fichiers nommés"),
+    (
+        "Leave empty to print every label. Use * for any letters and ? for one letter; separate several names with commas.",
+        "Laissez vide pour imprimer toutes les étiquettes. Utilisez * pour n'importe quelles lettres et ? pour une lettre ; séparez plusieurs noms par des virgules.",
+    ),
+    (
+        "File names that print automatically",
+        "Noms de fichiers imprimés automatiquement",
+    ),
+    ("Most per minute", "Maximum par minute"),
+    (
+        "A burst of files cannot print more labels than this in one minute; the rest wait.",
+        "Une rafale de fichiers ne peut pas imprimer plus d'étiquettes que ce nombre en une minute ; les autres attendent.",
+    ),
+    (
+        "Most labels printed automatically per minute",
+        "Nombre maximal d'étiquettes imprimées automatiquement par minute",
+    ),
     ("Safe margin", "Marge de sécurité"),
     (
         "Keep content this far from the label's edge. It is shaded on the canvas and objects inside it are flagged, even when the printer's driver reports no unprintable border. It is remembered for each printer.",

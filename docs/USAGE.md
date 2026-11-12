@@ -22,6 +22,8 @@ Paper size, DPI, rotation, margins, scaling, enhancement, printer, media, resolu
 
 ## 🎨 Design a label from scratch
 
+With **Print labels automatically** (off by default, under *Watch a folder*), single-page labels whose crop needs no review print by themselves a few seconds after they land in the watch folder, with a Cancel button, a Pause button, a per-minute limit and an optional file-name filter. Use a folder that only receives labels. See the manual page on folder watching.
+
 A QR code can carry a logo in its center (**Logo in the center** in the properties panel). The code then uses the highest error correction and at least 37 × 37 squares, and the logo box is limited to 30 % of the code's width; tests decode rendered codes to check that this still scans. Scan one printed label before a large batch.
 
 Open **Label Designer** and choose a blank canvas or one of the built-in templates. Set width and height in millimeters, then add text, a proper Code 128/Code 39/EAN-13/UPC-A barcode, a QR code, a shape, or an image. Click an object to edit its content and exact geometry in the properties inspector. Drag it on the canvas or drag its resize handle; Shift-click selects several objects. The toolbar provides undo/redo, zoom, grid/snap controls, save/open, export, and printing. Designs are saved as `.thermalprint` files with a versioned JSON schema and embedded image data.

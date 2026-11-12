@@ -25,16 +25,27 @@ struct Toast {
     undo: Option<Moves>,
 }
 
+/// A label that is about to print by itself: what it is, when it prints, and how to stop it.
+pub struct Countdown {
+    pub id: u64,
+    pub text: String,
+    pub due: Instant,
+}
+
 #[derive(Default)]
 pub struct Notices {
     log: VecDeque<Entry>,
     toast: Option<Toast>,
     history_open: bool,
+    /// Labels waiting to print automatically, set by the app every frame.
+    pub countdowns: Vec<Countdown>,
 }
 
 /// What the user asked for this frame.
 pub enum Action {
     Undo(Moves),
+    /// Stop an automatic print before it starts.
+    CancelPrint(u64),
 }
 
 impl Notices {
@@ -74,6 +85,37 @@ impl Notices {
     pub fn show(&mut self, ctx: &egui::Context, can_act: bool) -> Option<Action> {
         let mut action = None;
         let mut dismiss = false;
+        if !self.countdowns.is_empty() {
+            ctx.request_repaint_after(Duration::from_millis(250));
+            let bottom = if self.toast.is_some() { -130. } else { -44. };
+            egui::Area::new(egui::Id::NULL.with("auto-print-countdowns"))
+                .anchor(egui::Align2::RIGHT_BOTTOM, [-16., bottom])
+                .order(egui::Order::Foreground)
+                .show(ctx, |ui| {
+                    egui::Frame::popup(ui.style()).show(ui, |ui| {
+                        ui.set_max_width(360.);
+                        for countdown in &self.countdowns {
+                            ui.horizontal_wrapped(|ui| {
+                                let left = countdown.due.saturating_duration_since(Instant::now());
+                                let text = if left.is_zero() {
+                                    format!("{} {} …", crate::i18n::tr("Printing"), countdown.text)
+                                } else {
+                                    format!(
+                                        "{} {} · {} s",
+                                        crate::i18n::tr("Printing"),
+                                        countdown.text,
+                                        left.as_secs() + 1
+                                    )
+                                };
+                                ui.label(text);
+                                if ui.button(crate::i18n::tr("Cancel")).clicked() {
+                                    action = Some(Action::CancelPrint(countdown.id));
+                                }
+                            });
+                        }
+                    });
+                });
+        }
         if let Some(toast) = &self.toast {
             let left = Self::lifetime(toast).saturating_sub(toast.at.elapsed());
             if left.is_zero() {

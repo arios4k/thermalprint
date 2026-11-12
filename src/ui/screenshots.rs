@@ -21,6 +21,8 @@ const SCREENS: &[&str] = &[
 /// `THERMALPRINT_SCREENSHOTS_ONLY` (comma separated), so the README set stays small.
 const MANUAL_SCREENS: &[&str] = &[
     "home-restore",
+    "import-autoprint",
+    "import-autoprint-warning",
     "designer-safe-margin",
     "designer-qr-logo",
     "designer-text",
@@ -118,7 +120,9 @@ impl Capture {
                 | "designer-gs1"
                 | "designer-qr-logo"
                 | "designer-safe-margin" => Area::Designer,
-                "import" | "import-watch" => Area::Import,
+                "import" | "import-watch" | "import-autoprint" | "import-autoprint-warning" => {
+                    Area::Import
+                }
                 "print-center" | "print-center-full" => Area::PrintCenter,
                 _ => Area::Home,
             };
@@ -206,6 +210,27 @@ impl Capture {
                         60.,
                         5.,
                     );
+                }
+                "import-autoprint-warning" => {
+                    app.settings.watch_folder = Some(PathBuf::from("/home/demo/Downloads"));
+                    app.settings.watch_enabled = true;
+                    app.auto_confirm = true;
+                }
+                "import-autoprint" => {
+                    app.settings.watch_folder = Some(PathBuf::from("/home/demo/Labels"));
+                    app.settings.watch_enabled = true;
+                    app.settings.move_printed = true;
+                    app.settings.auto_print = true;
+                    app.settings.auto_print_warned = true;
+                    app.settings.auto_print_pattern = "label*.pdf".into();
+                    app.auto_next_id = 1;
+                    app.auto_jobs.push(super::AutoJob {
+                        id: 1,
+                        path: PathBuf::from("/home/demo/Labels/label-1049.pdf"),
+                        page: 0,
+                        crop: crate::detection::Crop::FULL,
+                        due: std::time::Instant::now() + std::time::Duration::from_secs(4),
+                    });
                 }
                 "designer-safe-margin" => {
                     // A thermal printer whose driver reports no unprintable border.

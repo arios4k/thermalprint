@@ -82,6 +82,10 @@ summary: Fixes for printers that are not listed, labels that print wrong, extra 
   <tr><td>CUPS rejected the job: …</td><td>The printer system refused the job. The text after the colon comes from CUPS and usually says why.</td></tr>
   <tr><td>Output is … mm; printer media is … mm</td><td>The label size differs from the media. Use <em>Match output to printer media</em> or choose matching media.</td></tr>
   <tr><td>Printing is not connected. In a terminal run: sudo snap connect …</td><td>Run that command. See <a href="snap.html">Using the Snap</a>.</td></tr>
+  <tr><td>A label did not print automatically</td><td>Read the message (or open <strong>Messages</strong>). The usual reasons: it needs a review, it has several pages, its name does not match <strong>Only files named</strong> (this one is silent), automatic printing is paused, or no printer or media is chosen. The label is in the queue, so you can print it by hand. See <a href="automation.html#printing-automatically">Printing labels automatically</a>.</td></tr>
+  <tr><td>Automatic printing is paused · …</td><td>A print failed or the printer is not ready, so it stopped to avoid repeating the problem. Fix the cause, then press <strong>Resume auto-print</strong> beside the Watching line.</td></tr>
+  <tr><td>Automatic printing is limited to N labels per minute</td><td>A burst of files hit the limit under <strong>Most per minute</strong>. The rest are only waiting; raise the limit if you want faster printing.</td></tr>
+  <tr><td>Automatic printing started again after I restarted the app</td><td>Pause is not remembered. Untick <strong>Print labels automatically</strong> to turn it off for good.</td></tr>
   <tr><td>Printed, but could not move a label to Processed · …</td><td>The label printed, but its file could not be moved. Check that you can write to the watch folder. The label has already left the queue.</td></tr>
   <tr><td>Watch folder is off · …</td><td>The reason follows the dot. Choose a readable folder.</td></tr>
 </table>

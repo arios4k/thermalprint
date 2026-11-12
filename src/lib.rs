@@ -1,4 +1,5 @@
 pub mod address_book;
+pub mod autoprint;
 pub mod batch;
 pub mod calibration;
 pub mod design;

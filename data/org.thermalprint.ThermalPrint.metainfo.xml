@@ -45,6 +45,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.9.0" date="2026-11-12">
+      <description>
+        <p>Print labels automatically, and a clearer printable area.</p>
+        <ul>
+          <li>New option to print labels by themselves when they land in the watch folder. It is off by default and remembered. Only single-page labels whose crop needs no review print, each after a 5-second Cancel countdown, with a Pause button, a per-minute limit, an optional file-name filter, and a pause if anything goes wrong.</li>
+          <li>Show printable area now says why nothing is shaded, and a new per-printer safe margin keeps content away from the edge even when the printer's driver reports no unprintable border.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.8.0" date="2026-11-11">
       <description>
         <p>Put your logo in the middle of a QR code.</p>

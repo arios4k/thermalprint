@@ -33,8 +33,39 @@ summary: Let new downloads join the queue automatically, and reopen anything you
   <tr><td>Printed labels</td><td>Tick <strong>Move printed labels to a Processed folder</strong> and each label you print from the watch folder leaves the queue and is moved into a <code>Processed</code> folder inside it. A file with the same name there is never overwritten; the new one is saved as <code>label (2).pdf</code>. Labels you added from elsewhere are not moved, and a multi-page PDF is moved after its last page prints. The option is off by default.</td></tr>
   <tr><td>Where you are</td><td>If you are on Home or Import &amp; Convert, the app switches to the queue. If you are in the Designer or Print Center, it stays put and the status bar says how many labels are waiting.</td></tr>
 </table>
-<div class="callout note"><p>The watch folder only <em>adds</em> labels to the queue. It never prints by itself. You still review each label and press Print.</p></div>
+<div class="callout note"><p>Unless you turn on <a href="#printing-automatically">Print labels automatically</a>, the watch folder only <em>adds</em> labels to the queue. It never prints by itself, and you review each label and press Print. Automatic printing is off by default.</p></div>
 <p>While watching is on, a green dot followed by <strong>Watching</strong> and the folder's name stays visible at the top of the sidebar, even when the <strong>Watch a folder</strong> section is closed. If the folder cannot be read later, for example because a drive was unplugged, watching keeps trying: a red message says what is wrong, and when the folder is readable again a message says so and new files are picked up. If the folder cannot be opened when you choose it or at startup, watching is switched off, the red message stays, and <strong>Turn watching back on</strong> restarts it once the folder is available. The Snap can read your home folder and folders you pick in the file chooser; see <a href="snap.html#folders-and-the-watch-folder">Using the Snap</a>.</p>
+
+<h2 id="printing-automatically">Printing labels automatically</h2>
+<p>By default the watch folder only <em>adds</em> labels to the queue, and you press Print. If you print many labels a day, you can let ThermalPrint print them for you. <strong>It is off until you turn it on</strong>, and your choice is remembered.</p>
+{{figure:import-autoprint|Import and Convert with Print labels automatically ticked, a file-name filter, a limit per minute, a Pause auto-print button, and a message in the corner counting down to an automatic print with a Cancel button|Automatic printing: the options under Watch a folder, the Pause button, and the countdown with Cancel.}}
+<h3>Turning it on</h3>
+<ol>
+  <li>Choose a watch folder and tick <strong>Watch for new labels</strong>.</li>
+  <li>Tick <strong>Print labels automatically</strong> under <strong>Watch a folder</strong>. The first time, a short warning explains that every label that lands in the folder will print by itself, and <strong>Turn on</strong> confirms it. If the folder looks like your Downloads folder, the warning says that an invoice or any other PDF saved there could print too.</li>
+  <li>Optionally set <strong>Only files named</strong> and <strong>Most per minute</strong> (below).</li>
+</ol>
+{{figure:import-autoprint-warning|The warning shown the first time automatic printing is turned on, saying that every label that lands in the folder will print by itself and that a Downloads folder could print invoices too|The first-time warning. It adds a red line when the watch folder looks like Downloads.}}
+<div class="callout warning"><p><strong>Use a folder just for labels.</strong> Automatic printing works on whatever lands in the folder, so a folder that only receives labels, not Downloads, is by far the safest. Decide in your browser where label downloads go, and watch that folder.</p></div>
+<h3>What prints, and what waits</h3>
+<table>
+  <tr><th>Rule</th><th>Details</th></tr>
+  <tr><td>Only labels that need no review</td><td>The app already knows when its crop detection is unsure. Only a label whose crop needs no review prints by itself. A label that does need a review joins the queue as usual, and a message says it was not printed automatically. <strong>Skip review for automatic crops</strong> does not change this rule.</td></tr>
+  <tr><td>Only single-page files</td><td>A PDF with several pages waits for you in the queue, because it is not clear which page is the label.</td></tr>
+  <tr><td>Only files that match the filter</td><td><strong>Only files named</strong> takes names or patterns, separated by commas: <code>*</code> stands for any letters and <code>?</code> for one letter, and capital letters do not matter. For example <code>label*.pdf, order-?.png</code>. Leave it empty to allow every file. Files that do not match are added to the queue as before, quietly.</td></tr>
+  <tr><td>Each file prints once</td><td>A file is never printed automatically twice in a session, and files that were already in the folder when you started the app or turned watching on are never printed. With <strong>Move printed labels to a Processed folder</strong> on, a printed label is also moved out of the folder.</td></tr>
+  <tr><td>A ready printer</td><td>A printer and media must be chosen. If they are not, the label stays in the queue and the message says what is missing. With <strong>Printer for watched labels</strong> set, the app switches to that printer first.</td></tr>
+  <tr><td>A clipped label never prints</td><td>If the label would be cut off, the print is blocked, exactly as when you print by hand, and automatic printing pauses.</td></tr>
+</table>
+<h3>The countdown, Cancel, and Pause</h3>
+<ul>
+  <li><strong>A 5-second countdown with Cancel.</strong> A message in the corner, such as <em>Printing label-1049.pdf · 3 s</em>, gives you a last chance to press <strong>Cancel</strong>. A cancelled label stays in the queue so you can print it by hand.</li>
+  <li><strong>Pause auto-print.</strong> A button beside the green <em>Watching</em> line stops automatic printing at once; labels waiting for their countdown are cancelled and stay in the queue. The line shows <em>auto-print on</em> or <em>auto-print paused</em>, and <strong>Resume auto-print</strong> starts it again. The pause is not remembered: if automatic printing is on, it is running again the next time you start the app.</li>
+  <li><strong>Most per minute.</strong> A burst of files cannot print more labels than this in one minute (from 1 to 60, default 10). The rest wait their turn, and a message says so. This keeps a mistake from using up a roll.</li>
+  <li><strong>A problem pauses everything.</strong> If a print fails, or the printer or media goes missing, automatic printing pauses itself and a red message says why, instead of repeating the problem on every file. The label stays in the queue. Fix the cause and press <strong>Resume auto-print</strong>.</li>
+</ul>
+<h3>Records</h3>
+<p>Every automatic print is listed in <a href="print-center.html#recent-prints">Print Center under Recent prints</a>, like a print you made by hand, and in the <strong>Messages</strong> list beside the status bar. With <strong>Move printed labels to a Processed folder</strong> on, the label then leaves the queue and its file moves to <code>Processed</code>, with the usual <strong>Undo</strong>, without disturbing the label you are looking at.</p>
 
 <h2>Drag and drop</h2>
 <p>You can always drop files onto the window instead: PDFs and images go to the Import queue, and a single <code>.thermalprint</code> file opens in the Designer.</p>

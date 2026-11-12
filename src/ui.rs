@@ -4,7 +4,7 @@ mod notices;
 mod screenshots;
 mod window_chrome;
 use crate::{
-    design,
+    autoprint, design,
     designer_ui::Designer,
     detection::{self, Crop, Detection},
     document::{self, Page},
@@ -15,7 +15,8 @@ use crate::{
 };
 use eframe::egui::{self, Color32, Pos2, Rect, RichText, Sense, Stroke, StrokeKind, Vec2};
 use std::{
-    path::PathBuf,
+    collections::HashSet,
+    path::{Path, PathBuf},
     sync::{Arc, mpsc},
     time::{Duration, Instant},
 };
@@ -40,6 +41,12 @@ enum Message {
     Printers(Vec<Printer>),
     Done(String),
     /// One queued label was submitted; the index is its place in the queue.
+    /// A label from the watch folder was printed by itself.
+    AutoPrinted {
+        path: PathBuf,
+        page: usize,
+        detail: String,
+    },
     PrintedOne {
         detail: String,
         index: Option<usize>,
@@ -67,6 +74,16 @@ struct Drag {
     start: Pos2,
     crop: Crop,
     kind: DragKind,
+}
+/// A label waiting out its countdown before it prints by itself.
+struct AutoJob {
+    id: u64,
+    path: PathBuf,
+    /// Which page of the file; the page itself is loaded again when it is time to print, so
+    /// a burst of files does not keep every full-size page in memory.
+    page: usize,
+    crop: Crop,
+    due: Instant,
 }
 pub struct ThermalPrint {
     settings: Settings,
@@ -102,6 +119,19 @@ pub struct ThermalPrint {
     last_error: String,
     /// Labels from the last session that can be put back in the queue.
     restore_offer: Option<Vec<crate::settings::SavedItem>>,
+    /// Files the watcher just added, so labels that arrive by themselves can be told from
+    /// labels you add by hand.
+    watch_arrivals: HashSet<PathBuf>,
+    auto_jobs: Vec<AutoJob>,
+    auto_paused: bool,
+    auto_limit: autoprint::RateLimit,
+    auto_limit_told: bool,
+    /// Labels already printed automatically in this session; each prints once.
+    auto_done: HashSet<PathBuf>,
+    auto_next_id: u64,
+    auto_in_flight: Option<PathBuf>,
+    /// The first-time warning for automatic printing is open.
+    auto_confirm: bool,
     /// Set by Print and next, so the next label is shown once this one is printed.
     advance_next: bool,
     queue: Vec<QueueItem>,
@@ -213,6 +243,15 @@ impl ThermalPrint {
             watch_error: None,
             last_error: String::new(),
             restore_offer: None,
+            watch_arrivals: HashSet::new(),
+            auto_jobs: Vec::new(),
+            auto_paused: false,
+            auto_limit: autoprint::RateLimit::default(),
+            auto_limit_told: false,
+            auto_done: HashSet::new(),
+            auto_next_id: 0,
+            auto_in_flight: None,
+            auto_confirm: false,
             advance_next: false,
             queue: vec![],
             selected: None,
@@ -354,6 +393,9 @@ impl ThermalPrint {
                 if files.is_empty() {
                     return;
                 }
+                if self.settings.auto_print {
+                    self.watch_arrivals.extend(files.iter().cloned());
+                }
                 let count = files.len();
                 let visible = matches!(self.area, Area::Home | Area::Import);
                 if visible {
@@ -392,11 +434,31 @@ impl ThermalPrint {
             ui.horizontal(|ui| {
                 let (dot, _) = ui.allocate_exact_size(Vec2::splat(10.), Sense::hover());
                 ui.painter().circle_filled(dot.center(), 4., green);
-                ui.label(
-                    RichText::new(format!("{} {name}", crate::i18n::tr("Watching")))
-                        .small()
-                        .color(green),
-                );
+                let mut text = format!("{} {name}", crate::i18n::tr("Watching"));
+                if self.settings.auto_print {
+                    text.push_str(" · ");
+                    text.push_str(crate::i18n::tr(if self.auto_paused {
+                        "auto-print paused"
+                    } else {
+                        "auto-print on"
+                    }));
+                }
+                ui.label(RichText::new(text).small().color(green));
+                if self.settings.auto_print
+                    && ui
+                        .small_button(crate::i18n::tr(if self.auto_paused {
+                            "Resume auto-print"
+                        } else {
+                            "Pause auto-print"
+                        }))
+                        .on_hover_text(crate::i18n::tr(
+                            "Stop or restart printing labels by themselves. Waiting labels stay in the queue.",
+                        ))
+                        .clicked()
+                {
+                    let paused = !self.auto_paused;
+                    self.set_auto_paused(paused);
+                }
             });
         }
         if let Some(error) = self.watch_error.clone() {
@@ -511,6 +573,71 @@ impl ThermalPrint {
                     self.settings.watch_printer = choice;
                     self.persist();
                 }
+            }
+            ui.separator();
+            let mut auto = self.settings.auto_print;
+            if ui
+                .add_enabled(
+                    folder.is_some(),
+                    egui::Checkbox::new(&mut auto, crate::i18n::tr("Print labels automatically")),
+                )
+                .on_hover_text(crate::i18n::tr(
+                    "Print labels that land in this folder by themselves. Only single-page labels whose crop needs no review print; the rest wait in the queue. Off until you turn it on.",
+                ))
+                .changed()
+            {
+                if !auto {
+                    self.settings.auto_print = false;
+                    self.auto_jobs.clear();
+                    self.persist();
+                } else if self.settings.auto_print_warned {
+                    self.settings.auto_print = true;
+                    self.auto_paused = false;
+                    self.persist();
+                } else {
+                    // Ask first; the choice is applied when the warning is accepted.
+                    self.auto_confirm = true;
+                }
+            }
+            if self.settings.auto_print {
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Only files named"));
+                    let mut pattern = self.settings.auto_print_pattern.clone();
+                    if ui
+                        .add(
+                            egui::TextEdit::singleline(&mut pattern)
+                                .hint_text("label*.pdf, order-*")
+                                .desired_width(150.),
+                        )
+                        .on_hover_text(crate::i18n::tr(
+                            "Leave empty to print every label. Use * for any letters and ? for one letter; separate several names with commas.",
+                        ))
+                        .accessible_name(crate::i18n::tr("File names that print automatically"))
+                        .changed()
+                    {
+                        self.settings.auto_print_pattern = pattern
+                            .chars()
+                            .take(crate::autoprint::MAX_PATTERN_CHARS)
+                            .collect();
+                        self.persist();
+                    }
+                });
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Most per minute"));
+                    if ui
+                        .add(
+                            egui::DragValue::new(&mut self.settings.auto_print_per_minute)
+                                .range(1..=crate::autoprint::MAX_PER_MINUTE),
+                        )
+                        .on_hover_text(crate::i18n::tr(
+                            "A burst of files cannot print more labels than this in one minute; the rest wait.",
+                        ))
+                        .accessible_name(crate::i18n::tr("Most labels printed automatically per minute"))
+                        .changed()
+                    {
+                        self.persist();
+                    }
+                });
             }
             if let Some(dir) = &folder
                 && ui
@@ -740,6 +867,7 @@ impl ThermalPrint {
             match msg {
                 Message::Files(files) => self.append_files(files),
                 Message::Loaded(page, d) => {
+                    let auto = (page.clone(), d.needs_review, d.proposed);
                     let selected = if let Some(i) = self.loading_selection.take() {
                         i
                     } else {
@@ -791,9 +919,23 @@ impl ThermalPrint {
                         self.queue.len()
                     );
                     self.persist();
+                    self.consider_auto_print(auto.0, auto.1, auto.2);
                     if !self.pending_files.is_empty() {
                         self.load_next_file();
                     }
+                }
+                Message::AutoPrinted { path, page, detail } => {
+                    self.auto_in_flight = None;
+                    self.auto_done.insert(path.clone());
+                    let name = path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_default();
+                    self.status = format!("Printed automatically · {name} · {detail}");
+                    self.error = false;
+                    self.notices
+                        .push(format!("Printed automatically: {name}"), false, None);
+                    self.finish_auto_printed(path, page);
                 }
                 Message::Rendered(output) => {
                     self.output_texture = Some(Self::texture(ctx, "output", &output.image));
@@ -862,6 +1004,13 @@ impl ThermalPrint {
                 Message::Cancelled => self.status = "Ready".into(),
                 Message::Error(e) => {
                     self.advance_next = false;
+                    if let Some(path) = self.auto_in_flight.take() {
+                        let name = path
+                            .file_name()
+                            .map(|n| n.to_string_lossy().into_owned())
+                            .unwrap_or_default();
+                        self.pause_auto(format!("{name}: {e}"));
+                    }
                     self.status = e;
                     self.error = true;
                     self.dirty = false;
@@ -970,6 +1119,10 @@ impl ThermalPrint {
         if !self.queue.is_empty() {
             self.select(first.min(self.queue.len() - 1));
         }
+        self.archive_printed(dir, printed);
+    }
+    /// Move printed files into the Processed folder, tell the user, and offer Undo.
+    fn archive_printed(&mut self, dir: PathBuf, mut printed: Vec<PathBuf>) {
         printed.sort();
         printed.dedup();
         let mut moves: notices::Moves = Vec::new();
@@ -1011,6 +1164,255 @@ impl ThermalPrint {
                 Some(moves),
             );
         }
+    }
+    /// A label from the watch folder printed by itself: take it out of the queue and move its
+    /// file, without disturbing the label you are looking at.
+    fn finish_auto_printed(&mut self, path: PathBuf, page: usize) {
+        if !self.settings.move_printed {
+            return;
+        }
+        let Some(dir) = self.settings.watch_folder.clone() else {
+            return;
+        };
+        self.save_selection();
+        let Some(index) = self
+            .queue
+            .iter()
+            .position(|item| item.path == path && item.page == page)
+        else {
+            return;
+        };
+        if self.selected == Some(index) {
+            self.finish_printed(vec![index]);
+            return;
+        }
+        self.queue.remove(index);
+        if let Some(selected) = self.selected
+            && selected > index
+        {
+            self.selected = Some(selected - 1);
+        }
+        self.archive_printed(dir, vec![path]);
+    }
+    /// The printer for an automatic print, or what is missing.
+    fn auto_printer(&self) -> Result<printing::Printer, &'static str> {
+        if self.settings.printer.is_empty() {
+            return Err("no printer is selected");
+        }
+        let Some(printer) = self
+            .printers
+            .iter()
+            .find(|p| p.name == self.settings.printer)
+        else {
+            return Err("the selected printer is not available");
+        };
+        if self.settings.media.is_empty() {
+            return Err("no printer media is selected");
+        }
+        Ok(printer.clone())
+    }
+    /// A label has just arrived from the watch folder: decide whether it prints by itself.
+    fn consider_auto_print(&mut self, page: Arc<Page>, needs_review: bool, crop: Crop) {
+        if !self.watch_arrivals.remove(&page.path) || !self.settings.auto_print {
+            return;
+        }
+        let name = page
+            .path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let arrival = autoprint::Arrival {
+            name: &name,
+            needs_review,
+            pages: page.count,
+            already_printed: self.auto_done.contains(&page.path),
+        };
+        if let Err(skip) = autoprint::decide(&arrival, &self.settings.auto_print_pattern) {
+            if let Some(message) = skip.message() {
+                self.notices.push(format!("{name} {message}"), false, None);
+            }
+            return;
+        }
+        if self.auto_paused {
+            self.notices.push(
+                format!("Automatic printing is paused, so {name} was not printed."),
+                false,
+                None,
+            );
+            return;
+        }
+        if let Err(reason) = self.auto_printer() {
+            self.notices.push(
+                format!("{name} was not printed automatically · {reason}"),
+                true,
+                None,
+            );
+            return;
+        }
+        if self.auto_jobs.iter().any(|job| job.path == page.path) {
+            return;
+        }
+        self.auto_next_id += 1;
+        self.auto_jobs.push(AutoJob {
+            id: self.auto_next_id,
+            path: page.path.clone(),
+            page: page.index,
+            crop,
+            due: Instant::now() + autoprint::COUNTDOWN,
+        });
+    }
+    /// Start the next automatic print whose countdown has run out, when the app is free and
+    /// the per-minute limit allows it.
+    fn auto_print_tick(&mut self, ctx: &egui::Context) {
+        if self.auto_jobs.is_empty() {
+            return;
+        }
+        ctx.request_repaint_after(Duration::from_millis(250));
+        let now = Instant::now();
+        let Some(position) = self.auto_jobs.iter().position(|job| job.due <= now) else {
+            return;
+        };
+        if self.busy {
+            return;
+        }
+        let per_minute = self.settings.auto_print_per_minute;
+        if !self.auto_limit.allow(now, per_minute) {
+            if !self.auto_limit_told {
+                self.auto_limit_told = true;
+                self.notices.push(
+                    format!(
+                        "Automatic printing is limited to {per_minute} labels per minute; the rest are waiting."
+                    ),
+                    false,
+                    None,
+                );
+            }
+            return;
+        }
+        self.auto_limit_told = false;
+        let job = self.auto_jobs.remove(position);
+        self.start_auto_print(job);
+    }
+    fn start_auto_print(&mut self, job: AutoJob) {
+        let printer = match self.auto_printer() {
+            Ok(printer) => printer,
+            Err(reason) => {
+                self.pause_auto(reason.to_string());
+                return;
+            }
+        };
+        let settings = self.settings.clone();
+        let name = job
+            .path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        self.auto_in_flight = Some(job.path.clone());
+        self.task(&format!("Printing {name} automatically…"), move || {
+            let page = document::load(&job.path, job.page)?;
+            let output = layout::render(&page, job.crop, &settings)?;
+            let submitted = printing::submit(&output, &settings, &printer)?;
+            crate::history::record(crate::history::import_entry(
+                &job.path,
+                job.page,
+                &settings.printer,
+                settings.copies,
+            ));
+            Ok(Message::AutoPrinted {
+                path: job.path,
+                page: job.page,
+                detail: submitted,
+            })
+        });
+    }
+    /// Stop automatic printing after a problem, so one fault does not repeat on every file.
+    fn pause_auto(&mut self, reason: String) {
+        self.auto_paused = true;
+        self.auto_jobs.clear();
+        self.notices.push(
+            format!("Automatic printing is paused · {reason}"),
+            true,
+            None,
+        );
+    }
+    /// Pause or resume automatic printing by hand.
+    fn set_auto_paused(&mut self, paused: bool) {
+        self.auto_paused = paused;
+        if paused {
+            let waiting = self.auto_jobs.len();
+            self.auto_jobs.clear();
+            let text = if waiting > 0 {
+                format!(
+                    "Automatic printing is paused. {waiting} waiting label(s) stay in the queue."
+                )
+            } else {
+                "Automatic printing is paused.".to_string()
+            };
+            self.notices.push(text, false, None);
+        } else {
+            self.notices
+                .push("Automatic printing resumed.", false, None);
+        }
+    }
+    /// The first-time warning shown before automatic printing is turned on.
+    fn auto_print_confirm(&mut self, ctx: &egui::Context) {
+        if !self.auto_confirm {
+            return;
+        }
+        let downloads = directories::UserDirs::new()
+            .and_then(|dirs| dirs.download_dir().map(Path::to_path_buf));
+        let in_downloads =
+            self.settings.watch_folder.as_deref().is_some_and(|folder| {
+                autoprint::looks_like_downloads(folder, downloads.as_deref())
+            });
+        egui::Window::new(crate::i18n::tr("Print labels automatically?"))
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0., 0.])
+            .show(ctx, |ui| {
+                ui.set_max_width(430.);
+                ui.label(crate::i18n::tr(
+                    "Every label that lands in the watch folder will print by itself, without you pressing Print. A folder used only for labels is safest.",
+                ));
+                if in_downloads {
+                    ui.add_space(6.);
+                    ui.label(
+                        RichText::new(crate::i18n::tr(
+                            "This looks like your Downloads folder: an invoice or any other PDF saved there could print too. A separate folder just for labels is safer.",
+                        ))
+                        .color(Color32::from_rgb(200, 65, 55)),
+                    );
+                }
+                ui.add_space(6.);
+                ui.label(crate::i18n::tr(
+                    "Only single-page labels whose crop needs no review print. Each one waits 5 seconds with a Cancel button, and Pause stops everything.",
+                ));
+                ui.add_space(10.);
+                ui.horizontal(|ui| {
+                    if ui
+                        .add(
+                            egui::Button::new(
+                                RichText::new(crate::i18n::tr("Turn on")).color(Color32::WHITE),
+                            )
+                            .fill(Color32::from_rgb(28, 111, 100))
+                            .min_size(Vec2::new(110., 34.)),
+                        )
+                        .clicked()
+                    {
+                        self.settings.auto_print = true;
+                        self.settings.auto_print_warned = true;
+                        self.auto_paused = false;
+                        self.auto_confirm = false;
+                        self.persist();
+                    }
+                    if ui
+                        .add(egui::Button::new(crate::i18n::tr("Cancel")).min_size(Vec2::new(90., 34.)))
+                        .clicked()
+                    {
+                        self.auto_confirm = false;
+                    }
+                });
+            });
     }
     /// Move labels back out of Processed and add them to the queue again.
     fn undo_moves(&mut self, moves: notices::Moves) {
@@ -2877,6 +3279,7 @@ impl eframe::App for ThermalPrint {
         let ctx = ui.ctx().clone();
         self.poll(&ctx);
         self.watch_tick(&ctx);
+        self.auto_print_tick(&ctx);
         self.remember_queue();
         // Errors are also shown as a message that stays until it has been read.
         if self.error && self.status != self.last_error {
@@ -3181,8 +3584,31 @@ impl eframe::App for ThermalPrint {
                 }
             });
         });
-        if let Some(notices::Action::Undo(moves)) = self.notices.show(&ctx, !self.busy) {
-            self.undo_moves(moves);
+        self.notices.countdowns = self
+            .auto_jobs
+            .iter()
+            .map(|job| notices::Countdown {
+                id: job.id,
+                text: job
+                    .path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+                due: job.due,
+            })
+            .collect();
+        self.auto_print_confirm(&ctx);
+        match self.notices.show(&ctx, !self.busy) {
+            Some(notices::Action::Undo(moves)) => self.undo_moves(moves),
+            Some(notices::Action::CancelPrint(id)) => {
+                self.auto_jobs.retain(|job| job.id != id);
+                self.notices.push(
+                    "Automatic print cancelled. The label stays in the queue.",
+                    false,
+                    None,
+                );
+            }
+            None => {}
         }
         match self.area {
             Area::Home => {
