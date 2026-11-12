@@ -119,6 +119,18 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 
 <h2>The printable area</h2>
 <p>Most printers cannot print right to the edge of the media. ThermalPrint reads each paper size's <em>imageable area</em> from the printer's driver description (its PPD file) and works out the margin on every side. When the label size matches the media of the selected printer and the driver reports a margin, the canvas shades that border in amber, and the status area names any object that reaches into it, because that part may be cut off. Turn the shading off with <em>View → Show printable area</em>.</p>
+<h3 id="when-nothing-is-shaded">When nothing is shaded</h3>
+<p>Many thermal printers tell the driver that the <em>whole</em> label is printable, so there is no border to shade. That is normal, and the app now says so: while <em>Show printable area</em> is on and a printer is selected, a short grey line under the canvas gives the reason. Pointing at the <em>Show printable area</em> menu entry shows the same reason. The possible reasons are:</p>
+<table>
+  <tr><th>Message</th><th>What to do</th></tr>
+  <tr><td>Choose a printer in Print Center …</td><td>Pick a printer. (This line only appears when a printer is selected, so it is shown in the menu hint.)</td></tr>
+  <tr><td>Select printer media in Print Center …</td><td>Choose the paper size your printer has loaded.</td></tr>
+  <tr><td>Choose media that matches this label's size …</td><td>The canvas size must match the selected media within half a millimeter. Use <strong>Match label to printer media</strong> under the canvas, or pick other media.</td></tr>
+  <tr><td>The printer's driver reports no unprintable border for this media …</td><td>The driver says everything is printable. If your printer still cuts off the edges, set a safe margin (below).</td></tr>
+</table>
+<h3 id="safe-margin">Safe margin</h3>
+{{figure:designer-safe-margin|The Label Designer with a two millimeter safe margin shaded around the label and a warning that one object reaches into it|A 2 mm safe margin shaded around the label. The warning names the object that reaches into it.}}
+<p>Use <strong>View → Safe margin</strong> to keep content a set distance from the edge, whatever the driver says. Set it in millimeters, from 0 to 10. The canvas shades that border in amber, and the status area names any object that reaches into it. Where the driver also reports a border, each side uses whichever is larger. The safe margin is remembered <strong>for each printer</strong>, so a small price-tag printer and a 4 × 6 printer can each have their own. You can also set it in <a href="print-center.html#alignment-and-printer-profiles">Print Center, under Alignment</a>. Leave it at 0 to turn it off. A good starting point for a printer that clips its edges is 2 mm; print a test label and adjust.</p>
 {{figure:designer-printable|The Label Designer with the printer's unprintable border shaded and a warning under the canvas about an object that reaches into it|The shaded border is the part the printer cannot print. The warning lists the object that reaches into it.}}
 
 <h2>Printing from the Designer</h2>

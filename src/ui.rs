@@ -1896,6 +1896,17 @@ impl ThermalPrint {
                 .accessible_name(crate::i18n::tr("Vertical print offset in millimeters"));
             });
             ui.horizontal(|ui| {
+                ui.label(crate::i18n::tr("Safe margin"));
+                ui.add(
+                    egui::DragValue::new(&mut self.settings.safe_margin_mm)
+                        .range(0.0..=crate::settings::MAX_SAFE_MARGIN_MM)
+                        .speed(0.1)
+                        .suffix(" mm"),
+                )
+                .accessible_name(crate::i18n::tr("Safe margin in millimeters"));
+            });
+            ui.label(RichText::new(crate::i18n::tr("Keeps designs this far from the label's edge. Use it when your printer cuts off the edges but its driver reports no unprintable border. It is remembered for each printer.")).small().weak());
+            ui.horizontal(|ui| {
                 if ui
                     .add_enabled(!self.busy && !self.settings.printer.is_empty(), egui::Button::new(crate::i18n::tr("Print alignment test")))
                     .on_hover_text(crate::i18n::tr("Prints a ruler label with a 1 mm border so you can measure the offset"))
@@ -3181,6 +3192,11 @@ impl eframe::App for ThermalPrint {
             }
             Area::Designer => {
                 self.designer.show(ui, &self.settings, &self.printers);
+                if let Some(margin) = self.designer.safe_margin_request.take() {
+                    self.settings.safe_margin_mm =
+                        margin.clamp(0., crate::settings::MAX_SAFE_MARGIN_MM);
+                    self.persist();
+                }
             }
             Area::PrintCenter => {
                 egui::CentralPanel::default().show(ui, |ui| {

@@ -200,8 +200,13 @@ pub struct Designer {
     user_templates: Vec<crate::user_templates::UserTemplate>,
     /// Guide lines to draw during a drag: (is_vertical, position in mm).
     guides: Vec<(bool, f32)>,
-    /// The printer's unprintable border as (left, top, right, bottom) in mm for this label.
+    /// The border to shade as (left, top, right, bottom) in mm for this label: the printer's
+    /// unprintable border and your safe margin, whichever is larger on each side.
     printable: Option<(f32, f32, f32, f32)>,
+    /// Why no border is drawn, when it cannot be.
+    printable_note: Option<&'static str>,
+    /// A new safe margin chosen in the View menu; the app stores it with the printer.
+    pub safe_margin_request: Option<f32>,
     pub raw_zpl: bool,
     pub zoom: f32,
     pub pan: Vec2,
@@ -261,6 +266,8 @@ impl Designer {
             user_templates: crate::user_templates::list(),
             guides: Vec::new(),
             printable: None,
+            printable_note: None,
+            safe_margin_request: None,
             raw_zpl: false,
             zoom: 1.,
             pan: Vec2::ZERO,
@@ -1910,7 +1917,27 @@ impl Designer {
                     ui.checkbox(&mut self.smart_guides, crate::i18n::tr("Smart guides"))
                         .on_hover_text(crate::i18n::tr("Snap to other objects' edges and centers while dragging"));
                     ui.checkbox(&mut self.show_printable, crate::i18n::tr("Show printable area"))
-                        .on_hover_text(crate::i18n::tr("Shade the border your printer cannot print on"));
+                        .on_hover_text(match self.printable_note {
+                            Some(reason) => crate::i18n::tr(reason),
+                            None => crate::i18n::tr("Shade the border your printer cannot print on"),
+                        });
+                    ui.horizontal(|ui| {
+                        ui.label(crate::i18n::tr("Safe margin"));
+                        let mut margin = settings.safe_margin_mm;
+                        if ui
+                            .add(
+                                egui::DragValue::new(&mut margin)
+                                    .range(0.0..=crate::settings::MAX_SAFE_MARGIN_MM)
+                                    .speed(0.1)
+                                    .suffix(" mm"),
+                            )
+                            .on_hover_text(crate::i18n::tr("Keep content this far from the label's edge. It is shaded on the canvas and objects inside it are flagged, even when the printer's driver reports no unprintable border. It is remembered for each printer."))
+                            .accessible_name(crate::i18n::tr("Safe margin in millimeters"))
+                            .changed()
+                        {
+                            self.safe_margin_request = Some(margin);
+                        }
+                    });
                     ui.checkbox(&mut self.show_properties, crate::i18n::tr("Properties panel"));
                     ui.checkbox(&mut self.focus_canvas, crate::i18n::tr("Focus canvas"));
                 });
@@ -2003,11 +2030,22 @@ impl Designer {
                         color,
                         format!(
                             "{} {}",
-                            crate::i18n::tr("These objects reach into the printer's unprintable border and may be cut off:"),
+                            if settings.safe_margin_mm > 0. {
+                                crate::i18n::tr("These objects reach into the unprintable border or your safe margin and may be cut off:")
+                            } else {
+                                crate::i18n::tr("These objects reach into the printer's unprintable border and may be cut off:")
+                            },
                             names.join(", ")
                         ),
                     );
                 }
+            }
+            if self.show_printable
+                && self.printable.is_none()
+                && !settings.printer.is_empty()
+                && let Some(reason) = self.printable_note
+            {
+                ui.label(RichText::new(crate::i18n::tr(reason)).small().weak());
             }
             if let Some(printer) = printers.iter().find(|p| p.name == settings.printer) {
                 if self.raw_zpl {
@@ -2036,15 +2074,24 @@ impl Designer {
                 ui.label(crate::i18n::tr("Choose a printer in Print Center to print this design. Export is available without a printer."));
             }
         });
-        self.printable = printers
-            .iter()
-            .find(|p| p.name == settings.printer)
+        let printer = printers.iter().find(|p| p.name == settings.printer);
+        let driver = printer
             .filter(|p| {
                 p.media_sizes.get(&settings.media).is_some_and(|&(w, h)| {
                     (w - self.doc.width_mm).abs() < 0.5 && (h - self.doc.height_mm).abs() < 0.5
                 })
             })
             .and_then(|p| p.printable_margins_mm(&settings.media));
+        self.printable = effective_border(driver, settings.safe_margin_mm);
+        self.printable_note = if self.printable.is_none() {
+            Some(border_note(
+                printer,
+                &settings.media,
+                (self.doc.width_mm, self.doc.height_mm),
+            ))
+        } else {
+            None
+        };
         egui::CentralPanel::default().show(root, |ui| self.canvas(ui));
         self.shortcut(&ctx);
         self.start_render(settings.dpi);
@@ -3341,7 +3388,7 @@ impl Designer {
                         paper.width() / self.doc.width_mm,
                         paper.height() / self.doc.height_mm,
                     );
-                    let amber = Color32::from_rgba_unmultiplied(235, 150, 20, 60);
+                    let amber = Color32::from_rgba_unmultiplied(235, 150, 20, 95);
                     let inner = Rect::from_min_max(
                         Pos2::new(paper.left() + left * sx, paper.top() + top * sy),
                         Pos2::new(paper.right() - right * sx, paper.bottom() - bottom * sy),
@@ -3363,7 +3410,7 @@ impl Designer {
                     ui.painter().rect_stroke(
                         inner,
                         0.,
-                        Stroke::new(1., Color32::from_rgb(210, 120, 10)),
+                        Stroke::new(1.5, Color32::from_rgb(210, 120, 10)),
                         StrokeKind::Inside,
                     );
                 }
@@ -3805,6 +3852,48 @@ pub(crate) fn template_button(ui: &mut egui::Ui, name: &str) -> egui::Response {
         visuals.fg_stroke.color,
     );
     response
+}
+
+/// The border to shade and to check objects against: on each side, the larger of what the
+/// printer's driver says it cannot print and the safe margin you chose. `None` when neither
+/// gives a border.
+fn effective_border(
+    driver: Option<(f32, f32, f32, f32)>,
+    safe_margin_mm: f32,
+) -> Option<(f32, f32, f32, f32)> {
+    let safe = if safe_margin_mm.is_finite() {
+        safe_margin_mm.max(0.)
+    } else {
+        0.
+    };
+    if driver.is_none() && safe < 0.05 {
+        return None;
+    }
+    let (left, top, right, bottom) = driver.unwrap_or_default();
+    Some((
+        left.max(safe),
+        top.max(safe),
+        right.max(safe),
+        bottom.max(safe),
+    ))
+}
+
+/// Why no unprintable border can be shown, so that "Show printable area" never looks broken.
+fn border_note(printer: Option<&Printer>, media: &str, label: (f32, f32)) -> &'static str {
+    let Some(printer) = printer else {
+        return "Choose a printer in Print Center to see its unprintable border, or set a safe margin in the View menu.";
+    };
+    if media.is_empty() {
+        return "Select printer media in Print Center to see its unprintable border, or set a safe margin in the View menu.";
+    }
+    let matches = printer
+        .media_sizes
+        .get(media)
+        .is_some_and(|&(w, h)| (w - label.0).abs() < 0.5 && (h - label.1).abs() < 0.5);
+    if !matches {
+        return "Choose media that matches this label's size to see the printer's unprintable border, or set a safe margin in the View menu.";
+    }
+    "The printer's driver reports no unprintable border for this media. Set a safe margin in the View menu to keep content away from the edge."
 }
 
 /// The smallest printed module width, in millimeters, at which a QR code with a logo scans
@@ -5246,5 +5335,92 @@ mod gallery_tests {
         );
         output.textures_delta.clear();
         assert!(designer.gallery.is_some());
+    }
+}
+
+#[cfg(test)]
+mod printable_border_tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn printer_with(media: &str, size: (f32, f32)) -> Printer {
+        Printer {
+            name: "P".into(),
+            media_sizes: HashMap::from([(media.to_string(), size)]),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn the_larger_of_the_driver_border_and_the_safe_margin_wins_on_each_side() {
+        let border = effective_border(Some((1., 3., 0.5, 2.)), 2.).unwrap();
+        assert_eq!(border, (2., 3., 2., 2.));
+    }
+
+    #[test]
+    fn a_safe_margin_alone_gives_a_border_even_without_a_printer_border() {
+        assert_eq!(effective_border(None, 2.), Some((2., 2., 2., 2.)));
+        assert_eq!(effective_border(None, 0.), None);
+        assert_eq!(effective_border(None, f32::NAN), None);
+        assert_eq!(effective_border(None, -3.), None);
+        assert_eq!(
+            effective_border(Some((1., 1., 1., 1.)), 0.),
+            Some((1., 1., 1., 1.))
+        );
+    }
+
+    #[test]
+    fn objects_inside_a_safe_margin_are_flagged_when_the_driver_reports_nothing() {
+        let mut doc = design::LabelDocument::blank(100., 150.);
+        let near = doc.add(
+            Element::Text {
+                text: "x".into(),
+                font_pt: 9.,
+                bold: false,
+                align: design::TextAlign::Left,
+            },
+            0.5,
+            50.,
+            30.,
+            5.,
+        );
+        let far = doc.add(
+            Element::Text {
+                text: "y".into(),
+                font_pt: 9.,
+                bold: false,
+                align: design::TextAlign::Left,
+            },
+            10.,
+            50.,
+            30.,
+            5.,
+        );
+        assert!(doc.objects_in_margins((0., 0., 0., 0.)).is_empty());
+        let border = effective_border(None, 2.).unwrap();
+        let flagged = doc.objects_in_margins(border);
+        assert!(flagged.contains(&near) && !flagged.contains(&far));
+    }
+
+    #[test]
+    fn the_note_names_the_real_reason_nothing_is_shaded() {
+        assert!(border_note(None, "", (100., 150.)).starts_with("Choose a printer"));
+        let printer = printer_with("w4h6", (101.6, 152.4));
+        assert!(
+            border_note(Some(&printer), "", (101.6, 152.4)).starts_with("Select printer media")
+        );
+        assert!(
+            border_note(Some(&printer), "w4h6", (50., 30.))
+                .starts_with("Choose media that matches")
+        );
+        assert!(
+            border_note(Some(&printer), "unknown", (101.6, 152.4))
+                .starts_with("Choose media that matches")
+        );
+        assert!(
+            border_note(Some(&printer), "w4h6", (101.6, 152.4))
+                .contains("reports no unprintable border"),
+            "matching media with no border means the driver says everything is printable"
+        );
     }
 }

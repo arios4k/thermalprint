@@ -82,6 +82,39 @@ pub fn tr(text: &str) -> &str {
 }
 
 const ES: &[(&str, &str)] = &[
+    ("Safe margin", "Margen de seguridad"),
+    (
+        "Keep content this far from the label's edge. It is shaded on the canvas and objects inside it are flagged, even when the printer's driver reports no unprintable border. It is remembered for each printer.",
+        "Mantén el contenido a esta distancia del borde de la etiqueta. Se sombrea en el lienzo y se señalan los objetos dentro de él, aunque el controlador de la impresora no indique ningún borde no imprimible. Se recuerda para cada impresora.",
+    ),
+    (
+        "Safe margin in millimeters",
+        "Margen de seguridad en milímetros",
+    ),
+    (
+        "These objects reach into the unprintable border or your safe margin and may be cut off:",
+        "Estos objetos llegan al borde no imprimible o a tu margen de seguridad y pueden recortarse:",
+    ),
+    (
+        "Choose a printer in Print Center to see its unprintable border, or set a safe margin in the View menu.",
+        "Elige una impresora en el Centro de impresión para ver su borde no imprimible, o define un margen de seguridad en el menú Ver.",
+    ),
+    (
+        "Select printer media in Print Center to see its unprintable border, or set a safe margin in the View menu.",
+        "Selecciona el tamaño de papel en el Centro de impresión para ver su borde no imprimible, o define un margen de seguridad en el menú Ver.",
+    ),
+    (
+        "Choose media that matches this label's size to see the printer's unprintable border, or set a safe margin in the View menu.",
+        "Elige un papel que coincida con el tamaño de esta etiqueta para ver el borde no imprimible de la impresora, o define un margen de seguridad en el menú Ver.",
+    ),
+    (
+        "The printer's driver reports no unprintable border for this media. Set a safe margin in the View menu to keep content away from the edge.",
+        "El controlador de la impresora no indica ningún borde no imprimible para este papel. Define un margen de seguridad en el menú Ver para mantener el contenido lejos del borde.",
+    ),
+    (
+        "Keeps designs this far from the label's edge. Use it when your printer cuts off the edges but its driver reports no unprintable border. It is remembered for each printer.",
+        "Mantiene los diseños a esta distancia del borde de la etiqueta. Úsalo cuando tu impresora recorta los bordes pero su controlador no indica ningún borde no imprimible. Se recuerda para cada impresora.",
+    ),
     ("Logo in the center", "Logotipo en el centro"),
     (
         "A logo hides part of the code. ThermalPrint keeps it small enough, and uses the highest error correction, so phones can still scan it.",
@@ -1113,6 +1146,39 @@ const ES: &[(&str, &str)] = &[
     ),
 ];
 const DE: &[(&str, &str)] = &[
+    ("Safe margin", "Sicherheitsrand"),
+    (
+        "Keep content this far from the label's edge. It is shaded on the canvas and objects inside it are flagged, even when the printer's driver reports no unprintable border. It is remembered for each printer.",
+        "Halten Sie den Inhalt so weit vom Etikettenrand entfernt. Der Bereich wird auf der Zeichenfläche schattiert, und Objekte darin werden markiert, auch wenn der Druckertreiber keinen nicht bedruckbaren Rand meldet. Er wird für jeden Drucker gespeichert.",
+    ),
+    (
+        "Safe margin in millimeters",
+        "Sicherheitsrand in Millimetern",
+    ),
+    (
+        "These objects reach into the unprintable border or your safe margin and may be cut off:",
+        "Diese Objekte reichen in den nicht bedruckbaren Rand oder Ihren Sicherheitsrand und können abgeschnitten werden:",
+    ),
+    (
+        "Choose a printer in Print Center to see its unprintable border, or set a safe margin in the View menu.",
+        "Wählen Sie im Druckcenter einen Drucker, um dessen nicht bedruckbaren Rand zu sehen, oder legen Sie im Menü Ansicht einen Sicherheitsrand fest.",
+    ),
+    (
+        "Select printer media in Print Center to see its unprintable border, or set a safe margin in the View menu.",
+        "Wählen Sie im Druckcenter das Druckmedium, um den nicht bedruckbaren Rand zu sehen, oder legen Sie im Menü Ansicht einen Sicherheitsrand fest.",
+    ),
+    (
+        "Choose media that matches this label's size to see the printer's unprintable border, or set a safe margin in the View menu.",
+        "Wählen Sie ein Medium passend zur Etikettengröße, um den nicht bedruckbaren Rand des Druckers zu sehen, oder legen Sie im Menü Ansicht einen Sicherheitsrand fest.",
+    ),
+    (
+        "The printer's driver reports no unprintable border for this media. Set a safe margin in the View menu to keep content away from the edge.",
+        "Der Druckertreiber meldet für dieses Medium keinen nicht bedruckbaren Rand. Legen Sie im Menü Ansicht einen Sicherheitsrand fest, um Inhalte vom Rand fernzuhalten.",
+    ),
+    (
+        "Keeps designs this far from the label's edge. Use it when your printer cuts off the edges but its driver reports no unprintable border. It is remembered for each printer.",
+        "Hält Entwürfe so weit vom Etikettenrand entfernt. Nutzen Sie dies, wenn Ihr Drucker die Ränder abschneidet, der Treiber aber keinen nicht bedruckbaren Rand meldet. Wird für jeden Drucker gespeichert.",
+    ),
     ("Logo in the center", "Logo in der Mitte"),
     (
         "A logo hides part of the code. ThermalPrint keeps it small enough, and uses the highest error correction, so phones can still scan it.",
@@ -2114,6 +2180,39 @@ const DE: &[(&str, &str)] = &[
     ),
 ];
 const FR: &[(&str, &str)] = &[
+    ("Safe margin", "Marge de sécurité"),
+    (
+        "Keep content this far from the label's edge. It is shaded on the canvas and objects inside it are flagged, even when the printer's driver reports no unprintable border. It is remembered for each printer.",
+        "Gardez le contenu à cette distance du bord de l'étiquette. La zone est grisée sur le canevas et les objets qui s'y trouvent sont signalés, même si le pilote de l'imprimante ne signale aucun bord non imprimable. Elle est mémorisée pour chaque imprimante.",
+    ),
+    (
+        "Safe margin in millimeters",
+        "Marge de sécurité en millimètres",
+    ),
+    (
+        "These objects reach into the unprintable border or your safe margin and may be cut off:",
+        "Ces objets atteignent le bord non imprimable ou votre marge de sécurité et peuvent être coupés :",
+    ),
+    (
+        "Choose a printer in Print Center to see its unprintable border, or set a safe margin in the View menu.",
+        "Choisissez une imprimante dans le Centre d'impression pour voir son bord non imprimable, ou définissez une marge de sécurité dans le menu Affichage.",
+    ),
+    (
+        "Select printer media in Print Center to see its unprintable border, or set a safe margin in the View menu.",
+        "Choisissez le support dans le Centre d'impression pour voir son bord non imprimable, ou définissez une marge de sécurité dans le menu Affichage.",
+    ),
+    (
+        "Choose media that matches this label's size to see the printer's unprintable border, or set a safe margin in the View menu.",
+        "Choisissez un support qui correspond à la taille de cette étiquette pour voir le bord non imprimable de l'imprimante, ou définissez une marge de sécurité dans le menu Affichage.",
+    ),
+    (
+        "The printer's driver reports no unprintable border for this media. Set a safe margin in the View menu to keep content away from the edge.",
+        "Le pilote de l'imprimante ne signale aucun bord non imprimable pour ce support. Définissez une marge de sécurité dans le menu Affichage pour garder le contenu loin du bord.",
+    ),
+    (
+        "Keeps designs this far from the label's edge. Use it when your printer cuts off the edges but its driver reports no unprintable border. It is remembered for each printer.",
+        "Garde les modèles à cette distance du bord de l'étiquette. À utiliser quand votre imprimante coupe les bords alors que son pilote ne signale aucun bord non imprimable. Mémorisée pour chaque imprimante.",
+    ),
     ("Logo in the center", "Logo au centre"),
     (
         "A logo hides part of the code. ThermalPrint keeps it small enough, and uses the highest error correction, so phones can still scan it.",

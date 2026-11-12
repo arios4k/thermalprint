@@ -35,6 +35,9 @@ pub struct PrinterProfile {
     /// Shift printed content to correct a printer that feeds slightly off-center.
     pub offset_x_mm: f32,
     pub offset_y_mm: f32,
+    /// Keep designs this far from the label's edge, for printers whose driver reports no
+    /// unprintable border but still cut the edges off.
+    pub safe_margin_mm: f32,
 }
 impl Default for PrinterProfile {
     fn default() -> Self {
@@ -47,9 +50,12 @@ impl Default for PrinterProfile {
             copies: 1,
             offset_x_mm: 0.,
             offset_y_mm: 0.,
+            safe_margin_mm: 0.,
         }
     }
 }
+/// The largest safe margin, in millimeters.
+pub const MAX_SAFE_MARGIN_MM: f32 = 10.;
 /// The largest alignment correction, in millimeters, in either direction.
 pub const MAX_OFFSET_MM: f32 = 10.;
 const MAX_PROFILES: usize = 50;
@@ -77,6 +83,8 @@ pub struct Settings {
     pub navigation_collapsed: bool,
     pub offset_x_mm: f32,
     pub offset_y_mm: f32,
+    /// The safe margin for the selected printer; see [`PrinterProfile::safe_margin_mm`].
+    pub safe_margin_mm: f32,
     pub profiles: BTreeMap<String, PrinterProfile>,
     /// A folder to watch for new label files, and whether watching is on.
     pub watch_folder: Option<PathBuf>,
@@ -123,6 +131,7 @@ impl Default for Settings {
             navigation_collapsed: false,
             offset_x_mm: 0.,
             offset_y_mm: 0.,
+            safe_margin_mm: 0.,
             profiles: BTreeMap::new(),
             watch_folder: None,
             watch_enabled: false,
@@ -161,6 +170,7 @@ impl Settings {
                 s.print_history.truncate(50);
                 s.offset_x_mm = finite(s.offset_x_mm, 0.).clamp(-MAX_OFFSET_MM, MAX_OFFSET_MM);
                 s.offset_y_mm = finite(s.offset_y_mm, 0.).clamp(-MAX_OFFSET_MM, MAX_OFFSET_MM);
+                s.safe_margin_mm = finite(s.safe_margin_mm, 0.).clamp(0., MAX_SAFE_MARGIN_MM);
                 while s.profiles.len() > MAX_PROFILES {
                     s.profiles.pop_last();
                 }
@@ -192,6 +202,7 @@ impl Settings {
             copies: self.copies,
             offset_x_mm: self.offset_x_mm,
             offset_y_mm: self.offset_y_mm,
+            safe_margin_mm: self.safe_margin_mm,
         }
     }
     /// Remember the current values for the selected printer.
@@ -211,6 +222,7 @@ impl Settings {
         let Some(profile) = self.profiles.get(name).cloned() else {
             self.offset_x_mm = 0.;
             self.offset_y_mm = 0.;
+            self.safe_margin_mm = 0.;
             return false;
         };
         self.media = profile.media;
@@ -221,6 +233,7 @@ impl Settings {
         self.copies = profile.copies;
         self.offset_x_mm = profile.offset_x_mm;
         self.offset_y_mm = profile.offset_y_mm;
+        self.safe_margin_mm = profile.safe_margin_mm;
         true
     }
     pub fn remember(&mut self, path: PathBuf) {
@@ -239,6 +252,7 @@ impl PrinterProfile {
         self.copies = self.copies.clamp(1, 999);
         self.offset_x_mm = finite(self.offset_x_mm, 0.).clamp(-MAX_OFFSET_MM, MAX_OFFSET_MM);
         self.offset_y_mm = finite(self.offset_y_mm, 0.).clamp(-MAX_OFFSET_MM, MAX_OFFSET_MM);
+        self.safe_margin_mm = finite(self.safe_margin_mm, 0.).clamp(0., MAX_SAFE_MARGIN_MM);
     }
 }
 fn finite(v: f32, default: f32) -> f32 {
@@ -303,6 +317,36 @@ mod profile_tests {
         s.store_profile();
         let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
         assert_eq!(back.profiles["A"].offset_x_mm, 2.);
+    }
+
+    #[test]
+    fn the_safe_margin_is_kept_for_each_printer_and_clamped() {
+        let mut s = Settings {
+            printer: "A".into(),
+            safe_margin_mm: 2.5,
+            ..Settings::default()
+        };
+        assert!(
+            !s.switch_printer("B"),
+            "a new printer starts with no safe margin"
+        );
+        assert_eq!(s.safe_margin_mm, 0.);
+        s.safe_margin_mm = 1.;
+        assert!(s.switch_printer("A"));
+        assert_eq!(s.safe_margin_mm, 2.5);
+        assert!(s.switch_printer("B"));
+        assert_eq!(s.safe_margin_mm, 1.);
+        let old: Settings = serde_json::from_str(r#"{"copies": 3}"#).unwrap();
+        assert_eq!(old.safe_margin_mm, 0., "older files have none");
+        let mut profile = PrinterProfile {
+            safe_margin_mm: 999.,
+            ..Default::default()
+        };
+        profile.clean();
+        assert_eq!(profile.safe_margin_mm, MAX_SAFE_MARGIN_MM);
+        profile.safe_margin_mm = f32::NAN;
+        profile.clean();
+        assert_eq!(profile.safe_margin_mm, 0.);
     }
 
     #[test]

@@ -21,6 +21,7 @@ const SCREENS: &[&str] = &[
 /// `THERMALPRINT_SCREENSHOTS_ONLY` (comma separated), so the README set stays small.
 const MANUAL_SCREENS: &[&str] = &[
     "home-restore",
+    "designer-safe-margin",
     "designer-qr-logo",
     "designer-text",
     "import-watch",
@@ -103,10 +104,20 @@ impl Capture {
         }
         if !self.prepared {
             app.area = match scene {
-                "designer" | "rotation" | "save-changes" | "designer-text" | "batch"
-                | "designer-arrange" | "designer-printable" | "designer-image"
-                | "designer-gallery" | "designer-sheet" | "designer-range" | "designer-gs1"
-                | "designer-qr-logo" => Area::Designer,
+                "designer"
+                | "rotation"
+                | "save-changes"
+                | "designer-text"
+                | "batch"
+                | "designer-arrange"
+                | "designer-printable"
+                | "designer-image"
+                | "designer-gallery"
+                | "designer-sheet"
+                | "designer-range"
+                | "designer-gs1"
+                | "designer-qr-logo"
+                | "designer-safe-margin" => Area::Designer,
                 "import" | "import-watch" => Area::Import,
                 "print-center" | "print-center-full" => Area::PrintCenter,
                 _ => Area::Home,
@@ -186,6 +197,23 @@ impl Capture {
                     app.designer.doc.add(
                         Element::Text {
                             text: "TOO CLOSE TO THE EDGE".into(),
+                            font_pt: 9.,
+                            bold: true,
+                            align: TextAlign::Left,
+                        },
+                        0.8,
+                        147.,
+                        60.,
+                        5.,
+                    );
+                }
+                "designer-safe-margin" => {
+                    // A thermal printer whose driver reports no unprintable border.
+                    app.settings.safe_margin_mm = 2.;
+                    app.designer.doc.title = "Label with a safe margin".into();
+                    app.designer.doc.add(
+                        Element::Text {
+                            text: "NEAR THE EDGE".into(),
                             font_pt: 9.,
                             bold: true,
                             align: TextAlign::Left,
