@@ -12,5 +12,6 @@ for style in light dark; do
         THERMALPRINT_SCREENSHOTS_STYLE="$style" \
         XDG_CONFIG_HOME="$preview_dir/config" \
         XDG_DATA_HOME="$preview_dir/data" \
+        THERMALPRINT_SCREENSHOTS_SIZE=1440x810 \
         target/debug/thermalprint
 done
