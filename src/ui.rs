@@ -159,7 +159,12 @@ impl ThermalPrint {
                 ..Settings::default()
             }
         } else {
-            Settings::load()
+            // Light or dark always follows the system. A choice saved by an older
+            // version is ignored; only screenshot capture forces one.
+            Settings {
+                theme: ThemeChoice::System,
+                ..Settings::load()
+            }
         };
         cc.egui_ctx.set_theme(match settings.theme {
             ThemeChoice::System => egui::ThemePreference::System,
@@ -3357,110 +3362,102 @@ impl eframe::App for ThermalPrint {
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::F1)) {
             self.open_manual(&ctx);
         }
-        egui::Panel::top("header").show(ui, |ui| {
-            ui.horizontal(|ui| {
-                window_chrome::title(ui, &self.icon_texture);
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    window_chrome::controls(ui);
-                    let old = self.settings.theme;
-                    let menu = ui
-                        .add(egui::Button::new("").min_size(Vec2::splat(38.)))
-                        .on_hover_text(crate::i18n::tr("Main menu"));
-                    menu.widget_info(|| {
-                        egui::WidgetInfo::labeled(egui::Role::Button, true, "Main menu")
-                    });
-                    for offset in [-6., 0., 6.] {
-                        let center = menu.rect.center() + Vec2::new(0., offset);
-                        ui.painter().line_segment(
-                            [center - Vec2::new(8., 0.), center + Vec2::new(8., 0.)],
-                            Stroke::new(1.8, ui.style().interact(&menu).fg_stroke.color),
-                        );
+        // A split header like Voltkit's (libadwaita): the app name and main menu over the
+        // navigation, the page title centered over the content, then help and the window
+        // buttons.
+        let navigation_width = if self.area == Area::Designer && self.designer.focus_canvas {
+            0.
+        } else if self.settings.navigation_collapsed {
+            60.
+        } else {
+            200.
+        };
+        let page_title = match self.area {
+            Area::Home => "Home",
+            Area::Designer => "Label Designer",
+            Area::Import => "Import & Convert",
+            Area::PrintCenter => "Print Center",
+        };
+        egui::Panel::top("header")
+            .frame(egui::Frame::new().fill(ui.visuals().panel_fill))
+            .show_separator_line(false)
+            .exact_size(window_chrome::HEADER_HEIGHT)
+            .show(ui, |ui| {
+                let bar = Rect::from_min_size(
+                    ui.max_rect().min,
+                    Vec2::new(ui.max_rect().width(), window_chrome::HEADER_HEIGHT),
+                );
+                window_chrome::drag_area(ui, bar);
+                let menu_center = if navigation_width > 0. {
+                    let side =
+                        Rect::from_min_size(bar.min, Vec2::new(navigation_width, bar.height()));
+                    // Carry the navigation's divider up through the header.
+                    ui.painter().vline(
+                        side.right(),
+                        side.y_range(),
+                        ui.visuals().widgets.noninteractive.bg_stroke,
+                    );
+                    if self.settings.navigation_collapsed {
+                        side.center()
+                    } else {
+                        window_chrome::title_text(ui, side.center(), "ThermalPrint");
+                        Pos2::new(side.right() - 24., side.center().y)
                     }
-                    egui::Popup::menu(&menu).show(|ui| {
-                        ui.set_min_width(164.);
-                        ui.label(RichText::new(crate::i18n::tr("Appearance")).small().weak());
-                        ui.horizontal(|ui| {
-                            for (theme, label) in [
-                                (ThemeChoice::System, "System"),
-                                (ThemeChoice::Light, "Light"),
-                                (ThemeChoice::Dark, "Dark"),
-                            ] {
-                                let selected = self.settings.theme == theme;
-                                let response = ui
-                                    .add(
-                                        egui::Button::new("")
-                                            .min_size(Vec2::new(44., 36.))
-                                            .corner_radius(8.)
-                                            .selected(selected),
-                                    )
-                                    .on_hover_text(format!("{label} theme"));
-                                response.widget_info(|| {
-                                    egui::WidgetInfo::selected(
-                                        egui::Role::Button,
-                                        ui.is_enabled(),
-                                        selected,
-                                        format!("{label} theme"),
-                                    )
-                                });
-                                let color = if selected {
-                                    ui.visuals().selection.stroke.color
-                                } else {
-                                    ui.style().interact(&response).fg_stroke.color
-                                };
-                                crate::designer_ui::paint_tool_icon(
-                                    ui.painter(),
-                                    response.rect.center(),
-                                    color,
-                                    label,
-                                );
-                                if response.clicked() {
-                                    self.settings.theme = theme;
-                                }
-                            }
-                        });
-                        ui.separator();
-                        if ui.button(crate::i18n::tr("User manual")).clicked() {
-                            self.open_manual(&ctx);
-                            ui.close();
-                        }
-                        if ui.button(crate::i18n::tr("Printing terms")).clicked() {
-                            self.terms_open = true;
-                            ui.close();
-                        }
-                        if ui.button(crate::i18n::tr("About ThermalPrint")).clicked() {
-                            self.about_open = true;
-                            ui.close();
-                        }
-                        if ui.button(crate::i18n::tr("Quit")).clicked() {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                        }
-                    });
-                    if self.settings.theme != old {
-                        ctx.set_theme(match self.settings.theme {
-                            ThemeChoice::System => egui::ThemePreference::System,
-                            ThemeChoice::Light => egui::ThemePreference::Light,
-                            ThemeChoice::Dark => egui::ThemePreference::Dark,
-                        });
-                        self.persist();
-                    }
-                    // In a right-to-left row, this button lands just left of the main menu.
-                    let help = ui
-                        .add(
-                            egui::Button::new(RichText::new("?").size(18.).strong())
-                                .min_size(Vec2::splat(38.)),
-                        )
-                        .on_hover_text(crate::i18n::tr(
-                            "Open the user manual in your browser (F1)",
-                        ));
-                    help.widget_info(|| {
-                        egui::WidgetInfo::labeled(egui::Role::Button, true, "Help")
-                    });
-                    if help.clicked() {
+                } else {
+                    Pos2::new(bar.left() + 24., bar.center().y)
+                };
+                let content = Rect::from_min_max(
+                    Pos2::new(bar.left() + navigation_width, bar.top()),
+                    bar.max,
+                );
+                window_chrome::title_text(ui, content.center(), &crate::i18n::tr(page_title));
+                let controls_left = window_chrome::controls(ui, bar);
+
+                let menu = window_chrome::flat_button(ui, menu_center, "Main menu")
+                    .on_hover_text(crate::i18n::tr("Main menu"));
+                for offset in [-5., 0., 5.] {
+                    let center = menu.rect.center() + Vec2::new(0., offset);
+                    ui.painter().line_segment(
+                        [center - Vec2::new(7., 0.), center + Vec2::new(7., 0.)],
+                        Stroke::new(1.8, ui.visuals().strong_text_color()),
+                    );
+                }
+                egui::Popup::menu(&menu).show(|ui| {
+                    ui.set_min_width(164.);
+                    if ui.button(crate::i18n::tr("User manual")).clicked() {
                         self.open_manual(&ctx);
+                        ui.close();
+                    }
+                    if ui.button(crate::i18n::tr("Printing terms")).clicked() {
+                        self.terms_open = true;
+                        ui.close();
+                    }
+                    if ui.button(crate::i18n::tr("About ThermalPrint")).clicked() {
+                        self.about_open = true;
+                        ui.close();
+                    }
+                    if ui.button(crate::i18n::tr("Quit")).clicked() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 });
+
+                let help = window_chrome::flat_button(
+                    ui,
+                    Pos2::new(controls_left - 24., bar.center().y),
+                    "Help",
+                )
+                .on_hover_text(crate::i18n::tr("Open the user manual in your browser (F1)"));
+                ui.painter().text(
+                    help.rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    "?",
+                    egui::FontId::proportional(18.),
+                    ui.visuals().strong_text_color(),
+                );
+                if help.clicked() {
+                    self.open_manual(&ctx);
+                }
             });
-        });
         if self.area != Area::Designer || !self.designer.focus_canvas {
             egui::Panel::left("workspace-navigation")
                 .default_size(if self.settings.navigation_collapsed {

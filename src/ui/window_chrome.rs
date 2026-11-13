@@ -1,35 +1,17 @@
 //! Client-side title bar with native window-manager move/resize commands.
-use eframe::egui::{self, Color32, Pos2, Rect, Sense, Stroke, StrokeKind, Vec2};
+use eframe::egui::{self, Pos2, Rect, Sense, Stroke, StrokeKind, Vec2};
 
-pub(super) fn title(ui: &mut egui::Ui, icon: &egui::TextureHandle) {
-    let controls_width = 4. * 38. + 5. * ui.spacing().item_spacing.x + 10.;
-    let (rect, response) = ui.allocate_exact_size(
-        Vec2::new((ui.available_width() - controls_width).max(120.), 42.),
+/// Height of the client-side title bar, matching a libadwaita header bar.
+pub(super) const HEADER_HEIGHT: f32 = 46.;
+
+/// Makes `rect` move the window when dragged and maximize it when double-clicked.
+/// Widgets placed on top of it afterwards keep their own clicks.
+pub(super) fn drag_area(ui: &mut egui::Ui, rect: Rect) {
+    let response = ui.interact(
+        rect,
+        ui.scope_id().with("title-drag"),
         Sense::click_and_drag(),
     );
-    egui::Image::new(icon).paint_at(
-        ui,
-        Rect::from_center_size(
-            Pos2::new(rect.left() + 18., rect.center().y),
-            Vec2::splat(32.),
-        ),
-    );
-    ui.painter().text(
-        Pos2::new(rect.left() + 44., rect.center().y),
-        egui::Align2::LEFT_CENTER,
-        "ThermalPrint",
-        egui::FontId::proportional(21.),
-        ui.visuals().text_color(),
-    );
-    if rect.width() > 430. {
-        ui.painter().text(
-            Pos2::new(rect.left() + 188., rect.center().y),
-            egui::Align2::LEFT_CENTER,
-            crate::i18n::tr("Universal shipping labels"),
-            egui::FontId::proportional(12.),
-            ui.visuals().weak_text_color(),
-        );
-    }
     if response.double_clicked() {
         let maximized = ui.ctx().input(|i| i.viewport().maximized.unwrap_or(false));
         ui.ctx()
@@ -39,8 +21,40 @@ pub(super) fn title(ui: &mut egui::Ui, icon: &egui::TextureHandle) {
     }
 }
 
-pub(super) fn controls(ui: &mut egui::Ui) {
+/// A bold-looking title centered on `center`. The interface font has no bold face,
+/// so the text is drawn twice, half a pixel apart.
+pub(super) fn title_text(ui: &egui::Ui, center: Pos2, text: &str) {
+    let font = egui::FontId::proportional(15.);
+    let color = ui.visuals().strong_text_color();
+    for dx in [0., 0.5] {
+        ui.painter().text(
+            center + Vec2::new(dx, 0.),
+            egui::Align2::CENTER_CENTER,
+            text,
+            font.clone(),
+            color,
+        );
+    }
+}
+
+/// A frameless header button (the main menu or help) that shows a soft rounded
+/// background on hover, like a flat libadwaita header button.
+pub(super) fn flat_button(ui: &mut egui::Ui, center: Pos2, label: &str) -> egui::Response {
+    let rect = Rect::from_center_size(center, Vec2::splat(34.));
+    let response = ui.put(rect, egui::Button::new("").frame(false));
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), label));
+    if response.hovered() || response.has_focus() || response.is_pointer_button_down_on() {
+        ui.painter()
+            .rect_filled(rect, 8., ui.visuals().widgets.hovered.weak_bg_fill);
+    }
+    response
+}
+
+/// The minimize, maximize and close buttons as small round buttons at the right end of
+/// `bar`, the way GNOME draws them. Returns the left edge of the group.
+pub(super) fn controls(ui: &mut egui::Ui, bar: Rect) -> f32 {
     let maximized = ui.ctx().input(|i| i.viewport().maximized.unwrap_or(false));
+    let mut center = Pos2::new(bar.right() - 23., bar.center().y);
     for (kind, label, command) in [
         ("close", "Close window", egui::ViewportCommand::Close),
         (
@@ -58,34 +72,28 @@ pub(super) fn controls(ui: &mut egui::Ui) {
             egui::ViewportCommand::Minimized(true),
         ),
     ] {
+        let hit = Rect::from_center_size(center, Vec2::splat(34.));
         let response = ui
-            .add(
-                egui::Button::new("")
-                    .frame(false)
-                    .min_size(Vec2::splat(36.)),
-            )
+            .put(hit, egui::Button::new("").frame(false))
             .on_hover_text(label);
         response
             .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), label));
-        let hovered = response.hovered() || response.has_focus();
-        let color = if hovered && kind == "close" {
-            Color32::WHITE
+        let widgets = &ui.visuals().widgets;
+        let fill = if response.is_pointer_button_down_on() {
+            widgets.active.weak_bg_fill
+        } else if response.hovered() || response.has_focus() {
+            widgets.hovered.weak_bg_fill
         } else {
-            ui.style().interact(&response).fg_stroke.color
+            widgets.inactive.weak_bg_fill
         };
-        if hovered {
-            ui.painter().rect_filled(
-                response.rect,
-                8.,
-                if kind == "close" {
-                    Color32::from_rgb(180, 45, 55)
-                } else {
-                    ui.visuals().widgets.hovered.bg_fill
-                },
-            );
+        ui.painter().circle_filled(center, 12., fill);
+        if response.has_focus() {
+            ui.painter()
+                .circle_stroke(center, 13.5, ui.visuals().selection.stroke);
         }
-        let r = Rect::from_center_size(response.rect.center(), Vec2::splat(14.));
-        let stroke = Stroke::new(1.6, color);
+        let color = ui.visuals().strong_text_color();
+        let stroke = Stroke::new(1.5, color);
+        let r = Rect::from_center_size(center, Vec2::splat(8.));
         match kind {
             "close" => {
                 ui.painter()
@@ -98,23 +106,13 @@ pub(super) fn controls(ui: &mut egui::Ui) {
                     .line_segment([r.left_center(), r.right_center()], stroke);
             }
             "restore" => {
-                ui.painter().rect_stroke(
-                    r.translate(Vec2::new(2., -2.)).shrink(2.),
-                    1.,
-                    stroke,
-                    StrokeKind::Inside,
-                );
-                ui.painter().rect_filled(
-                    r.translate(Vec2::new(-2., 2.)).shrink(2.),
-                    1.,
-                    ui.visuals().panel_fill,
-                );
-                ui.painter().rect_stroke(
-                    r.translate(Vec2::new(-2., 2.)).shrink(2.),
-                    1.,
-                    stroke,
-                    StrokeKind::Inside,
-                );
+                let back = r.translate(Vec2::new(1.5, -1.5)).shrink(1.);
+                let front = r.translate(Vec2::new(-1.5, 1.5)).shrink(1.);
+                ui.painter()
+                    .rect_stroke(back, 1., stroke, StrokeKind::Inside);
+                ui.painter().rect_filled(front, 1., fill);
+                ui.painter()
+                    .rect_stroke(front, 1., stroke, StrokeKind::Inside);
             }
             _ => {
                 ui.painter().rect_stroke(r, 1., stroke, StrokeKind::Inside);
@@ -123,8 +121,9 @@ pub(super) fn controls(ui: &mut egui::Ui) {
         if response.clicked() {
             ui.ctx().send_viewport_cmd(command);
         }
+        center.x -= 36.;
     }
-    ui.separator();
+    center.x + 36. - 17.
 }
 
 fn resize_direction(rect: Rect, pos: Pos2) -> Option<egui::ResizeDirection> {

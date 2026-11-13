@@ -100,7 +100,7 @@ The export is produced from the full processing pipeline, not from a screenshot 
 
 ## 🔒 Settings, privacy, and limits
 
-Preferences are saved as JSON in the user configuration directory selected by the [`directories`](https://docs.rs/directories/) crate. They include recent **file paths**, the last printer and media choice, paper and layout controls, copy count, theme choice, and related options. Window state is handled by eframe's persistence support. Imported document content is processed locally; ThermalPrint does not upload labels or contact marketplaces.
+Preferences are saved as JSON in the user configuration directory selected by the [`directories`](https://docs.rs/directories/) crate. They include recent **file paths**, the last printer and media choice, paper and layout controls, copy count, and related options. Window state is handled by eframe's persistence support. Imported document content is processed locally; ThermalPrint does not upload labels or contact marketplaces.
 
 Safety limits include a 256 MB input-file limit, a 45-megapixel page/image limit, and a 36-megapixel output limit. These bounds reduce accidental memory exhaustion but are not a hardened sandbox for untrusted documents. PDFium is a native shared library when used; Poppler utilities are an external runtime fallback. Encrypted or damaged PDFs may need to be re-exported before import.
 

@@ -45,6 +45,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.9.1" date="2026-11-13">
+      <description>
+        <p>A title bar that matches the GNOME desktop, and a theme that always follows the system.</p>
+        <ul>
+          <li>The app name and main menu sit above the sidebar, the page title is centered above the content, and the window buttons are small round buttons, the way GNOME apps look.</li>
+          <li>Light and dark mode now always follow your system setting, so the Appearance choice is gone from the main menu.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.0" date="2026-11-12">
       <description>
         <p>Print labels automatically, and a clearer printable area.</p>
