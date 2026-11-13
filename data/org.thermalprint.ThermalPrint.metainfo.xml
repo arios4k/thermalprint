@@ -45,6 +45,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.9.2" date="2026-11-13">
+      <description>
+        <p>Brings the 0.9.1 title bar and system light or dark mode to the APT repository.</p>
+        <ul>
+          <li>Fixes two code checks that stopped the 0.9.1 Debian and Ubuntu package from being published.</li>
+          <li>Screenshots show the new title bar.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.1" date="2026-11-13">
       <description>
         <p>A title bar that matches the GNOME desktop, and a theme that always follows the system.</p>

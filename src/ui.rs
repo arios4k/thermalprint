@@ -3410,7 +3410,7 @@ impl eframe::App for ThermalPrint {
                     Pos2::new(bar.left() + navigation_width, bar.top()),
                     bar.max,
                 );
-                window_chrome::title_text(ui, content.center(), &crate::i18n::tr(page_title));
+                window_chrome::title_text(ui, content.center(), crate::i18n::tr(page_title));
                 let controls_left = window_chrome::controls(ui, bar);
 
                 let menu = window_chrome::flat_button(ui, menu_center, "Main menu")

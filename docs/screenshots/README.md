@@ -1,6 +1,6 @@
 # Documentation screenshots
 
-These PNGs capture the actual ThermalPrint interface at 1240 × 840 in light
+These PNGs capture the actual ThermalPrint interface at 1440 × 810 in light
 and dark themes. They show the current source version. The printer queue,
 order references, addresses, barcodes, and QR contents are fictional demo data;
 no real shipping documents, printer names, or account information are included.
