@@ -324,7 +324,6 @@ const ES: &[(&str, &str)] = &[
         "Añade automáticamente las nuevas etiquetas PDF y de imagen que aparezcan en una carpeta, como Descargas. Los archivos que ya estén ahí se ignoran.",
     ),
     ("Alignment", "Alineación"),
-    ("Appearance", "Apariencia"),
     ("Back", "Atrás"),
     ("Backward", "Hacia atrás"),
     (
@@ -779,10 +778,6 @@ const ES: &[(&str, &str)] = &[
         "Abre PDF o imágenes, quita las instrucciones, revisa los recortes e imprime en orden.",
     ),
     ("Open existing labels", "Abrir etiquetas existentes"),
-    (
-        "Universal shipping labels",
-        "Etiquetas de envío universales",
-    ),
     ("Project & source code", "Proyecto y código fuente"),
     (
         "Documentation, releases, and source",
@@ -1440,7 +1435,6 @@ const DE: &[(&str, &str)] = &[
         "Neue PDF- und Bild-Etiketten werden automatisch hinzugefügt, sobald sie in einem Ordner (z. B. Downloads) erscheinen. Bereits vorhandene Dateien werden ignoriert.",
     ),
     ("Alignment", "Ausrichtung"),
-    ("Appearance", "Erscheinungsbild"),
     ("Back", "Zurück"),
     ("Backward", "Nach hinten"),
     (
@@ -1877,7 +1871,6 @@ const DE: &[(&str, &str)] = &[
         "PDFs oder Bilder öffnen, Anleitungen entfernen, Zuschnitte prüfen und der Reihe nach drucken.",
     ),
     ("Open existing labels", "Bestehende Etiketten öffnen"),
-    ("Universal shipping labels", "Universelle Versandetiketten"),
     ("Project & source code", "Projekt und Quellcode"),
     (
         "Documentation, releases, and source",
@@ -2523,7 +2516,6 @@ const FR: &[(&str, &str)] = &[
         "Ajoute automatiquement les nouvelles étiquettes PDF et image qui apparaissent dans un dossier, comme Téléchargements. Les fichiers déjà présents sont ignorés.",
     ),
     ("Alignment", "Alignement"),
-    ("Appearance", "Apparence"),
     ("Back", "Retour"),
     ("Backward", "Vers l'arrière"),
     ("Barcode or QR code content", "Contenu du code-barres ou QR"),
@@ -2984,10 +2976,6 @@ const FR: &[(&str, &str)] = &[
         "Ouvrez des PDF ou des images, retirez les instructions, vérifiez les recadrages, puis imprimez dans l'ordre.",
     ),
     ("Open existing labels", "Ouvrir des étiquettes existantes"),
-    (
-        "Universal shipping labels",
-        "Étiquettes d'expédition universelles",
-    ),
     ("Project & source code", "Projet et code source"),
     (
         "Documentation, releases, and source",

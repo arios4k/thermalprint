@@ -1,7 +1,7 @@
 <!--
 title: The workspace
 group: The app
-summary: The window, sidebar, main menu, themes, language, drag and drop, and keyboard shortcuts.
+summary: The window, sidebar, main menu, light and dark mode, language, drag and drop, and keyboard shortcuts.
 -->
 <p>ThermalPrint has one window with four areas, chosen from the sidebar on the left. This page explains the parts of the window that are the same everywhere.</p>
 
@@ -10,7 +10,7 @@ summary: The window, sidebar, main menu, themes, language, drag and drop, and ke
 
 <table>
   <tr><th>Part</th><th>What it does</th></tr>
-  <tr><td><strong>Title bar</strong></td><td>Shows the app name and has the <strong>?</strong> Help button, the main menu (<strong>☰</strong>), and the window controls. Drag it to move the window; double-click to maximize.</td></tr>
+  <tr><td><strong>Title bar</strong></td><td>Above the sidebar it shows the app name and the main menu (<strong>☰</strong>). Above the workspace it shows the name of the area you are in, the <strong>?</strong> Help button, and the round minimize, maximize, and close buttons. Drag it to move the window; double-click to maximize.</td></tr>
   <tr><td><strong>Sidebar</strong></td><td>Chooses the area: Home, Label Designer, Import &amp; Convert, or Print Center.</td></tr>
   <tr><td><strong>Workspace</strong></td><td>The big area that changes with the sidebar choice.</td></tr>
   <tr><td><strong>Status bar</strong></td><td>The line at the bottom. It reports what the app is doing, such as <em>Rendering document</em>, and shows errors in red. Results and errors also appear for a few seconds in a message box above the status bar, so the next status change cannot hide them. The <strong>Messages</strong> button beside the status opens a list of the last 30 messages, newest first.</td></tr>
@@ -42,10 +42,9 @@ summary: The window, sidebar, main menu, themes, language, drag and drop, and ke
 </ul>
 
 <h2>The main menu</h2>
-<p>Open it with the <strong>☰</strong> button at the top right.</p>
+<p>Open it with the <strong>☰</strong> button at the top of the sidebar, beside the app name. When the sidebar is hidden it sits at the top left.</p>
 <table>
   <tr><th>Item</th><th>What it does</th></tr>
-  <tr><td><strong>Appearance</strong></td><td>Three buttons: System (follow your desktop), Light, and Dark. See <a href="#themes">Themes</a>.</td></tr>
   <tr><td><strong>User manual</strong></td><td>Opens this manual in your web browser, at the page for the area you are in.</td></tr>
   <tr><td><strong>Printing terms</strong></td><td>A searchable glossary inside the app: CUPS, DPI, ZPL, barcode terms, and more.</td></tr>
   <tr><td><strong>About ThermalPrint</strong></td><td>Shows the version (click it to copy), links to the project and bug tracker, the license, and the author's other apps.</td></tr>
@@ -54,8 +53,8 @@ summary: The window, sidebar, main menu, themes, language, drag and drop, and ke
 {{figure:about|The About ThermalPrint dialog with the version button, links, credits, and the more-from-the-author card|The About dialog. Click the version to copy it when you report a bug.}}
 {{figure:printing-terms|The Printing terms window with a search box and explanations of CUPS, DPI, and ZPL|Printing terms: a glossary you can search without leaving the app.}}
 
-<h2>Themes</h2>
-<p>Choose <strong>System</strong>, <strong>Light</strong>, or <strong>Dark</strong> in the main menu. System follows your desktop's setting and changes with it.</p>
+<h2 id="themes">Light and dark mode</h2>
+<p>ThermalPrint follows your desktop: it is light when your system uses a light style and dark when it uses a dark one, and it changes as soon as you switch. There is no setting for it inside the app; change the style in your system settings (on GNOME, <strong>Settings → Appearance</strong>).</p>
 {{figure:designer|The Label Designer in the theme that matches your system|Screenshots in this manual follow your system theme: this is the Label Designer, and it appears light or dark like the rest of your computer.}}
 
 <h2>Language</h2>
