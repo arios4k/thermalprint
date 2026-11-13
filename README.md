@@ -13,10 +13,11 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 [![Fedora RPM](https://github.com/arios4k/thermalprint/actions/workflows/release-rpm.yml/badge.svg)](https://github.com/arios4k/thermalprint/actions/workflows/release-rpm.yml)
 [![Install with APT](https://img.shields.io/badge/install-APT-ffb44d?logo=debian&logoColor=white)](#debian--ubuntu)
 [![Fedora Copr](https://img.shields.io/badge/Fedora-Copr-51a2da?logo=fedora&logoColor=white)](https://copr.fedorainfracloud.org/coprs/arios/thermalprint/)
+[![Manual](https://img.shields.io/badge/Manual-read-2ea44f)](https://arios4k.github.io/thermalprint/manual/)
 [![Snap Store](https://snapcraft.io/thermalprint/badge.svg)](https://snapcraft.io/thermalprint)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3187e7)](LICENSE)
 
-[User manual](https://arios4k.github.io/thermalprint/manual/) · [Install on Fedora](#fedora) · [Install on Debian / Ubuntu](#debian--ubuntu) · [See the app](#screenshots) · [Download packages](https://github.com/arios4k/thermalprint/releases/latest)
+[User manual](https://arios4k.github.io/thermalprint/manual/) · [Install on Fedora](#fedora) · [Install on Debian / Ubuntu](#debian--ubuntu) · [Download packages](https://github.com/arios4k/thermalprint/releases/latest)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/designer-dark.png">
@@ -29,17 +30,19 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 
 ## A workspace for everyday labels
 
-- **Create your own.** Start with a template and add text, addresses, logos, shapes, real barcodes, and QR codes, with an optional logo in the middle that is kept small enough to scan. Position objects precisely with a custom grid, smart guides, arrow-key nudging, and align, distribute, flip, and lock tools. Wrap or shrink text to fit its box, dither photos for thermal printing, set QR error correction and barcode text, format dates and zero-padded serials such as `${serial:4}`, see the printer's unprintable border, and save your own templates. Add shipping symbols, saved logos, your own fonts, and addresses from a built-in address book; fill QR codes from website, Wi-Fi, contact, email, and phone forms; and make GS1-128 and GS1 Data Matrix barcodes with an SSCC helper. Browse templates in a gallery with previews.
-- **Prepare existing labels.** Import PDFs or images, crop instructions and whitespace, review the result, and arrange several labels into a print queue.
-- **Get the size right.** Start at **4 × 6 inches**, choose another preset or enter custom dimensions. Descriptive printer media names and one-click size matching help resolve mismatches.
-- **Print or export.** Submit to a configured CUPS printer, save a dimensioned PDF or PNG, or export a design as SVG or raster ZPL.
-- **Print many at once.** Print a numbered range (start, step, count), place labels on an A4 or Letter sheet, or merge a spreadsheet into a design: put `${column}` placeholders in text, barcode, and QR content, choose a CSV file, preview any row, and print one label per row. Every row is checked before anything is sent.
-- **Fit your printer.** Each printer remembers its media, resolution, size, and copies, plus a small alignment offset. Print a ruler test label to measure how far your printer is off-center.
-- **Never lose work.** Unsaved changes are kept in a recovery copy and offered back after an unexpected exit. Labels for continuous rolls can size themselves to their content.
-- **Save clicks.** Watch a folder such as Downloads and new PDF and image labels join the queue on their own, printed labels can be moved to a Processed folder (with undo), and single-page labels can optionally print by themselves, with a Cancel countdown, a Pause button and a per-minute limit, and the queue is remembered between sessions. Recent prints are listed in Print Center so a label can be reopened and printed again after you review it.
-- **Stay comfortable.** A single title bar with the app menu and window controls; light, dark, and system themes; English, Spanish, German, and French (following your system language); consistent icon tools; keyboard shortcuts; and a searchable guide explaining printing terminology.
+- **Create your own.** Design labels from templates with text, addresses, logos, shapes, shipping symbols, real barcodes (including GS1) and QR codes, with precise alignment tools and saved templates.
+- **Prepare existing labels.** Import PDFs or images from carriers and marketplaces, crop away instructions and whitespace, and review the result before printing.
+- **Get the size right.** Start at **4 × 6 inches** or any size you need; ThermalPrint explains printer media and matches the output to it.
+- **Print or export.** Print through CUPS, or save a PDF, PNG, SVG or raster ZPL.
+- **Print many at once.** Numbered runs, several labels on an A4 or Letter sheet, and one label per row of a spreadsheet.
+- **Save clicks.** Watch a folder such as Downloads so new labels join the queue, and optionally print them by themselves.
+- **Stay comfortable.** Light and dark themes; English, Spanish, German and French; keyboard shortcuts; and a guide to printing terms.
 
 Document processing happens on your computer. ThermalPrint works with local files from carriers and marketplaces, including Vinted, eBay, Etsy, Shopify, USPS, UPS, and FedEx, without connecting to their accounts.
+
+## Manual
+
+**To learn how to use ThermalPrint, read the [ThermalPrint Manual](https://arios4k.github.io/thermalprint/manual/).** It explains every part of the app step by step: importing labels, the Label Designer, barcodes, batch printing, Print Center, automation, export, settings and troubleshooting. It also opens from the app with **F1** or the **?** button.
 
 ## Install
 
@@ -81,34 +84,7 @@ Install from the [Snap Store](https://snapcraft.io/thermalprint) (amd64). Tagged
 sudo snap install thermalprint
 ```
 
-To try a locally built package instead ([build instructions](docs/SNAP.md#build-and-inspect)):
-
-```sh
-sudo snap install --dangerous target/snap/thermalprint_*_amd64.snap
-snap connections thermalprint
-snap run thermalprint
-```
-
-If the `cups` row in `snap connections` shows `-` in the Slot column, or ThermalPrint says printing is not connected:
-
-```sh
-sudo snap install cups
-sudo snap connect thermalprint:cups cups:cups
-```
-
-To save labels to USB drives or other removable storage:
-
-```sh
-sudo snap connect thermalprint:removable-media
-```
-
-To open saved `.thermalprint` labels by double-clicking, run this once from your normal terminal (not `snap run`):
-
-```sh
-sh /snap/thermalprint/current/usr/share/doc/thermalprint/register-mime.sh
-```
-
-Snap packages cannot run these steps automatically; see [Snap release preparation](docs/SNAP.md) for details.
+Printing, removable drives and double-clicking `.thermalprint` files need a one-time connection step; see [Snap](https://arios4k.github.io/thermalprint/manual/snap.html) in the manual.
 
 ### Standalone packages and source builds
 
@@ -126,64 +102,6 @@ sudo dnf install ./thermalprint-*.x86_64.rpm
 
 Run these from the download folder, keeping only the RPM matching your Fedora release there. Other Linux users can [build from source](#build-from-source).
 
-## Screenshots
-
-### An inviting place to start
-
-Choose a blank label, reuse a template, or bring in an existing shipping label. Shipping, return address, product barcode, inventory, QR, asset, shelf, price tag, name, and fragile templates are included.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-dark.png">
-  <img src="docs/screenshots/home-light.png" width="1000" alt="ThermalPrint Home with modern create and import cards and illustrated label templates">
-</picture>
-
-### Preview before paper
-
-Compare the original document with the prepared thermal label. Adjust the crop, keep the barcode edges in view, and review each label before printing a batch.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/import-dark.png">
-  <img src="docs/screenshots/import-light.png" width="1000" alt="Import and Convert showing a fictional shipping label, manual crop controls, queue navigation, and output preview">
-</picture>
-
-### Printer setup you can understand
-
-Pick your printer and stock, see the paper proportions, and check readiness. Size warnings explain the mismatch and offer an action to match the output to the selected media.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/print-center-dark.png">
-  <img src="docs/screenshots/print-center-light.png" width="1000" alt="Print Center with descriptive 4 by 6 inch media, label-stock preview, output settings, and a printer readiness summary">
-</picture>
-
-<details>
-<summary><strong>A little printing clarity</strong></summary>
-
-The searchable **Printing terms** window explains CUPS, DPI, document formats, and barcode terminology. Open it from the hamburger menu; contextual help is also available next to relevant controls.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/printing-terms-dark.png">
-  <img src="docs/screenshots/printing-terms-light.png" width="1000" alt="Searchable Printing terms window with illustrated explanations of CUPS, DPI, and ZPL">
-</picture>
-
-</details>
-
-## Your first label
-
-1. **Open or create.** Choose **Import & Convert** for a downloaded PDF/image, or **Label Designer** for a custom layout.
-2. **Review.** Check the crop, address, barcode edges, and final preview. Adjust the crop when needed.
-3. **Match the paper.** Select the loaded stock and its matching printer media. The default label size is 4 × 6 inches; saved user choices are preserved.
-4. **Print or save.** Print the label, arrange a batch, or export a PDF/PNG.
-
-Double-click a saved `.thermalprint` file to open it directly in Label Designer. The Debian and Fedora packages also give these files a preview picture of the label in your file manager. Before replacing a modified design or closing the app, choose **Save**, **Discard**, or **Cancel**.
-
-Select an object and drag its round handle to rotate freely, including fractional angles. Hold **Shift** to snap to 15° increments, or enter an exact **Rotation** value in Properties.
-
-Use the sidebar icon to collapse navigation. In **Label Designer**, **Focus** hides navigation and properties, **View** controls the grid and properties panel, and **Export** groups PDF, PNG, SVG, and ZPL output. The **Object** picker in Properties lets you select an element using the keyboard.
-
-Useful shortcuts: **Ctrl+O** opens labels, **Ctrl+P** prints, and the designer supports **Ctrl+S**, **Ctrl+Z/Y**, **Ctrl+C/V**, **Ctrl+D**, and the arrow keys to nudge the selection (**Shift** for 1 mm).
-
-[Detailed usage guide](docs/USAGE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
-
 ## Formats and compatibility
 
 | Task | Supported formats or options |
@@ -196,7 +114,7 @@ Useful shortcuts: **Ctrl+O** opens labels, **Ctrl+P** prints, and the designer s
 | Print resolution | 203, 300, or 600 DPI |
 | Desktop | Linux with X11 or Wayland; configured CUPS printer |
 
-ThermalPrint prepares labels; it does not purchase postage or generate carrier tracking numbers. Raw ZPL requires a compatible printer and deliberately configured raw queue. This is an early release: check a physical test print and scan before relying on a shipping workflow. The app does not currently decode imported barcodes or verify physical scan quality. See the [usage guide](docs/USAGE.md) for processing limits and printer details.
+ThermalPrint prepares labels; it does not purchase postage or generate carrier tracking numbers. Raw ZPL requires a compatible printer and deliberately configured raw queue. This is an early release: check a physical test print and scan before relying on a shipping workflow. The app does not currently decode imported barcodes or verify physical scan quality. See the [manual](https://arios4k.github.io/thermalprint/manual/) for processing limits and printer details, and [Troubleshooting](https://arios4k.github.io/thermalprint/manual/troubleshooting.html) when a print comes out wrong.
 
 ## Build from source
 
