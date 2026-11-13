@@ -3753,8 +3753,8 @@ fn on_white(image: &image::RgbaImage) -> egui::ColorImage {
     let mut rgb = Vec::with_capacity(image.width() as usize * image.height() as usize * 3);
     for p in image.pixels() {
         let a = p.0[3] as u16;
-        for c in 0..3 {
-            rgb.push(((p.0[c] as u16 * a + 255 * (255 - a) + 127) / 255) as u8);
+        for &channel in &p.0[..3] {
+            rgb.push(((channel as u16 * a + 255 * (255 - a) + 127) / 255) as u8);
         }
     }
     egui::ColorImage::from_rgb([image.width() as usize, image.height() as usize], &rgb)
