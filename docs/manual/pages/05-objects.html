@@ -30,13 +30,25 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
   <tr><td><strong>Bold</strong></td><td>Heavier letters. Good for thermal printing, which can make thin text faint.</td></tr>
   <tr><td><strong>Italic</strong></td><td>Slanted letters.</td></tr>
   <tr><td><strong>Inverse</strong></td><td>White letters on a black box that fills the object.</td></tr>
-  <tr><td><strong>Font</strong></td><td>The built-in font (DejaVu Sans), or one of your own. The <strong>T</strong> button next to the list adds a font from a <code>.ttf</code> or <code>.otf</code> file; it is copied into ThermalPrint's <code>fonts</code> folder. A design stores only the font's <em>name</em>, so the font has to be installed on each computer that prints it, and without it the built-in font is used and a note says so. Your own fonts have no <strong>Bold</strong> switch: install a bold file.</td></tr>
+  <tr><td><strong>Font</strong></td><td>The list has three groups. See <a href="#fonts">Fonts</a>.</td></tr>
   <tr><td><strong>Left</strong> / <strong>Center</strong> / <strong>Right</strong></td><td>Alignment inside the box.</td></tr>
   <tr><td><strong>Save to address book</strong></td><td>Keeps the text, named after its first line. See <a href="objects.html#address-book">Address book</a> below.</td></tr>
   <tr><td><strong>Wrap long lines</strong></td><td>Breaks lines at spaces so they fit the box width. A single word longer than the box is broken as well.</td></tr>
   <tr><td><strong>Shrink to fit the box</strong></td><td>Makes the text smaller, down to 3 pt, until all of it fits inside the box.</td></tr>
   <tr><td><strong>Line spacing</strong></td><td>A multiplier from 0.5 to 3 for the space between lines (1 to start).</td></tr>
 </table>
+
+<h3 id="fonts">Fonts</h3>
+<p>Open the <strong>Font</strong> list of a text object. It has three groups:</p>
+<table>
+  <tr><th>Group</th><th>Fonts</th><th>On another computer</th></tr>
+  <tr><td><strong>Built in</strong></td><td><strong>Default (DejaVu Sans)</strong>, and five fonts chosen for labels: <strong>Condensed</strong> (fits more text on a line, for long addresses and product names), <strong>Monospace</strong> (every character the same width, for SKUs, order numbers, and serials), <strong>Serif</strong> (a classic look for name labels, jars, and gifts), <strong>Headline</strong> (tall and heavy, for words like FRAGILE or SALE), and <strong>Rounded</strong> (a friendly look for price tags).</td><td>They come with ThermalPrint, so a design prints the same on every computer.</td></tr>
+  <tr><td><strong>Your fonts</strong></td><td>Fonts you added with the <strong>T</strong> button next to the list, from a <code>.ttf</code> or <code>.otf</code> file. They are copied into ThermalPrint's <code>fonts</code> folder.</td><td>Add the same font file there too.</td></tr>
+  <tr><td><strong>On this computer</strong></td><td>The fonts installed on your computer. Type in <strong>Search fonts</strong> to find one by name.</td><td>Install the same font there too.</td></tr>
+</table>
+<p>A design stores only the font's <em>name</em>. When a font from <em>Your fonts</em> or <em>On this computer</em> is chosen, a note under the list reminds you that another computer needs it installed. If a design's font is missing, the default font is used and a note says so.</p>
+<p><strong>Bold</strong> works with the default font, with Condensed, Monospace, and Serif, and with a computer font whose family has a Bold style. Headline and Rounded have one weight; for your own fonts, add a bold file.</p>
+<div class="callout note"><p>Some installed fonts can change their weight or width (variable fonts). ThermalPrint draws them in their standard style, so each is listed once. Font collections (<code>.ttc</code>) and bitmap fonts are not listed.</p></div>
 <p>Unless you tick <strong>Wrap long lines</strong>, text <strong>does not wrap</strong>: each line stays on one line, so press <kbd>Enter</kbd> where you want a new line. Anything that extends past the box is cut off at its edge, so make the box larger, tick <strong>Shrink to fit the box</strong>, or make the text smaller if letters disappear. The font is built in and does not depend on the fonts installed on your computer, so labels look the same on every machine.</p>
 
 <h3 id="dynamic-text-date-and-serial-number">Dynamic text: date and serial number</h3>

@@ -230,6 +230,8 @@ pub struct Designer {
     logos: Vec<crate::symbols::Logo>,
     addresses: Vec<crate::address_book::Entry>,
     fonts: Vec<String>,
+    /// What is typed in the font picker's search box for the computer's fonts.
+    font_search: String,
     symbol_textures: Vec<(crate::symbols::Symbol, egui::TextureHandle)>,
     logo_textures: std::collections::HashMap<PathBuf, egui::TextureHandle>,
     /// Crash recovery: a design left over from an unexpected exit, offered at startup.
@@ -292,6 +294,7 @@ impl Designer {
                 .unwrap_or_default(),
             addresses: crate::address_book::load(),
             fonts: crate::fonts::list(),
+            font_search: String::new(),
             symbol_textures: Vec::new(),
             logo_textures: Default::default(),
             recovered: None,
@@ -2889,11 +2892,11 @@ impl Designer {
                 .accessible_name(crate::i18n::tr("Font size in points"));
                 ui.horizontal_wrapped(|ui| {
                     ui.add_enabled(
-                        o.options.font.is_empty(),
+                        crate::fonts::has_bold(&o.options.font),
                         egui::Checkbox::new(bold, crate::i18n::tr("Bold")),
                     )
                     .on_disabled_hover_text(crate::i18n::tr(
-                        "Your own fonts have no bold switch. Install a bold font file instead.",
+                        "This font has no bold style. Choose a bold font instead.",
                     ));
                     ui.checkbox(&mut o.options.italic, crate::i18n::tr("Italic"));
                     ui.checkbox(&mut o.options.inverse, crate::i18n::tr("Inverse"))
@@ -2901,21 +2904,84 @@ impl Designer {
                 });
                 ui.horizontal_wrapped(|ui| {
                     let current = if o.options.font.is_empty() {
-                        crate::i18n::tr("Built-in font").to_string()
+                        crate::i18n::tr("Default (DejaVu Sans)").to_string()
                     } else {
-                        o.options.font.clone()
+                        crate::i18n::tr(&crate::fonts::display_name(&o.options.font)).to_string()
                     };
                     egui::ComboBox::from_id_salt("text-font")
                         .selected_text(current)
+                        .width(230.)
+                        .height(460.)
                         .show_ui(ui, |ui| {
+                            ui.label(
+                                RichText::new(crate::i18n::tr(
+                                    "Built in · prints the same everywhere",
+                                ))
+                                .small()
+                                .weak(),
+                            );
                             ui.selectable_value(
                                 &mut o.options.font,
                                 String::new(),
-                                crate::i18n::tr("Built-in font"),
+                                crate::i18n::tr("Default (DejaVu Sans)"),
                             );
-                            for name in &self.fonts {
-                                ui.selectable_value(&mut o.options.font, name.clone(), name);
+                            for font in crate::fonts::BUILT_IN {
+                                ui.selectable_value(
+                                    &mut o.options.font,
+                                    font.key(),
+                                    crate::i18n::tr(font.name),
+                                );
                             }
+                            if !self.fonts.is_empty() {
+                                ui.separator();
+                                ui.label(
+                                    RichText::new(crate::i18n::tr("Your fonts")).small().weak(),
+                                );
+                                for name in &self.fonts {
+                                    ui.selectable_value(&mut o.options.font, name.clone(), name);
+                                }
+                            }
+                            ui.separator();
+                            ui.label(
+                                RichText::new(crate::i18n::tr("On this computer"))
+                                    .small()
+                                    .weak(),
+                            );
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.font_search)
+                                    .hint_text(crate::i18n::tr("Search fonts"))
+                                    .desired_width(f32::INFINITY),
+                            )
+                            .accessible_name(crate::i18n::tr("Search fonts on this computer"));
+                            let query = self.font_search.trim().to_lowercase();
+                            let matches: Vec<&crate::fonts::SystemFont> =
+                                crate::fonts::system_fonts()
+                                    .iter()
+                                    .filter(|font| {
+                                        query.is_empty()
+                                            || font.name.to_lowercase().contains(&query)
+                                    })
+                                    .collect();
+                            if matches.is_empty() {
+                                ui.label(
+                                    RichText::new(crate::i18n::tr("No fonts match."))
+                                        .small()
+                                        .weak(),
+                                );
+                            }
+                            let row = ui.spacing().interact_size.y;
+                            egui::ScrollArea::vertical()
+                                .id_salt("system-fonts")
+                                .max_height(220.)
+                                .show_rows(ui, row, matches.len(), |ui, rows| {
+                                    for font in &matches[rows] {
+                                        ui.selectable_value(
+                                            &mut o.options.font,
+                                            format!("{}{}", crate::fonts::SYSTEM_PREFIX, font.name),
+                                            &font.name,
+                                        );
+                                    }
+                                });
                         })
                         .response
                         .accessible_name(crate::i18n::tr("Font"));
@@ -2932,12 +2998,24 @@ impl Designer {
                         add_font = true;
                     }
                 });
-                if !o.options.font.is_empty() && !self.fonts.contains(&o.options.font) {
+                if !o.options.font.is_empty()
+                    && crate::fonts::lookup(&o.options.font, false).is_none()
+                {
                     ui.colored_label(
                         Color32::from_rgb(200, 120, 20),
                         crate::i18n::tr(
                             "This font is not installed on this computer, so the built-in font is used.",
                         ),
+                    );
+                } else if !o.options.font.is_empty()
+                    && !o.options.font.starts_with(crate::fonts::BUILTIN_PREFIX)
+                {
+                    ui.label(
+                        RichText::new(crate::i18n::tr(
+                            "Another computer needs this font installed to print the label the same way.",
+                        ))
+                        .small()
+                        .weak(),
                     );
                 }
                 ui.horizontal(|ui| {

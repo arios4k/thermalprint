@@ -230,7 +230,7 @@ fn draw_text(
     serial: u64,
     options: &ObjectOptions,
 ) -> Result<()> {
-    let f = crate::fonts::lookup(&options.font).unwrap_or_else(|| font(bold));
+    let f = crate::fonts::lookup(&options.font, bold).unwrap_or_else(|| font(bold));
     let expanded = expand(text, serial);
     let width = im.width() as f32;
     let spacing = options.line_spacing.clamp(0.5, 3.);
@@ -1804,5 +1804,42 @@ mod print_turn_tests {
         let zpl = String::from_utf8(crate::zpl::encode_design(&doc, 203).unwrap()).unwrap();
         let printed = render_for_print(&doc, 203).unwrap();
         assert!(zpl.contains(&format!("^PW{}", printed.image.width())));
+    }
+}
+
+#[cfg(test)]
+mod built_in_font_tests {
+    use super::*;
+    use crate::design::{Element, TextAlign};
+
+    fn render_with(font: &str) -> RgbImage {
+        let mut doc = LabelDocument::blank(60., 15.);
+        let id = doc.add(
+            Element::Text {
+                text: "Wide label 123".into(),
+                font_pt: 18.,
+                bold: false,
+                align: TextAlign::Left,
+            },
+            1.,
+            1.,
+            58.,
+            13.,
+        );
+        doc.objects
+            .iter_mut()
+            .find(|o| o.id == id)
+            .unwrap()
+            .options
+            .font = font.into();
+        render_label(&doc, 203).unwrap().image
+    }
+
+    #[test]
+    fn each_built_in_font_draws_differently_from_the_default() {
+        let default = render_with("");
+        for font in crate::fonts::BUILT_IN {
+            assert_ne!(render_with(&font.key()), default, "{}", font.name);
+        }
     }
 }

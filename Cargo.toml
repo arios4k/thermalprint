@@ -57,4 +57,7 @@ assets = [
     ["data/org.thermalprint.ThermalPrint.svg", "usr/share/icons/hicolor/scalable/mimetypes/application-x-thermalprint.svg", "644"],
     ["data/org.thermalprint.ThermalPrint.png", "usr/share/icons/hicolor/256x256/mimetypes/application-x-thermalprint.png", "644"],
     ["README.md", "usr/share/doc/thermalprint/", "644"],
+    ["assets/fonts/LICENSE.txt", "usr/share/doc/thermalprint/FONT-LICENSE-DejaVu.txt", "644"],
+    ["assets/fonts/LICENSE-Noto.txt", "usr/share/doc/thermalprint/FONT-LICENSE-Noto.txt", "644"],
+    ["assets/fonts/LICENSE-VarelaRound.txt", "usr/share/doc/thermalprint/FONT-LICENSE-VarelaRound.txt", "644"],
 ]

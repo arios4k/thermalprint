@@ -30,6 +30,10 @@ Open **Label Designer** and choose a blank canvas or one of the built-in templat
 
 The editor renders output at the selected printer DPI in a background worker. Save/print/export jobs run separately from the canvas. Design PDF and PNG export use the full-resolution output, while SVG export wraps that raster output in an SVG container. ZPL export uses `^GFA` raster data at the selected DPI; direct ZPL printing requires a CUPS raw queue configured for a ZPL-compatible printer. Selecting a regular PDF queue for raw ZPL will not work. The app does not create or certify postage, carrier service marks, or tracking numbers.
 
+### Fonts
+
+The **Font** list of a text object has three groups: **Built in** (the default DejaVu Sans plus Condensed, Monospace, Serif, Headline and Rounded, which come with ThermalPrint and print the same on every computer), **Your fonts** (`.ttf` or `.otf` files you add, copied into ThermalPrint's `fonts` folder), and **On this computer** (the system's installed fonts, found through fontconfig, with a search box). A design stores only the font name, so your own and the computer's fonts must be installed on any other computer that prints it; otherwise the default font is used. Bold uses the font's bold face when it has one.
+
 ### Rotated printing
 
 Some labels are read sideways: wide content across the long side of a 4 × 6 label. In **Label setup**, tick **Rotate 90° when printing** to design the label on its side so the text reads straight; it is rotated 90° when it prints, so it fits the label stock as loaded. It is optional and off by default. A banner over the canvas says the label is rotated when it prints, an **As printed** card shows it the way it comes out of the printer, and **Rotate the other way** changes the direction. Printing, numbered runs, spreadsheet batches, sheets and ZPL are rotated, and the media check, unprintable border and alignment offset use the printed label; PDF, PNG and SVG exports keep the design as drawn. Auto-length is not available with rotated printing. The setting is saved in the `.thermalprint` file.

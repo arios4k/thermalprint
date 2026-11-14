@@ -71,7 +71,7 @@ cargo test --release --frozen
 desktop-file-validate %{buildroot}%{_datadir}/applications/org.thermalprint.ThermalPrint.desktop
 
 %files
-%license LICENSE assets/fonts/LICENSE.txt VENDORED-LICENSES.txt vendor-licenses/
+%license LICENSE assets/fonts/LICENSE.txt assets/fonts/LICENSE-Noto.txt assets/fonts/LICENSE-VarelaRound.txt VENDORED-LICENSES.txt vendor-licenses/
 %doc README.md
 %{_bindir}/thermalprint
 %{_datadir}/applications/org.thermalprint.ThermalPrint.desktop
