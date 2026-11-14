@@ -300,6 +300,12 @@ impl Designer {
             recovery_at: None,
         }
     }
+    /// Show a demo design with nothing selected (documentation screenshots only).
+    pub(crate) fn demo_document(&mut self, doc: LabelDocument) {
+        self.doc = doc;
+        self.selected.clear();
+        self.changed();
+    }
     pub(crate) fn select_object(&mut self, id: u64) {
         if self.doc.objects.iter().any(|object| object.id == id) {
             self.selected = vec![id];
@@ -3394,7 +3400,11 @@ impl Designer {
             return;
         };
         let panel = ui.max_rect();
-        let available = (ui.available_size() - Vec2::splat(64.)).max(Vec2::splat(1.));
+        let mut available = (ui.available_size() - Vec2::splat(64.)).max(Vec2::splat(1.));
+        if self.doc.rotated_printing {
+            // Leave room on the right for the "As printed" card, so it never covers the label.
+            available.x = (available.x - 2. * PRINTED_PREVIEW_ROOM).max(available.x * 0.5);
+        }
         let source = tex.size_vec2();
         let fit = (available.x / source.x)
             .min(available.y / source.y)
@@ -4002,6 +4012,9 @@ fn sideways_banner(ui: &mut egui::Ui, doc: &LabelDocument) {
         });
     ui.add_space(4.);
 }
+
+/// Width kept free at the canvas's right edge for the "As printed" card.
+const PRINTED_PREVIEW_ROOM: f32 = 150.;
 
 /// A small card in the canvas's bottom-right corner showing a label with rotated printing
 /// the way it comes out of the printer.

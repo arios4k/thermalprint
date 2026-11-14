@@ -45,6 +45,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.10.0" date="2026-11-13">
+      <description>
+        <p>Rotated printing for wide labels.</p>
+        <ul>
+          <li>An optional Label Designer setting, Rotate 90° when printing, lets you design a wide label on its side so the text reads straight, and rotates it 90° when it prints so it fits the label stock as loaded.</li>
+          <li>A banner over the canvas says the label is rotated when it prints, an As printed card shows how it comes out of the printer, and Rotate the other way changes the direction.</li>
+          <li>Printing, numbered runs, spreadsheet batches, sheets and ZPL are rotated; PDF, PNG and SVG exports keep the design as drawn.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.2" date="2026-11-13">
       <description>
         <p>Brings the 0.9.1 title bar and system light or dark mode to the APT repository.</p>

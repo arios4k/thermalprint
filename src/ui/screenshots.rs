@@ -38,6 +38,7 @@ const MANUAL_SCREENS: &[&str] = &[
     "designer-sheet",
     "designer-range",
     "designer-gs1",
+    "designer-rotated",
 ];
 
 /// The screens to capture: the README set, or the named ones.
@@ -119,7 +120,8 @@ impl Capture {
                 | "designer-range"
                 | "designer-gs1"
                 | "designer-qr-logo"
-                | "designer-safe-margin" => Area::Designer,
+                | "designer-safe-margin"
+                | "designer-rotated" => Area::Designer,
                 "import" | "import-watch" | "import-autoprint" | "import-autoprint-warning" => {
                     Area::Import
                 }
@@ -342,6 +344,7 @@ impl Capture {
                     app.settings.move_printed = true;
                 }
                 "print-center-full" => app.history = demo_history(),
+                "designer-rotated" => app.designer.demo_document(rotated_demo_design()),
                 "batch" => {
                     app.designer.doc = batch_demo_design();
                     app.designer.demo_batch(DEMO_CSV.as_bytes());
@@ -530,6 +533,69 @@ pub(super) fn seed(app: &mut ThermalPrint, ctx: &egui::Context) {
 }
 
 const DEMO_CSV: &str = "Name,City,SKU\nAda Lovelace,London,SKU-1001\nGrace Hopper,New York,SKU-1002\nAlan Turing,Manchester,SKU-1003\n";
+
+/// A wide 4 × 6 inch label designed on its side with rotated printing.
+fn rotated_demo_design() -> LabelDocument {
+    let mut doc = LabelDocument::blank(101.6, 152.4);
+    doc.set_rotated_printing(true);
+    doc.title = "Fragile carton".into();
+    let text = |doc: &mut LabelDocument, content: &str, pt, bold, y, h| {
+        doc.add(
+            Element::Text {
+                text: content.into(),
+                font_pt: pt,
+                bold,
+                align: TextAlign::Left,
+            },
+            8.,
+            y,
+            136.,
+            h,
+        );
+    };
+    text(&mut doc, "NORTHLINE STUDIO", 26., true, 7., 13.);
+    text(
+        &mut doc,
+        "Handle with care · this side up · order TP-1048",
+        11.,
+        false,
+        22.,
+        7.,
+    );
+    doc.add(
+        Element::Shape {
+            kind: ShapeKind::DividerHorizontal,
+            stroke_mm: 0.6,
+            filled: false,
+        },
+        8.,
+        32.,
+        136.,
+        2.,
+    );
+    doc.add(
+        Element::Barcode {
+            kind: crate::design::BarcodeKind::Code128,
+            data: "TP-1048-DEMO".into(),
+            show_text: true,
+        },
+        8.,
+        40.,
+        100.,
+        30.,
+    );
+    doc.add(
+        Element::Qr {
+            data: "https://example.com/track/TP-1048".into(),
+        },
+        116.,
+        40.,
+        28.,
+        28.,
+    );
+    text(&mut doc, "DEMO LABEL / NOT POSTAGE", 8., false, 88., 5.);
+    doc
+}
 
 fn batch_demo_design() -> LabelDocument {
     let mut doc = LabelDocument::blank(101.6, 50.8);

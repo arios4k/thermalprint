@@ -30,6 +30,10 @@ Open **Label Designer** and choose a blank canvas or one of the built-in templat
 
 The editor renders output at the selected printer DPI in a background worker. Save/print/export jobs run separately from the canvas. Design PDF and PNG export use the full-resolution output, while SVG export wraps that raster output in an SVG container. ZPL export uses `^GFA` raster data at the selected DPI; direct ZPL printing requires a CUPS raw queue configured for a ZPL-compatible printer. Selecting a regular PDF queue for raw ZPL will not work. The app does not create or certify postage, carrier service marks, or tracking numbers.
 
+### Rotated printing
+
+Some labels are read sideways: wide content across the long side of a 4 × 6 label. In **Label setup**, tick **Rotate 90° when printing** to design the label on its side so the text reads straight; it is rotated 90° when it prints, so it fits the label stock as loaded. It is optional and off by default. A banner over the canvas says the label is rotated when it prints, an **As printed** card shows it the way it comes out of the printer, and **Rotate the other way** changes the direction. Printing, numbered runs, spreadsheet batches, sheets and ZPL are rotated, and the media check, unprintable border and alignment offset use the printed label; PDF, PNG and SVG exports keep the design as drawn. Auto-length is not available with rotated printing. The setting is saved in the `.thermalprint` file.
+
 ### Built-in templates
 
 Blank 4 × 6, shipping, return address, product barcode, inventory, QR code, asset tracking, shelf, price tag, name, and fragile layouts are included. Template text and code values are examples: replace them with your own data before printing. Saved `.thermalprint` designs can be reopened and reused.
@@ -94,7 +98,7 @@ The printer panel gives a **best-effort hint** when a queue name or advertised m
 - **PDF:** One image-only page. The PDF `MediaBox` matches the paper dimensions in PDF points; the embedded image retains the selected output pixel dimensions.
 - **PNG:** The output canvas is stored at the chosen pixel dimensions with pixels-per-meter metadata derived from 203, 300, or 600 DPI.
 - **SVG for designs:** An SVG document with the output raster embedded. It retains the physical page size but is not editable vector artwork.
-- **ZPL for designs:** Raster `^GFA` generated from the rendered canvas. The printer must support ZPL and receive it through a raw queue.
+- **ZPL for designs:** Raster `^GFA` generated from the rendered canvas, rotated 90° when the design uses rotated printing. The printer must support ZPL and receive it through a raw queue.
 
 The export is produced from the full processing pipeline, not from a screenshot of the preview widget. The original input file remains untouched. Output is written through a temporary file and renamed into place after the write completes.
 
