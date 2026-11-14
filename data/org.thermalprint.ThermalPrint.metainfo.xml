@@ -45,6 +45,17 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.11.0" date="2026-11-14">
+      <description>
+        <p>More fonts for label text, and a font chooser that shows them.</p>
+        <ul>
+          <li>Five new built-in fonts chosen for labels: Condensed, Monospace, Serif, Headline and Rounded. Like the default font, they come with the app and print the same on every computer.</li>
+          <li>Label text can also use the fonts installed on your computer. Fonts that cannot write Latin letters are left out.</li>
+          <li>A new Choose a font window shows each font's name in that font, with a search box, and opens at the text's current font.</li>
+          <li>New text starts with the font you chose last, or the default font until you choose one. Bold uses a font's bold face when it has one.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.10.0" date="2026-11-13">
       <description>
         <p>Rotated printing for wide labels.</p>
