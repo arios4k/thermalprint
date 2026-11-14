@@ -16,12 +16,27 @@
       <li>Print numbered runs, merge a spreadsheet into a design, or place labels on an A4 or Letter sheet.</li>
       <li>Print through CUPS, or export PDF, PNG, SVG, and ZPL.</li>
     </ul>
-    <p>Documents are processed on your computer; nothing is uploaded.</p>
+    <p>It works with shipping labels downloaded from Vinted, eBay, Etsy, Shopify, USPS, UPS, and FedEx, and with 4 × 6 inch thermal label printers. Documents are processed on your computer; nothing is uploaded.</p>
   </description>
   <launchable type="desktop-id">org.thermalprint.ThermalPrint.desktop</launchable>
   <url type="homepage">https://github.com/arios4k/thermalprint</url>
   <url type="bugtracker">https://github.com/arios4k/thermalprint/issues</url>
   <url type="help">https://arios4k.github.io/thermalprint/manual/</url>
+  <keywords>
+    <keyword>label</keyword>
+    <keyword>label printer</keyword>
+    <keyword>thermal printer</keyword>
+    <keyword>shipping label</keyword>
+    <keyword>4x6</keyword>
+    <keyword>barcode</keyword>
+    <keyword>QR code</keyword>
+    <keyword>ZPL</keyword>
+    <keyword>Zebra</keyword>
+    <keyword>sticker</keyword>
+    <keyword>Vinted</keyword>
+    <keyword>eBay</keyword>
+    <keyword>Etsy</keyword>
+  </keywords>
   <categories>
     <category>Graphics</category>
     <category>Utility</category>
@@ -45,6 +60,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.11.1" date="2026-11-14">
+      <description>
+        <p>Easier to find in software centers.</p>
+        <ul>
+          <li>Searching for a shipping label, a thermal or 4×6 label printer, barcodes, ZPL, or Vinted, eBay or Etsy now finds ThermalPrint in software centers and in your desktop's app search.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.11.0" date="2026-11-14">
       <description>
         <p>More fonts for label text, and a font chooser that shows them.</p>
