@@ -2557,7 +2557,7 @@ impl Designer {
                     .accessible_name(crate::i18n::tr("Label height in millimeters"));
                 });
                 let mut rotated = self.doc.rotated_printing;
-                ui.checkbox(&mut rotated, crate::i18n::tr("Rotated printing"))
+                ui.checkbox(&mut rotated, crate::i18n::tr("Rotate 90° when printing"))
                     .on_hover_text(crate::i18n::tr("For wide content: design the label turned on its side so the text reads straight, and it is rotated 90° when it prints, to fit the label stock as loaded."));
                 if rotated != self.doc.rotated_printing {
                     self.doc.set_rotated_printing(rotated);

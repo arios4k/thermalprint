@@ -1191,7 +1191,7 @@ const ES: &[(&str, &str)] = &[
         "A small square symbol for GS1 data such as (01)09506000134352(10)LOT7. Put a batch or serial last.",
         "Un símbolo cuadrado pequeño para datos GS1 como (01)09506000134352(10)LOT7. Pon el lote o la serie al final.",
     ),
-    ("Rotated printing", "Impresión girada"),
+    ("Rotate 90° when printing", "Girar 90° al imprimir"),
     (
         "For wide content: design the label turned on its side so the text reads straight, and it is rotated 90° when it prints, to fit the label stock as loaded.",
         "Para contenido ancho: diseña la etiqueta girada de lado para que el texto se lea recto; al imprimir se gira 90° para que quepa en las etiquetas tal como están cargadas.",
@@ -2315,7 +2315,7 @@ const DE: &[(&str, &str)] = &[
         "A small square symbol for GS1 data such as (01)09506000134352(10)LOT7. Put a batch or serial last.",
         "Ein kleines quadratisches Symbol für GS1-Daten wie (01)09506000134352(10)LOT7. Charge oder Serie ans Ende setzen.",
     ),
-    ("Rotated printing", "Gedreht drucken"),
+    ("Rotate 90° when printing", "Beim Drucken um 90° drehen"),
     (
         "For wide content: design the label turned on its side so the text reads straight, and it is rotated 90° when it prints, to fit the label stock as loaded.",
         "Für breite Inhalte: Das Etikett seitlich gedreht gestalten, damit der Text gerade zu lesen ist. Beim Drucken wird es um 90° gedreht, passend für die eingelegten Etiketten.",
@@ -3469,7 +3469,7 @@ const FR: &[(&str, &str)] = &[
         "A small square symbol for GS1 data such as (01)09506000134352(10)LOT7. Put a batch or serial last.",
         "Un petit symbole carré pour des données GS1 comme (01)09506000134352(10)LOT7. Mets le lot ou le numéro de série en dernier.",
     ),
-    ("Rotated printing", "Impression pivotée"),
+    ("Rotate 90° when printing", "Pivoter de 90° à l'impression"),
     (
         "For wide content: design the label turned on its side so the text reads straight, and it is rotated 90° when it prints, to fit the label stock as loaded.",
         "Pour un contenu large : concevez l'étiquette tournée sur le côté pour lire le texte droit ; à l'impression, elle pivote de 90° pour tenir sur les étiquettes telles qu'elles sont chargées.",
