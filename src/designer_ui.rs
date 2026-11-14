@@ -4086,6 +4086,10 @@ fn font_chooser(
             rows.push(font_row(built_in.key(), name));
         }
     }
+    // A group heading with no fonts under it is left out.
+    if rows.len() == 1 {
+        rows.clear();
+    }
     let first_own = rows.len();
     rows.push(FontRow::Heading("Your fonts"));
     rows.extend(
@@ -4110,7 +4114,10 @@ fn font_chooser(
             .filter(|(key, name)| matches(name) && !unreadable(key))
             .map(|(key, name)| font_row(key, name)),
     );
-    let none_on_computer = rows.len() == before;
+    if rows.len() == before {
+        rows.pop();
+    }
+    let nothing_matches = rows.is_empty();
 
     let mut open = true;
     let mut chosen = false;
@@ -4193,7 +4200,9 @@ fn font_chooser(
                             } else {
                                 visuals.strong_text_color()
                             };
-                            let detail_galley = painter.layout_no_wrap(
+                            // The plain name takes at most 45% of the row, shortened with "…"
+                            // when longer, and the sample always stops before it.
+                            let mut job = egui::text::LayoutJob::simple_singleline(
                                 detail.clone(),
                                 egui::FontId::proportional(11.),
                                 if selected {
@@ -4202,12 +4211,22 @@ fn font_chooser(
                                     visuals.weak_text_color()
                                 },
                             );
-                            // The sample stops short of the plain name on the right.
+                            job.wrap = egui::text::TextWrapping {
+                                max_width: rect.width() * 0.45,
+                                max_rows: 1,
+                                break_anywhere: true,
+                                overflow_character: Some('…'),
+                            };
+                            let detail_galley = painter.layout_job(job);
+                            let response = if detail_galley.elided {
+                                response.on_hover_text(detail.as_str())
+                            } else {
+                                response
+                            };
                             let sample_area = Rect::from_min_max(
                                 rect.min,
                                 Pos2::new(
-                                    (rect.right() - detail_galley.size().x - 20.)
-                                        .max(rect.left() + rect.width() * 0.4),
+                                    rect.right() - detail_galley.size().x - 20.,
                                     rect.bottom(),
                                 ),
                             );
@@ -4280,7 +4299,7 @@ fn font_chooser(
             if budget == 0 {
                 ctx.request_repaint();
             }
-            if none_on_computer {
+            if nothing_matches {
                 ui.label(
                     RichText::new(crate::i18n::tr("No fonts match."))
                         .small()
