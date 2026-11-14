@@ -2008,7 +2008,7 @@ impl Designer {
                     if self.is_modified() { " · Unsaved" } else { "" },
                     self.doc.width_mm,
                     self.doc.effective_height_mm(),
-                    if self.doc.landscape { " · sideways" } else { "" },
+                    if self.doc.rotated_printing { " · rotated printing" } else { "" },
                     (self.zoom * 100.) as u32,
                     self.doc.objects.len()
                 ));
@@ -2050,12 +2050,12 @@ impl Designer {
             {
                 ui.label(RichText::new(crate::i18n::tr(reason)).small().weak());
             }
-            if self.doc.landscape {
+            if self.doc.rotated_printing {
                 let (paper_w, paper_h) = self.doc.paper_size_mm();
                 ui.label(
                     RichText::new(format!(
                         "{} {paper_w:.1} × {paper_h:.1} mm.",
-                        crate::i18n::tr("Sideways design: Print turns it upright on")
+                        crate::i18n::tr("Rotated printing: Print rotates it 90° to fit")
                     ))
                     .strong(),
                 );
@@ -2070,23 +2070,23 @@ impl Designer {
                     ui.colored_label(color, warning);
                     ui.label(RichText::new(crate::i18n::tr("If the loaded paper matches the printer media, use the button below. To keep the current label size, choose matching media in Print Center instead.")).small().weak());
                     if let Some(&(width, height)) = printer.media_sizes.get(&settings.media)
-                        && !self.doc.landscape
+                        && !self.doc.rotated_printing
                         && (width - self.doc.effective_height_mm()).abs() < 0.5
                         && (height - self.doc.width_mm).abs() < 0.5
-                        && icon_action(ui, "Rotate stock", "Print it turned to fit",
-                            "This label is the printer stock turned on its side. Keep designing it this way and print it turned upright. Ctrl+Z undoes this change.", true, false).clicked() {
+                        && icon_action(ui, "Rotate stock", "Use rotated printing",
+                            "This label is the printer stock turned on its side. Keep designing it this way and rotate it 90° when it prints. Ctrl+Z undoes this change.", true, false).clicked() {
                         self.checkpoint();
-                        self.doc.landscape = true;
+                        self.doc.rotated_printing = true;
                         self.doc.auto_length = false;
                         self.changed();
-                        self.status = "Designing sideways: the label prints turned upright".into();
+                        self.status = "Rotated printing: the label is rotated 90° when it prints".into();
                     }
                     if let Some(&(width, height)) = printer.media_sizes.get(&settings.media)
                         && icon_action(ui, "Rotate stock", "Match label to printer media",
                             "Set the canvas dimensions to the selected printer stock. Object sizes and positions are preserved; Ctrl+Z undoes this change.", true, false).clicked() {
                         self.checkpoint();
-                        // A landscape design keeps its sideways canvas.
-                        let (width, height) = if self.doc.landscape { (height, width) } else { (width, height) };
+                        // With rotated printing the canvas stays turned on its side.
+                        let (width, height) = if self.doc.rotated_printing { (height, width) } else { (width, height) };
                         self.doc.width_mm = width;
                         self.doc.height_mm = height;
                         self.zoom = 1.;
@@ -2556,35 +2556,30 @@ impl Designer {
                     )
                     .accessible_name(crate::i18n::tr("Label height in millimeters"));
                 });
-                ui.horizontal(|ui| {
-                    ui.label(crate::i18n::tr("Design"));
-                    let mut landscape = self.doc.landscape;
-                    ui.selectable_value(&mut landscape, false, crate::i18n::tr("Upright"))
-                        .on_hover_text(crate::i18n::tr("Design the label the way it comes out of the printer."));
-                    ui.selectable_value(&mut landscape, true, crate::i18n::tr("Sideways"))
-                        .on_hover_text(crate::i18n::tr("For wide content: the canvas is the label turned on its side, so the text reads straight while you work. It still prints on the label stock as loaded."));
-                    if landscape != self.doc.landscape {
-                        self.doc.set_landscape(landscape);
-                        self.zoom = 1.;
-                        self.pan = Vec2::ZERO;
-                    }
-                });
-                if self.doc.landscape {
+                let mut rotated = self.doc.rotated_printing;
+                ui.checkbox(&mut rotated, crate::i18n::tr("Rotated printing"))
+                    .on_hover_text(crate::i18n::tr("For wide content: design the label turned on its side so the text reads straight, and it is rotated 90° when it prints, to fit the label stock as loaded."));
+                if rotated != self.doc.rotated_printing {
+                    self.doc.set_rotated_printing(rotated);
+                    self.zoom = 1.;
+                    self.pan = Vec2::ZERO;
+                }
+                if self.doc.rotated_printing {
                     let (paper_w, paper_h) = self.doc.paper_size_mm();
                     ui.label(
                         RichText::new(format!(
                             "{} {paper_w:.1} × {paper_h:.1} mm.",
-                            crate::i18n::tr(if self.doc.turn_counterclockwise {
-                                "Prints turned counterclockwise on"
+                            crate::i18n::tr(if self.doc.rotate_counterclockwise {
+                                "Rotated 90° counterclockwise to print on"
                             } else {
-                                "Prints turned clockwise on"
+                                "Rotated 90° clockwise to print on"
                             })
                         ))
                         .small()
                         .weak(),
                     );
-                    ui.checkbox(&mut self.doc.turn_counterclockwise, crate::i18n::tr("Turn the other way"))
-                        .on_hover_text(crate::i18n::tr("Which way the design faces on the printed label. Check the preview beside the canvas."));
+                    ui.checkbox(&mut self.doc.rotate_counterclockwise, crate::i18n::tr("Rotate the other way"))
+                        .on_hover_text(crate::i18n::tr("Which way the design faces on the printed label. Check “As printed” beside the canvas."));
                 }
                 ui.horizontal(|ui| {
                     ui.label(crate::i18n::tr("Serial variable"));
@@ -2592,13 +2587,13 @@ impl Designer {
                         .accessible_name(crate::i18n::tr("Serial variable"));
                 });
                 ui.add_enabled(
-                    !self.doc.landscape,
+                    !self.doc.rotated_printing,
                     egui::Checkbox::new(&mut self.doc.auto_length, crate::i18n::tr("Auto-length (continuous roll)")),
                 )
                 .on_hover_text(crate::i18n::tr(
                     "Print only as long as the content needs, plus a bottom margin. Use it with continuous label rolls.",
                 ))
-                .on_disabled_hover_text(crate::i18n::tr("Not available for a sideways design."));
+                .on_disabled_hover_text(crate::i18n::tr("Not available with rotated printing."));
                 if self.doc.auto_length {
                     ui.horizontal(|ui| {
                         ui.label(crate::i18n::tr("Bottom margin"));
@@ -3384,7 +3379,7 @@ impl Designer {
         }
     }
     fn canvas(&mut self, ui: &mut egui::Ui) {
-        if self.doc.landscape {
+        if self.doc.rotated_printing {
             sideways_banner(ui, &self.doc);
         }
         ui.label(
@@ -3698,7 +3693,7 @@ impl Designer {
                     self.pan += response.drag_delta();
                 }
             });
-        if self.doc.landscape {
+        if self.doc.rotated_printing {
             printed_preview(ui, &tex, panel, &self.doc);
         }
     }
@@ -3962,8 +3957,8 @@ fn printed_corners(counterclockwise: bool) -> [Pos2; 4] {
     }
 }
 
-/// A strip across the top of the canvas saying that this design is sideways and is turned
-/// when it prints, so the canvas's orientation never surprises anyone at the printer.
+/// A strip across the top of the canvas saying that rotated printing is on: the label is
+/// designed on its side and rotated when it prints, so it never surprises anyone.
 fn sideways_banner(ui: &mut egui::Ui, doc: &LabelDocument) {
     let (paper_w, paper_h) = doc.paper_size_mm();
     let (fill, text) = if ui.visuals().dark_mode {
@@ -3987,17 +3982,17 @@ fn sideways_banner(ui: &mut egui::Ui, doc: &LabelDocument) {
                 let (icon, _) = ui.allocate_exact_size(Vec2::splat(20.), Sense::hover());
                 paint_tool_icon(ui.painter(), icon.center(), text, "Rotate stock");
                 ui.label(
-                    RichText::new(crate::i18n::tr("Designing sideways."))
+                    RichText::new(crate::i18n::tr("Rotated printing."))
                         .strong()
                         .color(text),
                 );
                 ui.label(
                     RichText::new(format!(
                         "{} {paper_w:.1} × {paper_h:.1} mm. {}",
-                        crate::i18n::tr(if doc.turn_counterclockwise {
-                            "When it prints, the label is turned counterclockwise to fit"
+                        crate::i18n::tr(if doc.rotate_counterclockwise {
+                            "You are designing the label on its side. When it prints, it is rotated 90° counterclockwise to fit"
                         } else {
-                            "When it prints, the label is turned clockwise to fit"
+                            "You are designing the label on its side. When it prints, it is rotated 90° clockwise to fit"
                         }),
                         crate::i18n::tr("See “As printed” in the corner.")
                     ))
@@ -4008,8 +4003,8 @@ fn sideways_banner(ui: &mut egui::Ui, doc: &LabelDocument) {
     ui.add_space(4.);
 }
 
-/// A small card in the canvas's bottom-right corner showing a sideways design the way it
-/// comes out of the printer, turned upright on the label stock.
+/// A small card in the canvas's bottom-right corner showing a label with rotated printing
+/// the way it comes out of the printer.
 fn printed_preview(ui: &egui::Ui, texture: &egui::TextureHandle, panel: Rect, doc: &LabelDocument) {
     let (paper_w, paper_h) = doc.paper_size_mm();
     let height = 150_f32.min(panel.height() * 0.35).max(60.);
@@ -4039,7 +4034,7 @@ fn printed_preview(ui: &egui::Ui, texture: &egui::TextureHandle, panel: Rect, do
         visuals.weak_text_color(),
     );
     let paper = Rect::from_min_size(Pos2::new(card.left() + 12., card.top() + 32.), label);
-    let uv = printed_corners(doc.turn_counterclockwise);
+    let uv = printed_corners(doc.rotate_counterclockwise);
     let mut mesh = egui::Mesh::with_texture(texture.id());
     for (corner, uv) in [
         paper.left_top(),

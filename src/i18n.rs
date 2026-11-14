@@ -1191,42 +1191,36 @@ const ES: &[(&str, &str)] = &[
         "A small square symbol for GS1 data such as (01)09506000134352(10)LOT7. Put a batch or serial last.",
         "Un símbolo cuadrado pequeño para datos GS1 como (01)09506000134352(10)LOT7. Pon el lote o la serie al final.",
     ),
-    ("Design", "Diseño"),
-    ("Upright", "Normal"),
+    ("Rotated printing", "Impresión girada"),
     (
-        "Design the label the way it comes out of the printer.",
-        "Diseña la etiqueta tal como sale de la impresora.",
-    ),
-    ("Sideways", "De lado"),
-    (
-        "For wide content: the canvas is the label turned on its side, so the text reads straight while you work. It still prints on the label stock as loaded.",
-        "Para contenido ancho: el lienzo es la etiqueta girada de lado, así el texto se lee recto mientras trabajas. Se sigue imprimiendo en las etiquetas tal como están cargadas.",
+        "For wide content: design the label turned on its side so the text reads straight, and it is rotated 90° when it prints, to fit the label stock as loaded.",
+        "Para contenido ancho: diseña la etiqueta girada de lado para que el texto se lea recto; al imprimir se gira 90° para que quepa en las etiquetas tal como están cargadas.",
     ),
     (
-        "Prints turned counterclockwise on",
-        "Se imprime girada en sentido antihorario en",
+        "Rotated 90° counterclockwise to print on",
+        "Se gira 90° en sentido antihorario para imprimir en",
     ),
     (
-        "Prints turned clockwise on",
-        "Se imprime girada en sentido horario en",
+        "Rotated 90° clockwise to print on",
+        "Se gira 90° en sentido horario para imprimir en",
     ),
-    ("Turn the other way", "Girar al otro lado"),
+    ("Rotate the other way", "Girar al otro lado"),
     (
-        "Which way the design faces on the printed label. Check the preview beside the canvas.",
-        "Hacia dónde mira el diseño en la etiqueta impresa. Revisa la vista previa junto al lienzo.",
-    ),
-    (
-        "Not available for a sideways design.",
-        "No disponible para un diseño de lado.",
-    ),
-    ("Designing sideways.", "Diseñando de lado."),
-    (
-        "When it prints, the label is turned counterclockwise to fit",
-        "Al imprimir, la etiqueta se gira en sentido antihorario para caber en",
+        "Which way the design faces on the printed label. Check “As printed” beside the canvas.",
+        "Hacia dónde mira el diseño en la etiqueta impresa. Revisa «Impresa» junto al lienzo.",
     ),
     (
-        "When it prints, the label is turned clockwise to fit",
-        "Al imprimir, la etiqueta se gira en sentido horario para caber en",
+        "Not available with rotated printing.",
+        "No disponible con la impresión girada.",
+    ),
+    ("Rotated printing.", "Impresión girada."),
+    (
+        "You are designing the label on its side. When it prints, it is rotated 90° counterclockwise to fit",
+        "Estás diseñando la etiqueta de lado. Al imprimir, se gira 90° en sentido antihorario para caber en",
+    ),
+    (
+        "You are designing the label on its side. When it prints, it is rotated 90° clockwise to fit",
+        "Estás diseñando la etiqueta de lado. Al imprimir, se gira 90° en sentido horario para caber en",
     ),
     (
         "See “As printed” in the corner.",
@@ -1234,8 +1228,8 @@ const ES: &[(&str, &str)] = &[
     ),
     ("As printed", "Impresa"),
     (
-        "Sideways design: Print turns it upright on",
-        "Diseño de lado: Imprimir lo pone derecho en",
+        "Rotated printing: Print rotates it 90° to fit",
+        "Impresión girada: Imprimir la gira 90° para caber en",
     ),
 ];
 const DE: &[(&str, &str)] = &[
@@ -2321,42 +2315,36 @@ const DE: &[(&str, &str)] = &[
         "A small square symbol for GS1 data such as (01)09506000134352(10)LOT7. Put a batch or serial last.",
         "Ein kleines quadratisches Symbol für GS1-Daten wie (01)09506000134352(10)LOT7. Charge oder Serie ans Ende setzen.",
     ),
-    ("Design", "Ausrichtung"),
-    ("Upright", "Normal"),
+    ("Rotated printing", "Gedreht drucken"),
     (
-        "Design the label the way it comes out of the printer.",
-        "Das Etikett so gestalten, wie es aus dem Drucker kommt.",
-    ),
-    ("Sideways", "Seitlich"),
-    (
-        "For wide content: the canvas is the label turned on its side, so the text reads straight while you work. It still prints on the label stock as loaded.",
-        "Für breite Inhalte: Die Arbeitsfläche ist das seitlich gedrehte Etikett, sodass der Text beim Arbeiten gerade zu lesen ist. Gedruckt wird weiterhin auf die eingelegten Etiketten.",
+        "For wide content: design the label turned on its side so the text reads straight, and it is rotated 90° when it prints, to fit the label stock as loaded.",
+        "Für breite Inhalte: Das Etikett seitlich gedreht gestalten, damit der Text gerade zu lesen ist. Beim Drucken wird es um 90° gedreht, passend für die eingelegten Etiketten.",
     ),
     (
-        "Prints turned counterclockwise on",
-        "Wird gegen den Uhrzeigersinn gedreht gedruckt auf",
+        "Rotated 90° counterclockwise to print on",
+        "Zum Drucken um 90° gegen den Uhrzeigersinn gedreht auf",
     ),
     (
-        "Prints turned clockwise on",
-        "Wird im Uhrzeigersinn gedreht gedruckt auf",
+        "Rotated 90° clockwise to print on",
+        "Zum Drucken um 90° im Uhrzeigersinn gedreht auf",
     ),
-    ("Turn the other way", "Andersherum drehen"),
+    ("Rotate the other way", "Andersherum drehen"),
     (
-        "Which way the design faces on the printed label. Check the preview beside the canvas.",
-        "In welche Richtung das Design auf dem gedruckten Etikett zeigt. Sieh dir die Vorschau neben der Arbeitsfläche an.",
-    ),
-    (
-        "Not available for a sideways design.",
-        "Für ein seitliches Design nicht verfügbar.",
-    ),
-    ("Designing sideways.", "Seitliches Design."),
-    (
-        "When it prints, the label is turned counterclockwise to fit",
-        "Beim Drucken wird das Etikett gegen den Uhrzeigersinn gedreht, passend für",
+        "Which way the design faces on the printed label. Check “As printed” beside the canvas.",
+        "In welche Richtung das Design auf dem gedruckten Etikett zeigt. Sieh dir „Gedruckt“ neben der Arbeitsfläche an.",
     ),
     (
-        "When it prints, the label is turned clockwise to fit",
-        "Beim Drucken wird das Etikett im Uhrzeigersinn gedreht, passend für",
+        "Not available with rotated printing.",
+        "Beim gedrehten Drucken nicht verfügbar.",
+    ),
+    ("Rotated printing.", "Gedreht drucken."),
+    (
+        "You are designing the label on its side. When it prints, it is rotated 90° counterclockwise to fit",
+        "Du gestaltest das Etikett seitlich. Beim Drucken wird es um 90° gegen den Uhrzeigersinn gedreht, passend für",
+    ),
+    (
+        "You are designing the label on its side. When it prints, it is rotated 90° clockwise to fit",
+        "Du gestaltest das Etikett seitlich. Beim Drucken wird es um 90° im Uhrzeigersinn gedreht, passend für",
     ),
     (
         "See “As printed” in the corner.",
@@ -2364,8 +2352,8 @@ const DE: &[(&str, &str)] = &[
     ),
     ("As printed", "Gedruckt"),
     (
-        "Sideways design: Print turns it upright on",
-        "Seitliches Design: Drucken dreht es aufrecht auf",
+        "Rotated printing: Print rotates it 90° to fit",
+        "Gedreht drucken: Drucken dreht es um 90°, passend für",
     ),
 ];
 const FR: &[(&str, &str)] = &[
@@ -3481,42 +3469,36 @@ const FR: &[(&str, &str)] = &[
         "A small square symbol for GS1 data such as (01)09506000134352(10)LOT7. Put a batch or serial last.",
         "Un petit symbole carré pour des données GS1 comme (01)09506000134352(10)LOT7. Mets le lot ou le numéro de série en dernier.",
     ),
-    ("Design", "Disposition"),
-    ("Upright", "Normale"),
+    ("Rotated printing", "Impression pivotée"),
     (
-        "Design the label the way it comes out of the printer.",
-        "Concevoir l'étiquette telle qu'elle sort de l'imprimante.",
-    ),
-    ("Sideways", "Sur le côté"),
-    (
-        "For wide content: the canvas is the label turned on its side, so the text reads straight while you work. It still prints on the label stock as loaded.",
-        "Pour un contenu large : le canevas est l'étiquette tournée sur le côté, pour lire le texte droit pendant que vous travaillez. Elle s'imprime toujours sur les étiquettes telles qu'elles sont chargées.",
+        "For wide content: design the label turned on its side so the text reads straight, and it is rotated 90° when it prints, to fit the label stock as loaded.",
+        "Pour un contenu large : concevez l'étiquette tournée sur le côté pour lire le texte droit ; à l'impression, elle pivote de 90° pour tenir sur les étiquettes telles qu'elles sont chargées.",
     ),
     (
-        "Prints turned counterclockwise on",
-        "S'imprime tournée dans le sens antihoraire sur",
+        "Rotated 90° counterclockwise to print on",
+        "Pivotée de 90° dans le sens antihoraire pour imprimer sur",
     ),
     (
-        "Prints turned clockwise on",
-        "S'imprime tournée dans le sens horaire sur",
+        "Rotated 90° clockwise to print on",
+        "Pivotée de 90° dans le sens horaire pour imprimer sur",
     ),
-    ("Turn the other way", "Tourner dans l'autre sens"),
+    ("Rotate the other way", "Pivoter dans l'autre sens"),
     (
-        "Which way the design faces on the printed label. Check the preview beside the canvas.",
-        "Dans quel sens le design apparaît sur l'étiquette imprimée. Vérifiez l'aperçu à côté du canevas.",
-    ),
-    (
-        "Not available for a sideways design.",
-        "Indisponible pour un design sur le côté.",
-    ),
-    ("Designing sideways.", "Design sur le côté."),
-    (
-        "When it prints, the label is turned counterclockwise to fit",
-        "À l'impression, l'étiquette est tournée dans le sens antihoraire pour tenir sur",
+        "Which way the design faces on the printed label. Check “As printed” beside the canvas.",
+        "Dans quel sens le design apparaît sur l'étiquette imprimée. Vérifiez « Imprimée » à côté du canevas.",
     ),
     (
-        "When it prints, the label is turned clockwise to fit",
-        "À l'impression, l'étiquette est tournée dans le sens horaire pour tenir sur",
+        "Not available with rotated printing.",
+        "Indisponible avec l'impression pivotée.",
+    ),
+    ("Rotated printing.", "Impression pivotée."),
+    (
+        "You are designing the label on its side. When it prints, it is rotated 90° counterclockwise to fit",
+        "Vous concevez l'étiquette sur le côté. À l'impression, elle pivote de 90° dans le sens antihoraire pour tenir sur",
+    ),
+    (
+        "You are designing the label on its side. When it prints, it is rotated 90° clockwise to fit",
+        "Vous concevez l'étiquette sur le côté. À l'impression, elle pivote de 90° dans le sens horaire pour tenir sur",
     ),
     (
         "See “As printed” in the corner.",
@@ -3524,8 +3506,8 @@ const FR: &[(&str, &str)] = &[
     ),
     ("As printed", "Imprimée"),
     (
-        "Sideways design: Print turns it upright on",
-        "Design sur le côté : Imprimer le remet droit sur",
+        "Rotated printing: Print rotates it 90° to fit",
+        "Impression pivotée : Imprimer la fait pivoter de 90° pour tenir sur",
     ),
 ];
 

@@ -449,14 +449,14 @@ pub struct LabelDocument {
         skip_serializing_if = "is_default_auto_margin"
     )]
     pub auto_margin_mm: f32,
-    /// Designed sideways: the canvas (`width_mm` × `height_mm`) is the label turned on
-    /// its side, so wide content reads straight while you work. It is turned back to
-    /// portrait for the printer, which is fed the label the usual way.
+    /// Rotated printing: the canvas (`width_mm` × `height_mm`) is the label turned on its
+    /// side, so wide content reads straight while you design it, and the label is rotated
+    /// 90° when it prints so it fits the label stock as loaded.
     #[serde(default, skip_serializing_if = "is_false")]
-    pub landscape: bool,
-    /// Turn a landscape design counterclockwise to print instead of clockwise.
+    pub rotated_printing: bool,
+    /// With rotated printing, rotate counterclockwise instead of clockwise.
     #[serde(default, skip_serializing_if = "is_false")]
-    pub turn_counterclockwise: bool,
+    pub rotate_counterclockwise: bool,
 }
 pub const DEFAULT_AUTO_MARGIN_MM: f32 = 2.;
 fn default_auto_margin() -> f32 {
@@ -482,37 +482,41 @@ impl LabelDocument {
             grid_mm: DEFAULT_GRID_MM,
             auto_length: false,
             auto_margin_mm: DEFAULT_AUTO_MARGIN_MM,
-            landscape: false,
-            turn_counterclockwise: false,
+            rotated_printing: false,
+            rotate_counterclockwise: false,
         }
     }
     /// The label as the printer sees it, width × length in millimeters: the canvas, or for
-    /// a landscape design the canvas turned upright.
+    /// rotated printing the canvas rotated to fit the stock.
     pub fn paper_size_mm(&self) -> (f32, f32) {
         let (w, h) = (self.width_mm, self.effective_height_mm());
-        if self.landscape { (h, w) } else { (w, h) }
+        if self.rotated_printing {
+            (h, w)
+        } else {
+            (w, h)
+        }
     }
-    /// Switch between designing upright and designing sideways. The canvas turns (width
-    /// and height swap) and the paper stays the same; objects keep their positions.
-    /// Auto-length grows the printed length downwards, so it is turned off for landscape.
-    pub fn set_landscape(&mut self, landscape: bool) {
-        if landscape == self.landscape {
+    /// Turn rotated printing on or off. The canvas turns (width and height swap) and the
+    /// paper stays the same; objects keep their positions. Auto-length grows the printed
+    /// length downwards, so it is turned off with rotated printing.
+    pub fn set_rotated_printing(&mut self, rotated: bool) {
+        if rotated == self.rotated_printing {
             return;
         }
         let height = self.effective_height_mm();
         self.height_mm = self.width_mm;
         self.width_mm = height;
-        self.landscape = landscape;
-        if landscape {
+        self.rotated_printing = rotated;
+        if rotated {
             self.auto_length = false;
         }
     }
     /// A printer's unprintable border, given as (left, top, right, bottom) of the paper,
-    /// as it falls on the canvas. For a landscape design the paper is the canvas turned
+    /// as it falls on the canvas. With rotated printing the paper is the canvas turned
     /// clockwise (or counterclockwise), so each paper edge lands on a different canvas edge.
     pub fn border_on_canvas(&self, paper: (f32, f32, f32, f32)) -> (f32, f32, f32, f32) {
         let (left, top, right, bottom) = paper;
-        match (self.landscape, self.turn_counterclockwise) {
+        match (self.rotated_printing, self.rotate_counterclockwise) {
             (false, _) => paper,
             // Turning clockwise puts the canvas's top on the paper's right edge.
             (true, false) => (top, right, bottom, left),
@@ -1113,11 +1117,11 @@ mod arrangement_tests {
 }
 
 #[cfg(test)]
-mod sideways_tests {
+mod rotated_printing_tests {
     use super::*;
 
     #[test]
-    fn designing_sideways_turns_the_canvas_but_not_the_paper() {
+    fn rotated_printing_turns_the_canvas_but_not_the_paper() {
         let mut doc = LabelDocument::blank(101.6, 152.4);
         doc.auto_length = true;
         doc.add(
@@ -1132,15 +1136,15 @@ mod sideways_tests {
             150.,
         );
         let paper = doc.paper_size_mm();
-        doc.set_landscape(true);
-        assert!(doc.landscape && !doc.auto_length);
+        doc.set_rotated_printing(true);
+        assert!(doc.rotated_printing && !doc.auto_length);
         assert_eq!((doc.width_mm, doc.height_mm), (paper.1, paper.0));
         assert_eq!(doc.paper_size_mm(), paper);
         // Objects stay where they were; only the canvas turns.
         assert_eq!((doc.objects[0].x_mm, doc.objects[0].y_mm), (0., 0.));
-        doc.set_landscape(true);
+        doc.set_rotated_printing(true);
         assert_eq!(doc.paper_size_mm(), paper);
-        doc.set_landscape(false);
+        doc.set_rotated_printing(false);
         assert_eq!((doc.width_mm, doc.height_mm), paper);
     }
 
@@ -1149,26 +1153,26 @@ mod sideways_tests {
         let paper = (1., 2., 3., 4.); // left, top, right, bottom of the printed label
         let mut doc = LabelDocument::blank(152.4, 101.6);
         assert_eq!(doc.border_on_canvas(paper), paper);
-        doc.landscape = true;
+        doc.rotated_printing = true;
         // Turned clockwise to print: canvas left → paper top, canvas top → paper right,
         // canvas right → paper bottom, canvas bottom → paper left.
         assert_eq!(doc.border_on_canvas(paper), (2., 3., 4., 1.));
-        doc.turn_counterclockwise = true;
+        doc.rotate_counterclockwise = true;
         assert_eq!(doc.border_on_canvas(paper), (4., 1., 2., 3.));
     }
 
     #[test]
-    fn upright_files_are_saved_as_before_and_sideways_survives_a_round_trip() {
+    fn unrotated_files_are_saved_as_before_and_rotated_printing_survives_a_round_trip() {
         let doc = LabelDocument::blank(101.6, 152.4);
         let json = serde_json::to_string(&doc).unwrap();
-        assert!(!json.contains("landscape") && !json.contains("turn_counterclockwise"));
-        let mut sideways = doc.clone();
-        sideways.set_landscape(true);
-        sideways.turn_counterclockwise = true;
-        let json = serde_json::to_string(&sideways).unwrap();
+        assert!(!json.contains("rotated_printing") && !json.contains("rotate_counterclockwise"));
+        let mut rotated = doc.clone();
+        rotated.set_rotated_printing(true);
+        rotated.rotate_counterclockwise = true;
+        let json = serde_json::to_string(&rotated).unwrap();
         assert_eq!(
             serde_json::from_str::<LabelDocument>(&json).unwrap(),
-            sideways
+            rotated
         );
     }
 }
