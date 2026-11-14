@@ -116,4 +116,6 @@ parts:
       install -Dm644 docs/SNAP.md "$CRAFT_PART_INSTALL/usr/share/doc/thermalprint/SNAP.md"
       install -Dm644 LICENSE "$CRAFT_PART_INSTALL/usr/share/licenses/thermalprint/LICENSE"
       install -Dm644 assets/fonts/LICENSE.txt "$CRAFT_PART_INSTALL/usr/share/licenses/thermalprint/FONT-LICENSE.txt"
+      install -Dm644 assets/fonts/LICENSE-Noto.txt "$CRAFT_PART_INSTALL/usr/share/licenses/thermalprint/FONT-LICENSE-Noto.txt"
+      install -Dm644 assets/fonts/LICENSE-VarelaRound.txt "$CRAFT_PART_INSTALL/usr/share/licenses/thermalprint/FONT-LICENSE-VarelaRound.txt"
       install -Dm755 snap/local/register-mime.sh "$CRAFT_PART_INSTALL/usr/share/doc/thermalprint/register-mime.sh"

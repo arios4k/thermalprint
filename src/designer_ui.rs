@@ -9,6 +9,7 @@ use crate::{
 };
 use base64::Engine as _;
 use eframe::egui::{self, Color32, Pos2, Rect, RichText, Sense, Stroke, StrokeKind, Vec2};
+use std::borrow::Cow;
 use std::{
     path::PathBuf,
     sync::{Arc, mpsc},
@@ -207,6 +208,11 @@ pub struct Designer {
     printable_note: Option<&'static str>,
     /// A new safe margin chosen in the View menu; the app stores it with the printer.
     pub safe_margin_request: Option<f32>,
+    /// The font new text starts with: the one last chosen, or empty for the default font.
+    /// The app keeps it in the settings.
+    pub default_font: String,
+    /// A font was just chosen; the app remembers it as [`Self::default_font`].
+    pub last_font_request: Option<String>,
     pub raw_zpl: bool,
     pub zoom: f32,
     pub pan: Vec2,
@@ -230,6 +236,14 @@ pub struct Designer {
     logos: Vec<crate::symbols::Logo>,
     addresses: Vec<crate::address_book::Entry>,
     fonts: Vec<String>,
+    /// What is typed in the font chooser's search box.
+    font_search: String,
+    /// Where the open font chooser hangs from, or None when it is closed.
+    font_picker: Option<Pos2>,
+    /// The font chooser has just opened and should scroll to the object's current font.
+    font_scroll_pending: bool,
+    /// Font name samples drawn for the open chooser (None: the font could not be drawn).
+    font_samples: FontSamples,
     symbol_textures: Vec<(crate::symbols::Symbol, egui::TextureHandle)>,
     logo_textures: std::collections::HashMap<PathBuf, egui::TextureHandle>,
     /// Crash recovery: a design left over from an unexpected exit, offered at startup.
@@ -268,6 +282,8 @@ impl Designer {
             printable: None,
             printable_note: None,
             safe_margin_request: None,
+            default_font: String::new(),
+            last_font_request: None,
             raw_zpl: false,
             zoom: 1.,
             pan: Vec2::ZERO,
@@ -292,6 +308,10 @@ impl Designer {
                 .unwrap_or_default(),
             addresses: crate::address_book::load(),
             fonts: crate::fonts::list(),
+            font_search: String::new(),
+            font_picker: None,
+            font_scroll_pending: false,
+            font_samples: Default::default(),
             symbol_textures: Vec::new(),
             logo_textures: Default::default(),
             recovered: None,
@@ -299,6 +319,22 @@ impl Designer {
             recovery_written: None,
             recovery_at: None,
         }
+    }
+    /// Select the first text object and open the font chooser with a search typed in
+    /// (documentation screenshots only).
+    pub(crate) fn demo_font_chooser(&mut self, search: &str) {
+        if let Some(id) = self
+            .doc
+            .objects
+            .iter()
+            .find(|o| matches!(o.element, Element::Text { .. }))
+            .map(|o| o.id)
+        {
+            self.selected = vec![id];
+        }
+        self.font_search = search.into();
+        self.font_picker = Some(Pos2::new(900., 200.));
+        self.font_scroll_pending = true;
     }
     /// Show a demo design with nothing selected (documentation screenshots only).
     pub(crate) fn demo_document(&mut self, doc: LabelDocument) {
@@ -394,7 +430,16 @@ impl Designer {
         self.checkpoint();
         let x = ((self.doc.width_mm - w) / 2.).max(1.);
         let y = ((self.doc.height_mm - h) / 2.).max(1.);
+        let text = matches!(element, Element::Text { .. });
         let id = self.doc.add(element, x, y, w, h);
+        // New text starts with the font last chosen, if it is still on this computer.
+        if text
+            && !self.default_font.is_empty()
+            && crate::fonts::lookup(&self.default_font, false).is_some()
+            && let Some(object) = self.doc.objects.iter_mut().find(|o| o.id == id)
+        {
+            object.options.font = self.default_font.clone();
+        }
         self.selected = vec![id];
         self.changed();
     }
@@ -2889,11 +2934,11 @@ impl Designer {
                 .accessible_name(crate::i18n::tr("Font size in points"));
                 ui.horizontal_wrapped(|ui| {
                     ui.add_enabled(
-                        o.options.font.is_empty(),
+                        crate::fonts::has_bold(&o.options.font),
                         egui::Checkbox::new(bold, crate::i18n::tr("Bold")),
                     )
                     .on_disabled_hover_text(crate::i18n::tr(
-                        "Your own fonts have no bold switch. Install a bold font file instead.",
+                        "This font has no bold style. Choose a bold font instead.",
                     ));
                     ui.checkbox(&mut o.options.italic, crate::i18n::tr("Italic"));
                     ui.checkbox(&mut o.options.inverse, crate::i18n::tr("Inverse"))
@@ -2901,24 +2946,52 @@ impl Designer {
                 });
                 ui.horizontal_wrapped(|ui| {
                     let current = if o.options.font.is_empty() {
-                        crate::i18n::tr("Built-in font").to_string()
+                        crate::i18n::tr("Default (DejaVu Sans)").to_string()
                     } else {
-                        o.options.font.clone()
+                        crate::i18n::tr(&crate::fonts::display_name(&o.options.font)).to_string()
                     };
-                    egui::ComboBox::from_id_salt("text-font")
-                        .selected_text(current)
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(
-                                &mut o.options.font,
-                                String::new(),
-                                crate::i18n::tr("Built-in font"),
-                            );
-                            for name in &self.fonts {
-                                ui.selectable_value(&mut o.options.font, name.clone(), name);
-                            }
-                        })
-                        .response
+                    let button = ui
+                        .add(
+                            egui::Button::new(format!("{current}     "))
+                                .min_size(Vec2::new(200., 0.)),
+                        )
+                        .on_hover_text(crate::i18n::tr("Choose a font"))
                         .accessible_name(crate::i18n::tr("Font"));
+                    // A small downward arrow, drawn because the font has no arrow character.
+                    let tip = Pos2::new(button.rect.right() - 14., button.rect.center().y + 3.);
+                    ui.painter().add(egui::Shape::convex_polygon(
+                        vec![tip, tip + Vec2::new(-5., -6.), tip + Vec2::new(5., -6.)],
+                        ui.style().interact(&button).fg_stroke.color,
+                        Stroke::NONE,
+                    ));
+                    if button.clicked() {
+                        self.font_picker = if self.font_picker.is_some() {
+                            None
+                        } else {
+                            self.font_search.clear();
+                            self.font_scroll_pending = true;
+                            Some(button.rect.left_bottom() + Vec2::new(0., 4.))
+                        };
+                    }
+                    let before = o.options.font.clone();
+                    if let Some(anchor) = self.font_picker
+                        && !font_chooser(
+                            ui.ctx(),
+                            anchor,
+                            &mut o.options.font,
+                            &mut self.font_search,
+                            &self.fonts,
+                            &mut self.font_samples,
+                            &mut self.font_scroll_pending,
+                        )
+                    {
+                        self.font_picker = None;
+                        self.font_samples = FontSamples::default();
+                    }
+                    if o.options.font != before {
+                        self.default_font = o.options.font.clone();
+                        self.last_font_request = Some(o.options.font.clone());
+                    }
                     if icon_action(
                         ui,
                         "Add text",
@@ -2932,12 +3005,24 @@ impl Designer {
                         add_font = true;
                     }
                 });
-                if !o.options.font.is_empty() && !self.fonts.contains(&o.options.font) {
+                if !o.options.font.is_empty()
+                    && crate::fonts::lookup(&o.options.font, false).is_none()
+                {
                     ui.colored_label(
                         Color32::from_rgb(200, 120, 20),
                         crate::i18n::tr(
                             "This font is not installed on this computer, so the built-in font is used.",
                         ),
+                    );
+                } else if !o.options.font.is_empty()
+                    && !o.options.font.starts_with(crate::fonts::BUILTIN_PREFIX)
+                {
+                    ui.label(
+                        RichText::new(crate::i18n::tr(
+                            "Another computer needs this font installed to print the label the same way.",
+                        ))
+                        .small()
+                        .weak(),
                     );
                 }
                 ui.horizontal(|ui| {
@@ -3293,6 +3378,8 @@ impl Designer {
                     self.status = format!("Font {name} added");
                     self.error = false;
                     self.fonts = crate::fonts::list();
+                    self.default_font = name.clone();
+                    self.last_font_request = Some(name.clone());
                     if let Some(o) = self.doc.objects.iter_mut().find(|o| o.id == id) {
                         o.options.font = name;
                     }
@@ -3947,6 +4034,370 @@ fn effective_border(
         right.max(safe),
         bottom.max(safe),
     ))
+}
+
+/// One row of the font chooser: a group heading, or a font with the name a design stores,
+/// what its sample says, and its plain name.
+enum FontRow {
+    Heading(&'static str),
+    Font {
+        key: Cow<'static, str>,
+        title: Cow<'static, str>,
+        detail: Cow<'static, str>,
+    },
+}
+
+/// The computer's fonts as chooser rows: the name a design stores, the name, and the name in
+/// lower case for searching. Made once, so typing and scrolling do no extra work.
+fn system_font_rows() -> &'static [(String, String, String)] {
+    static ROWS: std::sync::OnceLock<Vec<(String, String, String)>> = std::sync::OnceLock::new();
+    ROWS.get_or_init(|| {
+        crate::fonts::system_fonts()
+            .iter()
+            .map(|font| {
+                (
+                    format!("{}{}", crate::fonts::SYSTEM_PREFIX, font.name),
+                    font.name.clone(),
+                    font.name.to_lowercase(),
+                )
+            })
+            .collect()
+    })
+}
+
+type SampleJob = (String, String, f32, u32);
+type SampleResult = (String, Option<(usize, usize, Vec<u8>)>);
+
+/// Font name samples for the open chooser. Reading a font file and drawing its sample takes
+/// tens of milliseconds, so two background threads do it and the window never waits: a row
+/// shows its plain name until its sample arrives. Dropping this stops the threads.
+#[derive(Default)]
+struct FontSamples {
+    /// Drawn samples; None for a font that cannot write Latin letters or cannot be read.
+    ready: std::collections::HashMap<String, Option<egui::TextureHandle>>,
+    pending: std::collections::HashSet<String>,
+    jobs: Option<mpsc::Sender<SampleJob>>,
+    results: Option<mpsc::Receiver<SampleResult>>,
+}
+
+impl FontSamples {
+    /// At most this many samples wait at once, so fast scrolling does not pile up work for
+    /// rows already gone from view.
+    const MAX_PENDING: usize = 24;
+
+    fn unreadable(&self, key: &str) -> bool {
+        matches!(self.ready.get(key), Some(None))
+    }
+
+    fn request(&mut self, key: &str, title: &str, px: f32, max_width: u32) {
+        if self.ready.contains_key(key)
+            || self.pending.contains(key)
+            || self.pending.len() >= Self::MAX_PENDING
+        {
+            return;
+        }
+        if self.jobs.is_none() {
+            let (jobs, queue) = mpsc::channel::<SampleJob>();
+            let (done, results) = mpsc::channel::<SampleResult>();
+            let queue = Arc::new(std::sync::Mutex::new(queue));
+            for _ in 0..2 {
+                let (queue, done) = (queue.clone(), done.clone());
+                std::thread::spawn(move || {
+                    loop {
+                        let job = queue.lock().map(|queue| queue.recv());
+                        let Ok(Ok((key, title, px, max_width))) = job else {
+                            break;
+                        };
+                        let drawn = crate::fonts::sample(&key, &title, px, max_width);
+                        if done.send((key, drawn)).is_err() {
+                            break;
+                        }
+                    }
+                });
+            }
+            self.jobs = Some(jobs);
+            self.results = Some(results);
+        }
+        if let Some(jobs) = &self.jobs
+            && jobs
+                .send((key.to_string(), title.to_string(), px, max_width))
+                .is_ok()
+        {
+            self.pending.insert(key.to_string());
+        }
+    }
+
+    /// Turn finished samples into textures. Returns whether any are still being drawn.
+    fn collect(&mut self, ctx: &egui::Context) -> bool {
+        if let Some(results) = &self.results {
+            while let Ok((key, drawn)) = results.try_recv() {
+                self.pending.remove(&key);
+                let texture = drawn.map(|(w, h, mask)| {
+                    let pixels: Vec<Color32> =
+                        mask.iter().map(|&a| Color32::from_white_alpha(a)).collect();
+                    ctx.load_texture(
+                        format!("font-sample-{key}"),
+                        egui::ColorImage::new([w, h], pixels),
+                        egui::TextureOptions::LINEAR,
+                    )
+                });
+                self.ready.insert(key, texture);
+            }
+        }
+        !self.pending.is_empty()
+    }
+}
+
+/// Split "Condensed (Noto Sans Condensed)" into the sample text and the plain name.
+fn font_title(name: &str) -> (String, String) {
+    match name.split_once(" (") {
+        Some((title, rest)) => (title.to_string(), rest.trim_end_matches(')').to_string()),
+        None => (name.to_string(), name.to_string()),
+    }
+}
+
+/// The font chooser: a window with a search box and one list of the built-in fonts, your
+/// fonts, and the computer's fonts, each name drawn in its own font. Choosing a font closes
+/// it, as do Esc and its close button. Returns whether it is still open.
+fn font_chooser(
+    ctx: &egui::Context,
+    anchor: Pos2,
+    font: &mut String,
+    search: &mut String,
+    own: &[String],
+    samples: &mut FontSamples,
+    scroll_to_current: &mut bool,
+) -> bool {
+    let drawing = samples.collect(ctx);
+    let query = search.trim().to_lowercase();
+    let matches = |name: &str| query.is_empty() || name.to_lowercase().contains(&query);
+    let font_row = |key: String, name: &str| {
+        let (title, detail) = font_title(name);
+        FontRow::Font {
+            key: key.into(),
+            title: title.into(),
+            detail: detail.into(),
+        }
+    };
+    // A font that turned out to have no Latin letters (or to be unreadable) is hidden once its
+    // sample has been tried, unless the text already uses it.
+    let unreadable = |key: &str| key != font.as_str() && samples.unreadable(key);
+    let mut rows = vec![FontRow::Heading("Built in · prints the same everywhere")];
+    let default = crate::i18n::tr("Default (DejaVu Sans)");
+    if matches(default) {
+        rows.push(font_row(String::new(), default));
+    }
+    for built_in in crate::fonts::BUILT_IN {
+        let name = crate::i18n::tr(built_in.name);
+        if matches(name) {
+            rows.push(font_row(built_in.key(), name));
+        }
+    }
+    // A group heading with no fonts under it is left out.
+    if rows.len() == 1 {
+        rows.clear();
+    }
+    let first_own = rows.len();
+    rows.push(FontRow::Heading("Your fonts"));
+    rows.extend(
+        own.iter()
+            .filter(|name| matches(name) && !unreadable(name))
+            .map(|name| font_row(name.clone(), name)),
+    );
+    if rows.len() == first_own + 1 {
+        rows.pop();
+    }
+    rows.push(FontRow::Heading("On this computer"));
+    let before = rows.len();
+    rows.extend(
+        system_font_rows()
+            .iter()
+            .filter(|(key, _, lower)| {
+                (query.is_empty() || lower.contains(&query)) && !unreadable(key)
+            })
+            .map(|(key, name, _)| FontRow::Font {
+                key: Cow::Borrowed(key.as_str()),
+                title: Cow::Borrowed(name.as_str()),
+                detail: Cow::Borrowed(name.as_str()),
+            }),
+    );
+    if rows.len() == before {
+        rows.pop();
+    }
+    let nothing_matches = rows.is_empty();
+
+    let mut open = true;
+    let mut chosen = false;
+    egui::Window::new(crate::i18n::tr("Choose a font"))
+        .default_pos(anchor)
+        .default_size(Vec2::new(480., 560.))
+        .min_width(400.)
+        .min_height(320.)
+        .collapsible(false)
+        .resizable(true)
+        .open(&mut open)
+        .show(ctx, |ui| {
+            let field = ui
+                .add(
+                    egui::TextEdit::singleline(search)
+                        .hint_text(crate::i18n::tr("Search fonts"))
+                        .desired_width(f32::INFINITY),
+                )
+                .accessible_name(crate::i18n::tr("Search fonts"));
+            if !field.has_focus() && !ui.memory(|m| m.focused().is_some()) {
+                field.request_focus();
+            }
+            // Rows of one height, so long lists scroll smoothly. Only the rows in view are
+            // drawn, and their samples are drawn in the background.
+            let row = 32.;
+            let ppp = ctx.pixels_per_point();
+            ui.spacing_mut().item_spacing.y = 2.;
+            let mut list = egui::ScrollArea::vertical()
+                .id_salt("font-chooser-list")
+                .auto_shrink([false, false]);
+            if std::mem::take(scroll_to_current) {
+                // Open where the text's current font is, two rows from the top, highlighted.
+                let index = rows
+                    .iter()
+                    .position(
+                        |entry| matches!(entry, FontRow::Font { key, .. } if key == font.as_str()),
+                    )
+                    .unwrap_or(0);
+                list = list.vertical_scroll_offset(
+                    ((index as f32 - 2.) * (row + ui.spacing().item_spacing.y)).max(0.),
+                );
+            }
+            list.show_rows(ui, row, rows.len(), |ui, range| {
+                for entry in &rows[range] {
+                    let (rect, response) = ui.allocate_exact_size(
+                        Vec2::new(ui.available_width(), row),
+                        match entry {
+                            FontRow::Heading(_) => Sense::hover(),
+                            FontRow::Font { .. } => Sense::click(),
+                        },
+                    );
+                    let painter = ui.painter_at(rect);
+                    let visuals = ui.visuals();
+                    match entry {
+                        FontRow::Heading(text) => {
+                            painter.text(
+                                rect.left_center() + Vec2::new(4., 0.),
+                                egui::Align2::LEFT_CENTER,
+                                crate::i18n::tr(text),
+                                egui::FontId::proportional(12.),
+                                visuals.strong_text_color(),
+                            );
+                        }
+                        FontRow::Font { key, title, detail } => {
+                            let selected = font.as_str() == key.as_ref();
+                            response.widget_info(|| {
+                                egui::WidgetInfo::selected(
+                                    egui::Role::Button,
+                                    true,
+                                    selected,
+                                    detail,
+                                )
+                            });
+                            if selected {
+                                painter.rect_filled(rect, 6., visuals.selection.bg_fill);
+                            } else if response.hovered() || response.has_focus() {
+                                painter.rect_filled(rect, 6., visuals.widgets.hovered.weak_bg_fill);
+                            }
+                            let color = if selected {
+                                visuals.selection.stroke.color
+                            } else {
+                                visuals.strong_text_color()
+                            };
+                            // The plain name takes at most 45% of the row, shortened with "…"
+                            // when longer, and the sample always stops before it.
+                            let mut job = egui::text::LayoutJob::simple_singleline(
+                                detail.to_string(),
+                                egui::FontId::proportional(11.),
+                                if selected {
+                                    color
+                                } else {
+                                    visuals.weak_text_color()
+                                },
+                            );
+                            job.wrap = egui::text::TextWrapping {
+                                max_width: rect.width() * 0.45,
+                                max_rows: 1,
+                                break_anywhere: true,
+                                overflow_character: Some('…'),
+                            };
+                            let detail_galley = painter.layout_job(job);
+                            let response = if detail_galley.elided {
+                                response.on_hover_text(detail.as_ref())
+                            } else {
+                                response
+                            };
+                            let sample_area = Rect::from_min_max(
+                                rect.min,
+                                Pos2::new(
+                                    rect.right() - detail_galley.size().x - 20.,
+                                    rect.bottom(),
+                                ),
+                            );
+                            let sample_width = sample_area.width() - 8.;
+                            samples.request(key, title, 18. * ppp, (sample_width * ppp) as u32);
+                            let sample_painter = painter.with_clip_rect(sample_area);
+                            match samples.ready.get(key.as_ref()) {
+                                Some(Some(texture)) => {
+                                    let size = texture.size_vec2() / ppp;
+                                    sample_painter.image(
+                                        texture.id(),
+                                        Rect::from_min_size(
+                                            Pos2::new(
+                                                rect.left() + 8.,
+                                                rect.center().y - size.y / 2.,
+                                            ),
+                                            size,
+                                        ),
+                                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1., 1.)),
+                                        color,
+                                    );
+                                }
+                                // Not drawn yet, or a font that cannot be drawn: plain text.
+                                _ => {
+                                    sample_painter.text(
+                                        rect.left_center() + Vec2::new(8., 0.),
+                                        egui::Align2::LEFT_CENTER,
+                                        title,
+                                        egui::FontId::proportional(15.),
+                                        color,
+                                    );
+                                }
+                            }
+                            painter.galley(
+                                Pos2::new(
+                                    rect.right() - 8. - detail_galley.size().x,
+                                    rect.center().y - detail_galley.size().y / 2.,
+                                ),
+                                detail_galley,
+                                color,
+                            );
+                            if response.clicked() {
+                                *font = key.to_string();
+                                chosen = true;
+                            }
+                        }
+                    }
+                }
+            });
+            if drawing {
+                // Check back for samples still being drawn.
+                ctx.request_repaint_after(std::time::Duration::from_millis(30));
+            }
+            if nothing_matches {
+                ui.label(
+                    RichText::new(crate::i18n::tr("No fonts match."))
+                        .small()
+                        .weak(),
+                );
+            }
+        });
+    let escape = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+    open && !chosen && !escape
 }
 
 /// Where each corner of the printed label takes its picture from in the canvas render,
@@ -5647,5 +6098,103 @@ mod printed_preview_tests {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod remembered_font_tests {
+    use super::*;
+
+    fn add_text(designer: &mut Designer) -> String {
+        designer.add(
+            Element::Text {
+                text: "New".into(),
+                font_pt: 12.,
+                bold: false,
+                align: TextAlign::Left,
+            },
+            40.,
+            10.,
+        );
+        let id = designer.selected[0];
+        designer
+            .doc
+            .objects
+            .iter()
+            .find(|o| o.id == id)
+            .unwrap()
+            .options
+            .font
+            .clone()
+    }
+
+    #[test]
+    fn new_text_starts_with_the_font_last_chosen_or_the_default() {
+        let mut designer = Designer::new();
+        assert_eq!(
+            add_text(&mut designer),
+            "",
+            "default font until one is chosen"
+        );
+        designer.default_font = "builtin:serif".into();
+        assert_eq!(add_text(&mut designer), "builtin:serif");
+        // A remembered font that is no longer installed falls back to the default.
+        designer.default_font = "system:No Such Font 123".into();
+        assert_eq!(add_text(&mut designer), "");
+        // Only text gets a font.
+        designer.default_font = "builtin:serif".into();
+        designer.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 0.5,
+                filled: false,
+            },
+            10.,
+            10.,
+        );
+        let id = designer.selected[0];
+        let shape = designer.doc.objects.iter().find(|o| o.id == id).unwrap();
+        assert!(shape.options.font.is_empty());
+    }
+
+    #[test]
+    fn the_last_font_is_kept_in_the_settings() {
+        let settings = Settings::default();
+        assert!(settings.last_font.is_empty());
+        let mut changed = settings.clone();
+        changed.last_font = "builtin:rounded".into();
+        let json = serde_json::to_string(&changed).unwrap();
+        let back: Settings = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.last_font, "builtin:rounded");
+        // Settings saved before this option existed load with the default font.
+        let old: Settings = serde_json::from_str("{}").unwrap();
+        assert!(old.last_font.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod font_sample_tests {
+    use super::*;
+
+    #[test]
+    fn samples_are_drawn_in_the_background_and_unreadable_fonts_are_marked() {
+        let ctx = egui::Context::default();
+        let mut samples = FontSamples::default();
+        samples.request("builtin:serif", "Serif", 24., 300);
+        samples.request("system:No Such Font 123", "Missing", 24., 300);
+        // Asking again while it is being drawn does not queue it twice.
+        samples.request("builtin:serif", "Serif", 24., 300);
+        assert_eq!(samples.pending.len(), 2);
+        let start = std::time::Instant::now();
+        while samples.collect(&ctx) {
+            assert!(
+                start.elapsed() < std::time::Duration::from_secs(20),
+                "samples finish"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        assert!(matches!(samples.ready.get("builtin:serif"), Some(Some(_))));
+        assert!(samples.unreadable("system:No Such Font 123"));
+        assert!(!samples.unreadable("builtin:serif"));
     }
 }

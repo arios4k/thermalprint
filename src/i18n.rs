@@ -1150,11 +1150,6 @@ const ES: &[(&str, &str)] = &[
         "Keep this text, named after its first line, in your address book",
         "Guarda este texto en tu libreta de direcciones, con el nombre de su primera línea",
     ),
-    (
-        "Your own fonts have no bold switch. Install a bold font file instead.",
-        "Tus propias fuentes no tienen opción de negrita. Instala un archivo de fuente en negrita.",
-    ),
-    ("Built-in font", "Fuente incluida"),
     ("Font", "Fuente"),
     (
         "This font is not installed on this computer, so the built-in font is used.",
@@ -1231,6 +1226,38 @@ const ES: &[(&str, &str)] = &[
         "Rotated printing: Print rotates it 90° to fit",
         "Impresión girada: Imprimir la gira 90° para caber en",
     ),
+    ("Default (DejaVu Sans)", "Predeterminada (DejaVu Sans)"),
+    (
+        "Built in · prints the same everywhere",
+        "Incluidas · se imprimen igual en todas partes",
+    ),
+    ("Your fonts", "Tus fuentes"),
+    ("On this computer", "En este equipo"),
+    ("Search fonts", "Buscar fuentes"),
+    ("No fonts match.", "Ninguna fuente coincide."),
+    (
+        "This font has no bold style. Choose a bold font instead.",
+        "Esta fuente no tiene estilo negrita. Elige una fuente negrita.",
+    ),
+    (
+        "Another computer needs this font installed to print the label the same way.",
+        "Otro equipo necesita esta fuente instalada para imprimir la etiqueta igual.",
+    ),
+    (
+        "Condensed (Noto Sans Condensed)",
+        "Estrecha (Noto Sans Condensed)",
+    ),
+    (
+        "Monospace (DejaVu Sans Mono)",
+        "Monoespaciada (DejaVu Sans Mono)",
+    ),
+    ("Serif (DejaVu Serif)", "Con serifa (DejaVu Serif)"),
+    (
+        "Headline (Noto Sans Display ExtraCondensed Black)",
+        "Titular (Noto Sans Display ExtraCondensed Black)",
+    ),
+    ("Rounded (Varela Round)", "Redondeada (Varela Round)"),
+    ("Choose a font", "Elegir una fuente"),
 ];
 const DE: &[(&str, &str)] = &[
     ("Printing", "Druckt"),
@@ -2274,11 +2301,6 @@ const DE: &[(&str, &str)] = &[
         "Keep this text, named after its first line, in your address book",
         "Diesen Text, benannt nach der ersten Zeile, im Adressbuch behalten",
     ),
-    (
-        "Your own fonts have no bold switch. Install a bold font file instead.",
-        "Eigene Schriften haben keinen Fett-Schalter. Installiere stattdessen eine fette Schriftdatei.",
-    ),
-    ("Built-in font", "Integrierte Schrift"),
     ("Font", "Schrift"),
     (
         "This font is not installed on this computer, so the built-in font is used.",
@@ -2355,6 +2377,38 @@ const DE: &[(&str, &str)] = &[
         "Rotated printing: Print rotates it 90° to fit",
         "Gedreht drucken: Drucken dreht es um 90°, passend für",
     ),
+    ("Default (DejaVu Sans)", "Standard (DejaVu Sans)"),
+    (
+        "Built in · prints the same everywhere",
+        "Integriert · druckt überall gleich",
+    ),
+    ("Your fonts", "Deine Schriften"),
+    ("On this computer", "Auf diesem Computer"),
+    ("Search fonts", "Schriften suchen"),
+    ("No fonts match.", "Keine Schrift passt."),
+    (
+        "This font has no bold style. Choose a bold font instead.",
+        "Diese Schrift hat keinen Fettschnitt. Wähle stattdessen eine fette Schrift.",
+    ),
+    (
+        "Another computer needs this font installed to print the label the same way.",
+        "Ein anderer Computer braucht diese Schrift, um das Etikett genauso zu drucken.",
+    ),
+    (
+        "Condensed (Noto Sans Condensed)",
+        "Schmal (Noto Sans Condensed)",
+    ),
+    (
+        "Monospace (DejaVu Sans Mono)",
+        "Dicktengleich (DejaVu Sans Mono)",
+    ),
+    ("Serif (DejaVu Serif)", "Serifen (DejaVu Serif)"),
+    (
+        "Headline (Noto Sans Display ExtraCondensed Black)",
+        "Schlagzeile (Noto Sans Display ExtraCondensed Black)",
+    ),
+    ("Rounded (Varela Round)", "Abgerundet (Varela Round)"),
+    ("Choose a font", "Schrift wählen"),
 ];
 const FR: &[(&str, &str)] = &[
     ("Printing", "Impression de"),
@@ -3428,11 +3482,6 @@ const FR: &[(&str, &str)] = &[
         "Keep this text, named after its first line, in your address book",
         "Garde ce texte, nommé d'après sa première ligne, dans ton carnet d'adresses",
     ),
-    (
-        "Your own fonts have no bold switch. Install a bold font file instead.",
-        "Tes propres polices n'ont pas de commutateur gras. Installe plutôt un fichier de police en gras.",
-    ),
-    ("Built-in font", "Police intégrée"),
     ("Font", "Police"),
     (
         "This font is not installed on this computer, so the built-in font is used.",
@@ -3509,6 +3558,38 @@ const FR: &[(&str, &str)] = &[
         "Rotated printing: Print rotates it 90° to fit",
         "Impression pivotée : Imprimer la fait pivoter de 90° pour tenir sur",
     ),
+    ("Default (DejaVu Sans)", "Par défaut (DejaVu Sans)"),
+    (
+        "Built in · prints the same everywhere",
+        "Intégrées · s'impriment pareil partout",
+    ),
+    ("Your fonts", "Vos polices"),
+    ("On this computer", "Sur cet ordinateur"),
+    ("Search fonts", "Rechercher des polices"),
+    ("No fonts match.", "Aucune police ne correspond."),
+    (
+        "This font has no bold style. Choose a bold font instead.",
+        "Cette police n'a pas de style gras. Choisissez plutôt une police grasse.",
+    ),
+    (
+        "Another computer needs this font installed to print the label the same way.",
+        "Un autre ordinateur doit avoir cette police installée pour imprimer l'étiquette à l'identique.",
+    ),
+    (
+        "Condensed (Noto Sans Condensed)",
+        "Étroite (Noto Sans Condensed)",
+    ),
+    (
+        "Monospace (DejaVu Sans Mono)",
+        "Chasse fixe (DejaVu Sans Mono)",
+    ),
+    ("Serif (DejaVu Serif)", "À empattements (DejaVu Serif)"),
+    (
+        "Headline (Noto Sans Display ExtraCondensed Black)",
+        "Titre (Noto Sans Display ExtraCondensed Black)",
+    ),
+    ("Rounded (Varela Round)", "Arrondie (Varela Round)"),
+    ("Choose a font", "Choisir une police"),
 ];
 
 #[cfg(test)]
@@ -3602,6 +3683,7 @@ mod tests {
             include_str!("ui/window_chrome.rs"),
             include_str!("designer_ui.rs"),
             include_str!("design.rs"),
+            include_str!("fonts.rs"),
             include_str!("help.rs"),
         ]
         .concat();

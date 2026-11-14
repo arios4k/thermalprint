@@ -57,6 +57,8 @@ def prepare(project: Path, output: Path, offline: bool = False) -> Path:
         (stage / "VENDORED-LICENSES.txt").write_text(
             "Locked Rust dependency license inventory (all target platforms).\n\n" + "\n".join(inventory) + "\n"
         )
+        # The bundled fonts: DejaVu (Bitstream Vera terms) and Noto and Varela Round (SIL OFL).
+        licenses.update({"Bitstream-Vera", "OFL-1.1"})
         # Include all declared alternatives conservatively in the RPM license expression.
         expression = " AND ".join(f"({value})" if " " in value else value for value in sorted(licenses))
         spec = (project / "packaging/rpm/thermalprint.spec.in").read_text()

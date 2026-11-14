@@ -3614,7 +3614,14 @@ impl eframe::App for ThermalPrint {
                 });
             }
             Area::Designer => {
+                self.designer
+                    .default_font
+                    .clone_from(&self.settings.last_font);
                 self.designer.show(ui, &self.settings, &self.printers);
+                if let Some(font) = self.designer.last_font_request.take() {
+                    self.settings.last_font = font;
+                    self.persist();
+                }
                 if let Some(margin) = self.designer.safe_margin_request.take() {
                     self.settings.safe_margin_mm =
                         margin.clamp(0., crate::settings::MAX_SAFE_MARGIN_MM);
