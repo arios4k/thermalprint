@@ -347,9 +347,22 @@ impl Capture {
                 }
                 "print-center-full" => app.history = demo_history(),
                 "designer-rotated" => app.designer.demo_document(rotated_demo_design()),
-                "designer-fonts" => app.designer.demo_font_chooser(
-                    &std::env::var("THERMALPRINT_SCREENSHOTS_FONT_SEARCH").unwrap_or_default(),
-                ),
+                "designer-fonts" => {
+                    // THERMALPRINT_SCREENSHOTS_FONT gives the text a font before the chooser opens.
+                    if let Ok(font) = std::env::var("THERMALPRINT_SCREENSHOTS_FONT")
+                        && let Some(text) = app
+                            .designer
+                            .doc
+                            .objects
+                            .iter_mut()
+                            .find(|o| matches!(o.element, Element::Text { .. }))
+                    {
+                        text.options.font = font;
+                    }
+                    app.designer.demo_font_chooser(
+                        &std::env::var("THERMALPRINT_SCREENSHOTS_FONT_SEARCH").unwrap_or_default(),
+                    );
+                }
                 "batch" => {
                     app.designer.doc = batch_demo_design();
                     app.designer.demo_batch(DEMO_CSV.as_bytes());

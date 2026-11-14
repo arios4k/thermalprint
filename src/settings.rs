@@ -85,6 +85,9 @@ pub struct Settings {
     pub offset_y_mm: f32,
     /// The safe margin for the selected printer; see [`PrinterProfile::safe_margin_mm`].
     pub safe_margin_mm: f32,
+    /// The font last chosen for label text, which new text starts with; empty for the
+    /// default font (DejaVu Sans).
+    pub last_font: String,
     pub profiles: BTreeMap<String, PrinterProfile>,
     /// A folder to watch for new label files, and whether watching is on.
     pub watch_folder: Option<PathBuf>,
@@ -140,6 +143,7 @@ impl Default for Settings {
             offset_x_mm: 0.,
             offset_y_mm: 0.,
             safe_margin_mm: 0.,
+            last_font: String::new(),
             profiles: BTreeMap::new(),
             watch_folder: None,
             watch_enabled: false,
