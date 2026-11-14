@@ -7,4 +7,5 @@ Terminal=false
 Icon=org.thermalprint.ThermalPrint
 StartupWMClass=org.thermalprint.ThermalPrint
 Categories=Graphics;Utility;
+Keywords=label;label printer;thermal printer;shipping label;4x6;barcode;QR code;ZPL;Zebra;sticker;Vinted;eBay;Etsy;
 MimeType=application/x-thermalprint;application/pdf;image/png;image/jpeg;image/tiff;image/bmp;image/webp;
