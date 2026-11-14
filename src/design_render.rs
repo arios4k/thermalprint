@@ -94,6 +94,10 @@ fn draw_shape(im: &mut RgbaImage, kind: ShapeKind, stroke_mm: f32, filled: bool,
         ShapeKind::DividerVertical => line(im, w / 2, 0, w / 2, h - 1, t),
     }
 }
+/// The default font for label text (DejaVu Sans).
+pub(crate) fn default_font(bold: bool) -> &'static Font {
+    font(bold)
+}
 fn font(bold: bool) -> &'static Font {
     static REGULAR: std::sync::OnceLock<Font> = std::sync::OnceLock::new();
     static BOLD: std::sync::OnceLock<Font> = std::sync::OnceLock::new();

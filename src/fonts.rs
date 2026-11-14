@@ -279,6 +279,63 @@ pub fn system_in<'a>(fonts: &'a [SystemFont], name: &str, bold: bool) -> Option<
     Some(chosen)
 }
 
+/// Draw `text` in the font a design names, as a grey mask `(width, height, coverage)` for the
+/// font chooser, about `px` pixels tall and at most `max_width` wide. A computer font is read
+/// for this and let go afterwards, so browsing many fonts does not keep them all in memory.
+pub fn sample(name: &str, text: &str, px: f32, max_width: u32) -> Option<(usize, usize, Vec<u8>)> {
+    let draw = |font: &Font| draw_sample(font, text, px, max_width);
+    if name.is_empty() {
+        draw(crate::design_render::default_font(false))
+    } else if name.starts_with(SYSTEM_PREFIX) {
+        let path = &system_in(system_fonts(), name, false)?.path;
+        let metadata = std::fs::metadata(path).ok()?;
+        if !metadata.is_file() || metadata.len() > MAX_BYTES {
+            return None;
+        }
+        let font = Font::from_bytes(std::fs::read(path).ok()?, FontSettings::default()).ok()?;
+        draw(&font)
+    } else {
+        draw(lookup(name, false)?)
+    }
+}
+
+fn draw_sample(
+    font: &Font,
+    text: &str,
+    px: f32,
+    max_width: u32,
+) -> Option<(usize, usize, Vec<u8>)> {
+    let line = font.horizontal_line_metrics(px)?;
+    let height = ((line.ascent - line.descent).ceil() as usize + 2).clamp(1, 400);
+    let mut glyphs = vec![];
+    let mut x = 0_f32;
+    for c in text.chars() {
+        let (metrics, bitmap) = font.rasterize(c, px);
+        glyphs.push((x, metrics, bitmap));
+        x += metrics.advance_width;
+        if x >= max_width as f32 {
+            break;
+        }
+    }
+    let width = (x.ceil() as usize).clamp(1, max_width.max(1) as usize);
+    let mut mask = vec![0_u8; width * height];
+    for (origin, metrics, bitmap) in glyphs {
+        let left = (origin + metrics.xmin as f32).round() as i64;
+        let top = (line.ascent - metrics.height as f32 - metrics.ymin as f32).round() as i64 + 1;
+        for gy in 0..metrics.height {
+            for gx in 0..metrics.width {
+                let (x, y) = (left + gx as i64, top + gy as i64);
+                if x < 0 || y < 0 || x >= width as i64 || y >= height as i64 {
+                    continue;
+                }
+                let cell = &mut mask[y as usize * width + x as usize];
+                *cell = (*cell).max(bitmap[gy * metrics.width + gx]);
+            }
+        }
+    }
+    Some((width, height, mask))
+}
+
 /// Whether the Bold switch changes this font: the default font and the built-in fonts with a
 /// bold face, and the computer's fonts whose family has a Bold style.
 pub fn has_bold(name: &str) -> bool {
@@ -554,5 +611,24 @@ mod font_group_tests {
         .unwrap();
         let target = dir.path().join("fonts");
         assert!(install_in(&target, &source).is_err());
+    }
+}
+
+#[cfg(test)]
+mod sample_tests {
+    use super::*;
+
+    #[test]
+    fn font_samples_draw_the_text_in_that_font_within_the_width() {
+        let (w, h, mask) = sample("", "Default", 24., 400).expect("default font draws");
+        assert_eq!(mask.len(), w * h);
+        assert!(w > 20 && w <= 400 && h > 10);
+        assert!(mask.iter().any(|&a| a > 200), "some ink");
+        let condensed = sample("builtin:condensed", "Default", 24., 400).unwrap();
+        assert!(condensed.0 < w, "condensed text is narrower");
+        let (narrow, _, _) = sample("", "A very long font name indeed", 24., 60).unwrap();
+        assert!(narrow <= 60);
+        assert!(sample("system:No Such Font 123", "x", 24., 100).is_none());
+        assert!(sample("builtin:nope", "x", 24., 100).is_none());
     }
 }
