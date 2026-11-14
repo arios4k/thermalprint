@@ -4042,6 +4042,9 @@ fn font_chooser(
         let (title, detail) = font_title(name);
         FontRow::Font { key, title, detail }
     };
+    // A font that turned out to have no Latin letters (or to be unreadable) is hidden once its
+    // sample has been tried, unless the text already uses it.
+    let unreadable = |key: &str| key != font.as_str() && matches!(samples.get(key), Some(None));
     let mut rows = vec![FontRow::Heading("Built in · prints the same everywhere")];
     let default = crate::i18n::tr("Default (DejaVu Sans)");
     if matches(default) {
@@ -4057,7 +4060,7 @@ fn font_chooser(
     rows.push(FontRow::Heading("Your fonts"));
     rows.extend(
         own.iter()
-            .filter(|name| matches(name))
+            .filter(|name| matches(name) && !unreadable(name))
             .map(|name| font_row(name.clone(), name)),
     );
     if rows.len() == first_own + 1 {
@@ -4068,13 +4071,14 @@ fn font_chooser(
     rows.extend(
         crate::fonts::system_fonts()
             .iter()
-            .filter(|system| matches(&system.name))
             .map(|system| {
-                font_row(
+                (
                     format!("{}{}", crate::fonts::SYSTEM_PREFIX, system.name),
                     &system.name,
                 )
-            }),
+            })
+            .filter(|(key, name)| matches(name) && !unreadable(key))
+            .map(|(key, name)| font_row(key, name)),
     );
     let none_on_computer = rows.len() == before;
 
@@ -4152,7 +4156,25 @@ fn font_chooser(
                                 } else {
                                     visuals.strong_text_color()
                                 };
-                                let sample_width = rect.width() * 0.62;
+                                let detail_galley = painter.layout_no_wrap(
+                                    detail.clone(),
+                                    egui::FontId::proportional(11.),
+                                    if selected {
+                                        color
+                                    } else {
+                                        visuals.weak_text_color()
+                                    },
+                                );
+                                // The sample stops short of the plain name on the right.
+                                let sample_area = Rect::from_min_max(
+                                    rect.min,
+                                    Pos2::new(
+                                        (rect.right() - detail_galley.size().x - 20.)
+                                            .max(rect.left() + rect.width() * 0.4),
+                                        rect.bottom(),
+                                    ),
+                                );
+                                let sample_width = sample_area.width() - 8.;
                                 if !samples.contains_key(key) && budget > 0 {
                                     budget -= 1;
                                     let drawn = crate::fonts::sample(
@@ -4174,10 +4196,11 @@ fn font_chooser(
                                     });
                                     samples.insert(key.clone(), drawn);
                                 }
+                                let sample_painter = painter.with_clip_rect(sample_area);
                                 match samples.get(key) {
                                     Some(Some(texture)) => {
                                         let size = texture.size_vec2() / ppp;
-                                        painter.image(
+                                        sample_painter.image(
                                             texture.id(),
                                             Rect::from_min_size(
                                                 Pos2::new(
@@ -4192,7 +4215,7 @@ fn font_chooser(
                                     }
                                     // Not drawn yet, or a font that cannot be drawn: plain text.
                                     _ => {
-                                        painter.text(
+                                        sample_painter.text(
                                             rect.left_center() + Vec2::new(8., 0.),
                                             egui::Align2::LEFT_CENTER,
                                             title,
@@ -4201,16 +4224,13 @@ fn font_chooser(
                                         );
                                     }
                                 }
-                                painter.text(
-                                    rect.right_center() - Vec2::new(8., 0.),
-                                    egui::Align2::RIGHT_CENTER,
-                                    detail,
-                                    egui::FontId::proportional(11.),
-                                    if selected {
-                                        color
-                                    } else {
-                                        visuals.weak_text_color()
-                                    },
+                                painter.galley(
+                                    Pos2::new(
+                                        rect.right() - 8. - detail_galley.size().x,
+                                        rect.center().y - detail_galley.size().y / 2.,
+                                    ),
+                                    detail_galley,
+                                    color,
                                 );
                                 if response.clicked() {
                                     *font = key.clone();

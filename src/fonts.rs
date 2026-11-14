@@ -232,12 +232,18 @@ fn scan_font_folders() -> Vec<SystemFont> {
     parse_fc_list(&lines)
 }
 
-/// The fonts installed on this computer, found once and kept for the life of the program.
+/// The fonts installed on this computer that can write English text, found once and kept for
+/// the life of the program. Fonts made only for other writing systems (Arabic, Thai, …) are
+/// left out: label text in them would print as empty boxes.
 pub fn system_fonts() -> &'static [SystemFont] {
     static FONTS: OnceLock<Vec<SystemFont>> = OnceLock::new();
     FONTS.get_or_init(|| {
         std::process::Command::new("fc-list")
-            .args(["--format", "%{file}\t%{family[0]}\t%{style[0]}\n"])
+            .args([
+                ":lang=en",
+                "--format",
+                "%{file}\t%{family[0]}\t%{style[0]}\n",
+            ])
             .output()
             .ok()
             .filter(|output| output.status.success())
@@ -279,9 +285,17 @@ pub fn system_in<'a>(fonts: &'a [SystemFont], name: &str, bold: bool) -> Option<
     Some(chosen)
 }
 
+/// Whether a font has the basic Latin letters and digits, so label text in it is readable.
+pub fn writes_latin(font: &Font) -> bool {
+    "AEMZaemz0189"
+        .chars()
+        .all(|c| font.lookup_glyph_index(c) != 0)
+}
+
 /// Draw `text` in the font a design names, as a grey mask `(width, height, coverage)` for the
 /// font chooser, about `px` pixels tall and at most `max_width` wide. A computer font is read
 /// for this and let go afterwards, so browsing many fonts does not keep them all in memory.
+/// None when the font is missing or cannot write Latin letters.
 pub fn sample(name: &str, text: &str, px: f32, max_width: u32) -> Option<(usize, usize, Vec<u8>)> {
     let draw = |font: &Font| draw_sample(font, text, px, max_width);
     if name.is_empty() {
@@ -305,6 +319,9 @@ fn draw_sample(
     px: f32,
     max_width: u32,
 ) -> Option<(usize, usize, Vec<u8>)> {
+    if !writes_latin(font) {
+        return None;
+    }
     let line = font.horizontal_line_metrics(px)?;
     let height = ((line.ascent - line.descent).ceil() as usize + 2).clamp(1, 400);
     let mut glyphs = vec![];
@@ -630,5 +647,13 @@ mod sample_tests {
         assert!(narrow <= 60);
         assert!(sample("system:No Such Font 123", "x", 24., 100).is_none());
         assert!(sample("builtin:nope", "x", 24., 100).is_none());
+        for font in BUILT_IN {
+            assert!(
+                writes_latin(lookup(&font.key(), false).unwrap()),
+                "{}",
+                font.name
+            );
+        }
+        assert!(writes_latin(crate::design_render::default_font(false)));
     }
 }
