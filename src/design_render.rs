@@ -837,6 +837,21 @@ fn rotate_layer(im: RgbaImage, degrees: f32) -> Result<RgbaImage> {
     Ok(output)
 }
 
+/// The label as it goes to the printer: like [`render_label`], but a landscape design is
+/// turned upright, so it prints on the label stock the way it is loaded.
+pub fn render_for_print(doc: &LabelDocument, dpi: u32) -> Result<Output> {
+    let mut output = render_label(doc, dpi)?;
+    if doc.landscape {
+        output.image = if doc.turn_counterclockwise {
+            imageops::rotate270(&output.image)
+        } else {
+            imageops::rotate90(&output.image)
+        };
+        std::mem::swap(&mut output.width_mm, &mut output.height_mm);
+    }
+    Ok(output)
+}
+/// The label as designed, the same way up as the canvas.
 pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
     doc.validate()?;
     if ![203, 300, 600].contains(&dpi) {
@@ -1729,5 +1744,65 @@ mod option_render_tests {
         let options = logo_options("not an image".into(), 20);
         let mut im = RgbaImage::new(400, 400);
         assert!(draw_qr(&mut im, "abc", 1, &options).is_err());
+    }
+}
+
+#[cfg(test)]
+mod print_turn_tests {
+    use super::*;
+    use crate::design::{Element, ShapeKind};
+
+    /// A sideways label with a filled square in its top-left corner.
+    fn sideways(counterclockwise: bool) -> LabelDocument {
+        let mut doc = LabelDocument::blank(60., 30.);
+        doc.landscape = true;
+        doc.turn_counterclockwise = counterclockwise;
+        doc.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 0.5,
+                filled: true,
+            },
+            0.,
+            0.,
+            10.,
+            10.,
+        );
+        doc
+    }
+
+    fn dark(output: &Output, x: u32, y: u32) -> bool {
+        output.image.get_pixel(x, y)[0] < 128
+    }
+
+    #[test]
+    fn a_sideways_design_prints_turned_upright_and_upright_designs_are_unchanged() {
+        let doc = sideways(false);
+        let designed = render_label(&doc, 203).unwrap();
+        let printed = render_for_print(&doc, 203).unwrap();
+        assert_eq!(printed.image, imageops::rotate90(&designed.image));
+        assert_eq!((printed.width_mm, printed.height_mm), (30., 60.));
+        // Turned clockwise, the canvas's top-left corner is the printed top-right corner.
+        let w = printed.image.width();
+        assert!(dark(&printed, w - 5, 5) && !dark(&printed, 5, 5));
+
+        let printed = render_for_print(&sideways(true), 203).unwrap();
+        let h = printed.image.height();
+        assert!(dark(&printed, 5, h - 5) && !dark(&printed, 5, 5));
+
+        let mut upright = doc.clone();
+        upright.landscape = false;
+        assert_eq!(
+            render_for_print(&upright, 203).unwrap().image,
+            render_label(&upright, 203).unwrap().image
+        );
+    }
+
+    #[test]
+    fn zpl_for_a_sideways_design_uses_the_printed_size() {
+        let doc = sideways(false);
+        let zpl = String::from_utf8(crate::zpl::encode_design(&doc, 203).unwrap()).unwrap();
+        let printed = render_for_print(&doc, 203).unwrap();
+        assert!(zpl.contains(&format!("^PW{}", printed.image.width())));
     }
 }

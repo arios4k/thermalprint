@@ -449,6 +449,14 @@ pub struct LabelDocument {
         skip_serializing_if = "is_default_auto_margin"
     )]
     pub auto_margin_mm: f32,
+    /// Designed sideways: the canvas (`width_mm` × `height_mm`) is the label turned on
+    /// its side, so wide content reads straight while you work. It is turned back to
+    /// portrait for the printer, which is fed the label the usual way.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub landscape: bool,
+    /// Turn a landscape design counterclockwise to print instead of clockwise.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub turn_counterclockwise: bool,
 }
 pub const DEFAULT_AUTO_MARGIN_MM: f32 = 2.;
 fn default_auto_margin() -> f32 {
@@ -474,6 +482,41 @@ impl LabelDocument {
             grid_mm: DEFAULT_GRID_MM,
             auto_length: false,
             auto_margin_mm: DEFAULT_AUTO_MARGIN_MM,
+            landscape: false,
+            turn_counterclockwise: false,
+        }
+    }
+    /// The label as the printer sees it, width × length in millimeters: the canvas, or for
+    /// a landscape design the canvas turned upright.
+    pub fn paper_size_mm(&self) -> (f32, f32) {
+        let (w, h) = (self.width_mm, self.effective_height_mm());
+        if self.landscape { (h, w) } else { (w, h) }
+    }
+    /// Switch between designing upright and designing sideways. The canvas turns (width
+    /// and height swap) and the paper stays the same; objects keep their positions.
+    /// Auto-length grows the printed length downwards, so it is turned off for landscape.
+    pub fn set_landscape(&mut self, landscape: bool) {
+        if landscape == self.landscape {
+            return;
+        }
+        let height = self.effective_height_mm();
+        self.height_mm = self.width_mm;
+        self.width_mm = height;
+        self.landscape = landscape;
+        if landscape {
+            self.auto_length = false;
+        }
+    }
+    /// A printer's unprintable border, given as (left, top, right, bottom) of the paper,
+    /// as it falls on the canvas. For a landscape design the paper is the canvas turned
+    /// clockwise (or counterclockwise), so each paper edge lands on a different canvas edge.
+    pub fn border_on_canvas(&self, paper: (f32, f32, f32, f32)) -> (f32, f32, f32, f32) {
+        let (left, top, right, bottom) = paper;
+        match (self.landscape, self.turn_counterclockwise) {
+            (false, _) => paper,
+            // Turning clockwise puts the canvas's top on the paper's right edge.
+            (true, false) => (top, right, bottom, left),
+            (true, true) => (bottom, left, top, right),
         }
     }
     /// The length that is printed: the set height, or with auto-length the lowest edge of
@@ -1066,5 +1109,66 @@ mod arrangement_tests {
         doc.objects[0].options.line_spacing = 1.;
         doc.grid_mm = 0.;
         assert!(doc.validate().is_err());
+    }
+}
+
+#[cfg(test)]
+mod sideways_tests {
+    use super::*;
+
+    #[test]
+    fn designing_sideways_turns_the_canvas_but_not_the_paper() {
+        let mut doc = LabelDocument::blank(101.6, 152.4);
+        doc.auto_length = true;
+        doc.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 0.5,
+                filled: false,
+            },
+            0.,
+            0.,
+            10.,
+            150.,
+        );
+        let paper = doc.paper_size_mm();
+        doc.set_landscape(true);
+        assert!(doc.landscape && !doc.auto_length);
+        assert_eq!((doc.width_mm, doc.height_mm), (paper.1, paper.0));
+        assert_eq!(doc.paper_size_mm(), paper);
+        // Objects stay where they were; only the canvas turns.
+        assert_eq!((doc.objects[0].x_mm, doc.objects[0].y_mm), (0., 0.));
+        doc.set_landscape(true);
+        assert_eq!(doc.paper_size_mm(), paper);
+        doc.set_landscape(false);
+        assert_eq!((doc.width_mm, doc.height_mm), paper);
+    }
+
+    #[test]
+    fn the_printer_border_lands_on_the_matching_canvas_edges() {
+        let paper = (1., 2., 3., 4.); // left, top, right, bottom of the printed label
+        let mut doc = LabelDocument::blank(152.4, 101.6);
+        assert_eq!(doc.border_on_canvas(paper), paper);
+        doc.landscape = true;
+        // Turned clockwise to print: canvas left → paper top, canvas top → paper right,
+        // canvas right → paper bottom, canvas bottom → paper left.
+        assert_eq!(doc.border_on_canvas(paper), (2., 3., 4., 1.));
+        doc.turn_counterclockwise = true;
+        assert_eq!(doc.border_on_canvas(paper), (4., 1., 2., 3.));
+    }
+
+    #[test]
+    fn upright_files_are_saved_as_before_and_sideways_survives_a_round_trip() {
+        let doc = LabelDocument::blank(101.6, 152.4);
+        let json = serde_json::to_string(&doc).unwrap();
+        assert!(!json.contains("landscape") && !json.contains("turn_counterclockwise"));
+        let mut sideways = doc.clone();
+        sideways.set_landscape(true);
+        sideways.turn_counterclockwise = true;
+        let json = serde_json::to_string(&sideways).unwrap();
+        assert_eq!(
+            serde_json::from_str::<LabelDocument>(&json).unwrap(),
+            sideways
+        );
     }
 }
