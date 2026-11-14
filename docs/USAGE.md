@@ -32,7 +32,7 @@ The editor renders output at the selected printer DPI in a background worker. Sa
 
 ### Fonts
 
-The **Font** list of a text object has three groups: **Built in** (the default DejaVu Sans plus Condensed, Monospace, Serif, Headline and Rounded, which come with ThermalPrint and print the same on every computer), **Your fonts** (`.ttf` or `.otf` files you add, copied into ThermalPrint's `fonts` folder), and **On this computer** (the system's installed fonts, found through fontconfig, with a search box). A design stores only the font name, so your own and the computer's fonts must be installed on any other computer that prints it; otherwise the default font is used. Bold uses the font's bold face when it has one.
+The font button of a text object opens **Choose a font**, a window with a search box and three groups: **Built in** (the default DejaVu Sans plus Condensed, Monospace, Serif, Headline and Rounded, which come with ThermalPrint and print the same on every computer), **Your fonts** (`.ttf` or `.otf` files you add, copied into ThermalPrint's `fonts` folder), and **On this computer** (the system's installed fonts, found through fontconfig, with a search box). A design stores only the font name, so your own and the computer's fonts must be installed on any other computer that prints it; otherwise the default font is used. Bold uses the font's bold face when it has one.
 
 ### Rotated printing
 

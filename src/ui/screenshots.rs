@@ -39,6 +39,7 @@ const MANUAL_SCREENS: &[&str] = &[
     "designer-range",
     "designer-gs1",
     "designer-rotated",
+    "designer-fonts",
 ];
 
 /// The screens to capture: the README set, or the named ones.
@@ -121,7 +122,8 @@ impl Capture {
                 | "designer-gs1"
                 | "designer-qr-logo"
                 | "designer-safe-margin"
-                | "designer-rotated" => Area::Designer,
+                | "designer-rotated"
+                | "designer-fonts" => Area::Designer,
                 "import" | "import-watch" | "import-autoprint" | "import-autoprint-warning" => {
                     Area::Import
                 }
@@ -345,6 +347,7 @@ impl Capture {
                 }
                 "print-center-full" => app.history = demo_history(),
                 "designer-rotated" => app.designer.demo_document(rotated_demo_design()),
+                "designer-fonts" => app.designer.demo_font_chooser(""),
                 "batch" => {
                     app.designer.doc = batch_demo_design();
                     app.designer.demo_batch(DEMO_CSV.as_bytes());

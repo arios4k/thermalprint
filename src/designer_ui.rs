@@ -230,8 +230,10 @@ pub struct Designer {
     logos: Vec<crate::symbols::Logo>,
     addresses: Vec<crate::address_book::Entry>,
     fonts: Vec<String>,
-    /// What is typed in the font picker's search box for the computer's fonts.
+    /// What is typed in the font chooser's search box.
     font_search: String,
+    /// Where the open font chooser hangs from, or None when it is closed.
+    font_picker: Option<Pos2>,
     symbol_textures: Vec<(crate::symbols::Symbol, egui::TextureHandle)>,
     logo_textures: std::collections::HashMap<PathBuf, egui::TextureHandle>,
     /// Crash recovery: a design left over from an unexpected exit, offered at startup.
@@ -295,6 +297,7 @@ impl Designer {
             addresses: crate::address_book::load(),
             fonts: crate::fonts::list(),
             font_search: String::new(),
+            font_picker: None,
             symbol_textures: Vec::new(),
             logo_textures: Default::default(),
             recovered: None,
@@ -302,6 +305,21 @@ impl Designer {
             recovery_written: None,
             recovery_at: None,
         }
+    }
+    /// Select the first text object and open the font chooser with a search typed in
+    /// (documentation screenshots only).
+    pub(crate) fn demo_font_chooser(&mut self, search: &str) {
+        if let Some(id) = self
+            .doc
+            .objects
+            .iter()
+            .find(|o| matches!(o.element, Element::Text { .. }))
+            .map(|o| o.id)
+        {
+            self.selected = vec![id];
+        }
+        self.font_search = search.into();
+        self.font_picker = Some(Pos2::new(900., 200.));
     }
     /// Show a demo design with nothing selected (documentation screenshots only).
     pub(crate) fn demo_document(&mut self, doc: LabelDocument) {
@@ -2908,83 +2926,39 @@ impl Designer {
                     } else {
                         crate::i18n::tr(&crate::fonts::display_name(&o.options.font)).to_string()
                     };
-                    egui::ComboBox::from_id_salt("text-font")
-                        .selected_text(current)
-                        .width(230.)
-                        .height(460.)
-                        .show_ui(ui, |ui| {
-                            ui.label(
-                                RichText::new(crate::i18n::tr(
-                                    "Built in · prints the same everywhere",
-                                ))
-                                .small()
-                                .weak(),
-                            );
-                            ui.selectable_value(
-                                &mut o.options.font,
-                                String::new(),
-                                crate::i18n::tr("Default (DejaVu Sans)"),
-                            );
-                            for font in crate::fonts::BUILT_IN {
-                                ui.selectable_value(
-                                    &mut o.options.font,
-                                    font.key(),
-                                    crate::i18n::tr(font.name),
-                                );
-                            }
-                            if !self.fonts.is_empty() {
-                                ui.separator();
-                                ui.label(
-                                    RichText::new(crate::i18n::tr("Your fonts")).small().weak(),
-                                );
-                                for name in &self.fonts {
-                                    ui.selectable_value(&mut o.options.font, name.clone(), name);
-                                }
-                            }
-                            ui.separator();
-                            ui.label(
-                                RichText::new(crate::i18n::tr("On this computer"))
-                                    .small()
-                                    .weak(),
-                            );
-                            ui.add(
-                                egui::TextEdit::singleline(&mut self.font_search)
-                                    .hint_text(crate::i18n::tr("Search fonts"))
-                                    .desired_width(f32::INFINITY),
-                            )
-                            .accessible_name(crate::i18n::tr("Search fonts on this computer"));
-                            let query = self.font_search.trim().to_lowercase();
-                            let matches: Vec<&crate::fonts::SystemFont> =
-                                crate::fonts::system_fonts()
-                                    .iter()
-                                    .filter(|font| {
-                                        query.is_empty()
-                                            || font.name.to_lowercase().contains(&query)
-                                    })
-                                    .collect();
-                            if matches.is_empty() {
-                                ui.label(
-                                    RichText::new(crate::i18n::tr("No fonts match."))
-                                        .small()
-                                        .weak(),
-                                );
-                            }
-                            let row = ui.spacing().interact_size.y;
-                            egui::ScrollArea::vertical()
-                                .id_salt("system-fonts")
-                                .max_height(220.)
-                                .show_rows(ui, row, matches.len(), |ui, rows| {
-                                    for font in &matches[rows] {
-                                        ui.selectable_value(
-                                            &mut o.options.font,
-                                            format!("{}{}", crate::fonts::SYSTEM_PREFIX, font.name),
-                                            &font.name,
-                                        );
-                                    }
-                                });
-                        })
-                        .response
+                    let button = ui
+                        .add(
+                            egui::Button::new(format!("{current}     "))
+                                .min_size(Vec2::new(200., 0.)),
+                        )
+                        .on_hover_text(crate::i18n::tr("Choose a font"))
                         .accessible_name(crate::i18n::tr("Font"));
+                    // A small downward arrow, drawn because the font has no arrow character.
+                    let tip = Pos2::new(button.rect.right() - 14., button.rect.center().y + 3.);
+                    ui.painter().add(egui::Shape::convex_polygon(
+                        vec![tip, tip + Vec2::new(-5., -6.), tip + Vec2::new(5., -6.)],
+                        ui.style().interact(&button).fg_stroke.color,
+                        Stroke::NONE,
+                    ));
+                    if button.clicked() {
+                        self.font_picker = if self.font_picker.is_some() {
+                            None
+                        } else {
+                            self.font_search.clear();
+                            Some(button.rect.left_bottom() + Vec2::new(0., 4.))
+                        };
+                    }
+                    if let Some(anchor) = self.font_picker
+                        && !font_chooser(
+                            ui.ctx(),
+                            anchor,
+                            &mut o.options.font,
+                            &mut self.font_search,
+                            &self.fonts,
+                        )
+                    {
+                        self.font_picker = None;
+                    }
                     if icon_action(
                         ui,
                         "Add text",
@@ -4025,6 +3999,126 @@ fn effective_border(
         right.max(safe),
         bottom.max(safe),
     ))
+}
+
+/// One row of the font chooser: a group heading, or a font with the name a design stores.
+enum FontRow {
+    Heading(&'static str),
+    Font(String, String),
+}
+
+/// The font chooser: a window with a search box and one list of the built-in fonts, your
+/// fonts, and the computer's fonts. Choosing a font closes it, as do Esc and its close
+/// button. Returns whether it is still open.
+fn font_chooser(
+    ctx: &egui::Context,
+    anchor: Pos2,
+    font: &mut String,
+    search: &mut String,
+    own: &[String],
+) -> bool {
+    let query = search.trim().to_lowercase();
+    let matches = |name: &str| query.is_empty() || name.to_lowercase().contains(&query);
+    let mut rows = vec![FontRow::Heading("Built in · prints the same everywhere")];
+    let default = crate::i18n::tr("Default (DejaVu Sans)");
+    if matches(default) {
+        rows.push(FontRow::Font(String::new(), default.to_string()));
+    }
+    for built_in in crate::fonts::BUILT_IN {
+        let name = crate::i18n::tr(built_in.name);
+        if matches(name) {
+            rows.push(FontRow::Font(built_in.key(), name.to_string()));
+        }
+    }
+    let first_own = rows.len();
+    rows.push(FontRow::Heading("Your fonts"));
+    rows.extend(
+        own.iter()
+            .filter(|name| matches(name))
+            .map(|name| FontRow::Font(name.clone(), name.clone())),
+    );
+    if rows.len() == first_own + 1 {
+        rows.pop();
+    }
+    rows.push(FontRow::Heading("On this computer"));
+    let before = rows.len();
+    rows.extend(
+        crate::fonts::system_fonts()
+            .iter()
+            .filter(|system| matches(&system.name))
+            .map(|system| {
+                FontRow::Font(
+                    format!("{}{}", crate::fonts::SYSTEM_PREFIX, system.name),
+                    system.name.clone(),
+                )
+            }),
+    );
+    let none_on_computer = rows.len() == before;
+
+    let mut open = true;
+    let mut chosen = false;
+    egui::Window::new(crate::i18n::tr("Choose a font"))
+        .default_pos(anchor)
+        .default_size(Vec2::new(360., 560.))
+        .min_height(320.)
+        .collapsible(false)
+        .resizable(true)
+        .open(&mut open)
+        .show(ctx, |ui| {
+            let field = ui
+                .add(
+                    egui::TextEdit::singleline(search)
+                        .hint_text(crate::i18n::tr("Search fonts"))
+                        .desired_width(f32::INFINITY),
+                )
+                .accessible_name(crate::i18n::tr("Search fonts"));
+            if !field.has_focus() && !ui.memory(|m| m.focused().is_some()) {
+                field.request_focus();
+            }
+            // Compact, left-aligned rows of one height, so long lists scroll smoothly.
+            let row = 24.;
+            ui.spacing_mut().interact_size.y = row;
+            ui.spacing_mut().button_padding.y = 2.;
+            egui::ScrollArea::vertical()
+                .id_salt("font-chooser-list")
+                .auto_shrink([false, false])
+                .show_rows(ui, row, rows.len(), |ui, range| {
+                    ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
+                        for entry in &rows[range] {
+                            match entry {
+                                FontRow::Heading(text) => {
+                                    ui.allocate_ui_with_layout(
+                                        Vec2::new(ui.available_width(), row),
+                                        egui::Layout::left_to_right(egui::Align::Center),
+                                        |ui| {
+                                            ui.label(
+                                                RichText::new(crate::i18n::tr(text))
+                                                    .small()
+                                                    .strong(),
+                                            );
+                                        },
+                                    );
+                                }
+                                FontRow::Font(key, name) => {
+                                    if ui.selectable_label(font == key, name.as_str()).clicked() {
+                                        *font = key.clone();
+                                        chosen = true;
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+            if none_on_computer {
+                ui.label(
+                    RichText::new(crate::i18n::tr("No fonts match."))
+                        .small()
+                        .weak(),
+                );
+            }
+        });
+    let escape = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+    open && !chosen && !escape
 }
 
 /// Where each corner of the printed label takes its picture from in the canvas render,

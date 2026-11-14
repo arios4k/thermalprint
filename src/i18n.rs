@@ -1234,10 +1234,6 @@ const ES: &[(&str, &str)] = &[
     ("Your fonts", "Tus fuentes"),
     ("On this computer", "En este equipo"),
     ("Search fonts", "Buscar fuentes"),
-    (
-        "Search fonts on this computer",
-        "Buscar fuentes en este equipo",
-    ),
     ("No fonts match.", "Ninguna fuente coincide."),
     (
         "This font has no bold style. Choose a bold font instead.",
@@ -1261,6 +1257,7 @@ const ES: &[(&str, &str)] = &[
         "Titular (Noto Sans Display ExtraCondensed Black)",
     ),
     ("Rounded (Varela Round)", "Redondeada (Varela Round)"),
+    ("Choose a font", "Elegir una fuente"),
 ];
 const DE: &[(&str, &str)] = &[
     ("Printing", "Druckt"),
@@ -2388,10 +2385,6 @@ const DE: &[(&str, &str)] = &[
     ("Your fonts", "Deine Schriften"),
     ("On this computer", "Auf diesem Computer"),
     ("Search fonts", "Schriften suchen"),
-    (
-        "Search fonts on this computer",
-        "Schriften auf diesem Computer suchen",
-    ),
     ("No fonts match.", "Keine Schrift passt."),
     (
         "This font has no bold style. Choose a bold font instead.",
@@ -2415,6 +2408,7 @@ const DE: &[(&str, &str)] = &[
         "Schlagzeile (Noto Sans Display ExtraCondensed Black)",
     ),
     ("Rounded (Varela Round)", "Abgerundet (Varela Round)"),
+    ("Choose a font", "Schrift wählen"),
 ];
 const FR: &[(&str, &str)] = &[
     ("Printing", "Impression de"),
@@ -3572,10 +3566,6 @@ const FR: &[(&str, &str)] = &[
     ("Your fonts", "Vos polices"),
     ("On this computer", "Sur cet ordinateur"),
     ("Search fonts", "Rechercher des polices"),
-    (
-        "Search fonts on this computer",
-        "Rechercher des polices sur cet ordinateur",
-    ),
     ("No fonts match.", "Aucune police ne correspond."),
     (
         "This font has no bold style. Choose a bold font instead.",
@@ -3599,6 +3589,7 @@ const FR: &[(&str, &str)] = &[
         "Titre (Noto Sans Display ExtraCondensed Black)",
     ),
     ("Rounded (Varela Round)", "Arrondie (Varela Round)"),
+    ("Choose a font", "Choisir une police"),
 ];
 
 #[cfg(test)]
