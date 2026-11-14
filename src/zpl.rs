@@ -34,7 +34,7 @@ pub fn encode_output(output: &Output) -> Result<Vec<u8>> {
     Ok(zpl.into_bytes())
 }
 pub fn encode_design(doc: &LabelDocument, dpi: u32) -> Result<Vec<u8>> {
-    encode_output(&design_render::render_label(doc, dpi)?)
+    encode_output(&design_render::render_for_print(doc, dpi)?)
 }
 #[cfg(test)]
 mod tests {

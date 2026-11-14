@@ -300,6 +300,12 @@ impl Designer {
             recovery_at: None,
         }
     }
+    /// Show a demo design with nothing selected (documentation screenshots only).
+    pub(crate) fn demo_document(&mut self, doc: LabelDocument) {
+        self.doc = doc;
+        self.selected.clear();
+        self.changed();
+    }
     pub(crate) fn select_object(&mut self, id: u64) {
         if self.doc.objects.iter().any(|object| object.id == id) {
             self.selected = vec![id];
@@ -310,10 +316,11 @@ impl Designer {
         match name {
             "gallery" => self.gallery = Some(String::new()),
             "sheet" => {
+                let (paper_w, paper_h) = self.doc.paper_size_mm();
                 let spec = crate::sheet::SheetSpec::fitting(
                     crate::sheet::Page::A4,
-                    self.doc.width_mm,
-                    self.doc.effective_height_mm(),
+                    paper_w,
+                    paper_h,
                     5.,
                     0.,
                 );
@@ -982,7 +989,7 @@ impl Designer {
                 let bytes = zpl::encode_design(&doc, settings.dpi)?;
                 printing::submit_raw_zpl(&bytes, &settings, &printer)
             } else {
-                let output = design_render::render_label(&doc, settings.dpi)?;
+                let output = design_render::render_for_print(&doc, settings.dpi)?;
                 printing::submit(&output, &settings, &printer)
             }?;
             crate::history::record(crate::history::design_entry(
@@ -1178,7 +1185,7 @@ impl Designer {
         let Some(mut state) = self.sheet.take() else {
             return;
         };
-        let (label_w, label_h) = (self.doc.width_mm, self.doc.effective_height_mm());
+        let (label_w, label_h) = self.doc.paper_size_mm();
         let mut open = true;
         let mut action: Option<bool> = None; // Some(true) = print, Some(false) = save PDF
         let printer = printers.iter().find(|p| p.name == settings.printer);
@@ -1364,7 +1371,7 @@ impl Designer {
                     let outputs = (0..count)
                         .map(|i| {
                             let label = crate::batch::apply_range(&doc, first, 1, i);
-                            design_render::render_label(&label, dpi)
+                            design_render::render_for_print(&label, dpi)
                         })
                         .collect::<anyhow::Result<Vec<_>>>()?;
                     let pages = crate::sheet::compose(&outputs, &spec)?;
@@ -1654,7 +1661,7 @@ impl Designer {
                     let bytes = zpl::encode_design(&label, settings.dpi)?;
                     printing::submit_raw_zpl(&bytes, &settings, &printer)
                 } else {
-                    let output = design_render::render_label(&label, settings.dpi)?;
+                    let output = design_render::render_for_print(&label, settings.dpi)?;
                     printing::submit(&output, &settings, &printer)
                 }
                 .map_err(|e| {
@@ -1802,10 +1809,11 @@ impl Designer {
                         .on_hover_text(crate::i18n::tr("Place several labels on one A4 or Letter page"))
                         .clicked()
                     {
+                        let (paper_w, paper_h) = self.doc.paper_size_mm();
                         let spec = crate::sheet::SheetSpec::fitting(
                             crate::sheet::Page::A4,
-                            self.doc.width_mm,
-                            self.doc.effective_height_mm(),
+                            paper_w,
+                            paper_h,
                             5.,
                             0.,
                         );
@@ -2001,11 +2009,12 @@ impl Designer {
         egui::Panel::bottom("designer-status").show(root, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.label(format!(
-                    "{}{} · {:.1} × {:.1} mm · {}% · {} objects",
+                    "{}{} · {:.1} × {:.1} mm{} · {}% · {} objects",
                     self.doc.title,
                     if self.is_modified() { " · Unsaved" } else { "" },
                     self.doc.width_mm,
                     self.doc.effective_height_mm(),
+                    if self.doc.rotated_printing { " · rotated printing" } else { "" },
                     (self.zoom * 100.) as u32,
                     self.doc.objects.len()
                 ));
@@ -2047,19 +2056,43 @@ impl Designer {
             {
                 ui.label(RichText::new(crate::i18n::tr(reason)).small().weak());
             }
+            if self.doc.rotated_printing {
+                let (paper_w, paper_h) = self.doc.paper_size_mm();
+                ui.label(
+                    RichText::new(format!(
+                        "{} {paper_w:.1} × {paper_h:.1} mm.",
+                        crate::i18n::tr("Rotated printing: Print rotates it 90° to fit")
+                    ))
+                    .strong(),
+                );
+            }
             if let Some(printer) = printers.iter().find(|p| p.name == settings.printer) {
                 if self.raw_zpl {
                     ui.label(crate::i18n::tr("Raw ZPL: verify printer compatibility and loaded label size."))
                         .on_hover_text(crate::help::explanation("ZPL"));
-                } else if let Some(warning) = printer.media_mismatch(&settings.media, self.doc.width_mm, self.doc.effective_height_mm()) {
+                } else if let Some(warning) = printer.media_mismatch(&settings.media, self.doc.paper_size_mm().0, self.doc.paper_size_mm().1) {
                     let color = if ui.visuals().dark_mode { Color32::from_rgb(245, 193, 99) }
                         else { Color32::from_rgb(132, 83, 10) };
                     ui.colored_label(color, warning);
                     ui.label(RichText::new(crate::i18n::tr("If the loaded paper matches the printer media, use the button below. To keep the current label size, choose matching media in Print Center instead.")).small().weak());
                     if let Some(&(width, height)) = printer.media_sizes.get(&settings.media)
+                        && !self.doc.rotated_printing
+                        && (width - self.doc.effective_height_mm()).abs() < 0.5
+                        && (height - self.doc.width_mm).abs() < 0.5
+                        && icon_action(ui, "Rotate stock", "Use rotated printing",
+                            "This label is the printer stock turned on its side. Keep designing it this way and rotate it 90° when it prints. Ctrl+Z undoes this change.", true, false).clicked() {
+                        self.checkpoint();
+                        self.doc.rotated_printing = true;
+                        self.doc.auto_length = false;
+                        self.changed();
+                        self.status = "Rotated printing: the label is rotated 90° when it prints".into();
+                    }
+                    if let Some(&(width, height)) = printer.media_sizes.get(&settings.media)
                         && icon_action(ui, "Rotate stock", "Match label to printer media",
                             "Set the canvas dimensions to the selected printer stock. Object sizes and positions are preserved; Ctrl+Z undoes this change.", true, false).clicked() {
                         self.checkpoint();
+                        // With rotated printing the canvas stays turned on its side.
+                        let (width, height) = if self.doc.rotated_printing { (height, width) } else { (width, height) };
                         self.doc.width_mm = width;
                         self.doc.height_mm = height;
                         self.zoom = 1.;
@@ -2075,20 +2108,18 @@ impl Designer {
             }
         });
         let printer = printers.iter().find(|p| p.name == settings.printer);
+        let (paper_w, paper_h) = self.doc.paper_size_mm();
         let driver = printer
             .filter(|p| {
-                p.media_sizes.get(&settings.media).is_some_and(|&(w, h)| {
-                    (w - self.doc.width_mm).abs() < 0.5 && (h - self.doc.height_mm).abs() < 0.5
-                })
+                p.media_sizes
+                    .get(&settings.media)
+                    .is_some_and(|&(w, h)| (w - paper_w).abs() < 0.5 && (h - paper_h).abs() < 0.5)
             })
-            .and_then(|p| p.printable_margins_mm(&settings.media));
+            .and_then(|p| p.printable_margins_mm(&settings.media))
+            .map(|border| self.doc.border_on_canvas(border));
         self.printable = effective_border(driver, settings.safe_margin_mm);
         self.printable_note = if self.printable.is_none() {
-            Some(border_note(
-                printer,
-                &settings.media,
-                (self.doc.width_mm, self.doc.height_mm),
-            ))
+            Some(border_note(printer, &settings.media, (paper_w, paper_h)))
         } else {
             None
         };
@@ -2531,15 +2562,44 @@ impl Designer {
                     )
                     .accessible_name(crate::i18n::tr("Label height in millimeters"));
                 });
+                let mut rotated = self.doc.rotated_printing;
+                ui.checkbox(&mut rotated, crate::i18n::tr("Rotate 90° when printing"))
+                    .on_hover_text(crate::i18n::tr("For wide content: design the label turned on its side so the text reads straight, and it is rotated 90° when it prints, to fit the label stock as loaded."));
+                if rotated != self.doc.rotated_printing {
+                    self.doc.set_rotated_printing(rotated);
+                    self.zoom = 1.;
+                    self.pan = Vec2::ZERO;
+                }
+                if self.doc.rotated_printing {
+                    let (paper_w, paper_h) = self.doc.paper_size_mm();
+                    ui.label(
+                        RichText::new(format!(
+                            "{} {paper_w:.1} × {paper_h:.1} mm.",
+                            crate::i18n::tr(if self.doc.rotate_counterclockwise {
+                                "Rotated 90° counterclockwise to print on"
+                            } else {
+                                "Rotated 90° clockwise to print on"
+                            })
+                        ))
+                        .small()
+                        .weak(),
+                    );
+                    ui.checkbox(&mut self.doc.rotate_counterclockwise, crate::i18n::tr("Rotate the other way"))
+                        .on_hover_text(crate::i18n::tr("Which way the design faces on the printed label. Check “As printed” beside the canvas."));
+                }
                 ui.horizontal(|ui| {
                     ui.label(crate::i18n::tr("Serial variable"));
                     ui.add(egui::DragValue::new(&mut self.doc.serial_number))
                         .accessible_name(crate::i18n::tr("Serial variable"));
                 });
-                ui.checkbox(&mut self.doc.auto_length, crate::i18n::tr("Auto-length (continuous roll)"))
-                    .on_hover_text(crate::i18n::tr(
-                        "Print only as long as the content needs, plus a bottom margin. Use it with continuous label rolls.",
-                    ));
+                ui.add_enabled(
+                    !self.doc.rotated_printing,
+                    egui::Checkbox::new(&mut self.doc.auto_length, crate::i18n::tr("Auto-length (continuous roll)")),
+                )
+                .on_hover_text(crate::i18n::tr(
+                    "Print only as long as the content needs, plus a bottom margin. Use it with continuous label rolls.",
+                ))
+                .on_disabled_hover_text(crate::i18n::tr("Not available with rotated printing."));
                 if self.doc.auto_length {
                     ui.horizontal(|ui| {
                         ui.label(crate::i18n::tr("Bottom margin"));
@@ -3325,6 +3385,9 @@ impl Designer {
         }
     }
     fn canvas(&mut self, ui: &mut egui::Ui) {
+        if self.doc.rotated_printing {
+            sideways_banner(ui, &self.doc);
+        }
         ui.label(
             RichText::new(crate::i18n::tr(
                 "Drag to move · square to resize · circle to rotate · Shift: 15°",
@@ -3336,7 +3399,12 @@ impl Designer {
             ui.spinner();
             return;
         };
-        let available = (ui.available_size() - Vec2::splat(64.)).max(Vec2::splat(1.));
+        let panel = ui.max_rect();
+        let mut available = (ui.available_size() - Vec2::splat(64.)).max(Vec2::splat(1.));
+        if self.doc.rotated_printing {
+            // Leave room on the right for the "As printed" card, so it never covers the label.
+            available.x = (available.x - 2. * PRINTED_PREVIEW_ROOM).max(available.x * 0.5);
+        }
         let source = tex.size_vec2();
         let fit = (available.x / source.x)
             .min(available.y / source.y)
@@ -3635,6 +3703,9 @@ impl Designer {
                     self.pan += response.drag_delta();
                 }
             });
+        if self.doc.rotated_printing {
+            printed_preview(ui, &tex, panel, &self.doc);
+        }
     }
     fn object_geometry(&self, object: &DesignObject, paper: Rect) -> ObjectGeometry {
         let (cx, cy) = object.center_mm();
@@ -3876,6 +3947,131 @@ fn effective_border(
         right.max(safe),
         bottom.max(safe),
     ))
+}
+
+/// Where each corner of the printed label takes its picture from in the canvas render,
+/// as texture coordinates for the top-left, top-right, bottom-right and bottom-left corners.
+fn printed_corners(counterclockwise: bool) -> [Pos2; 4] {
+    let (tl, tr, br, bl) = (
+        Pos2::new(0., 0.),
+        Pos2::new(1., 0.),
+        Pos2::new(1., 1.),
+        Pos2::new(0., 1.),
+    );
+    if counterclockwise {
+        // Turning counterclockwise brings the canvas's right edge to the top.
+        [tr, br, bl, tl]
+    } else {
+        // Turning clockwise brings the canvas's left edge to the top.
+        [bl, tl, tr, br]
+    }
+}
+
+/// A strip across the top of the canvas saying that rotated printing is on: the label is
+/// designed on its side and rotated when it prints, so it never surprises anyone.
+fn sideways_banner(ui: &mut egui::Ui, doc: &LabelDocument) {
+    let (paper_w, paper_h) = doc.paper_size_mm();
+    let (fill, text) = if ui.visuals().dark_mode {
+        (
+            Color32::from_rgb(28, 58, 92),
+            Color32::from_rgb(190, 220, 255),
+        )
+    } else {
+        (
+            Color32::from_rgb(222, 236, 252),
+            Color32::from_rgb(22, 70, 130),
+        )
+    };
+    egui::Frame::new()
+        .fill(fill)
+        .corner_radius(8)
+        .inner_margin(egui::Margin::symmetric(10, 6))
+        .show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal_wrapped(|ui| {
+                let (icon, _) = ui.allocate_exact_size(Vec2::splat(20.), Sense::hover());
+                paint_tool_icon(ui.painter(), icon.center(), text, "Rotate stock");
+                ui.label(
+                    RichText::new(crate::i18n::tr("Rotated printing."))
+                        .strong()
+                        .color(text),
+                );
+                ui.label(
+                    RichText::new(format!(
+                        "{} {paper_w:.1} × {paper_h:.1} mm. {}",
+                        crate::i18n::tr(if doc.rotate_counterclockwise {
+                            "You are designing the label on its side. When it prints, it is rotated 90° counterclockwise to fit"
+                        } else {
+                            "You are designing the label on its side. When it prints, it is rotated 90° clockwise to fit"
+                        }),
+                        crate::i18n::tr("See “As printed” in the corner.")
+                    ))
+                    .color(text),
+                );
+            });
+        });
+    ui.add_space(4.);
+}
+
+/// Width kept free at the canvas's right edge for the "As printed" card.
+const PRINTED_PREVIEW_ROOM: f32 = 150.;
+
+/// A small card in the canvas's bottom-right corner showing a label with rotated printing
+/// the way it comes out of the printer.
+fn printed_preview(ui: &egui::Ui, texture: &egui::TextureHandle, panel: Rect, doc: &LabelDocument) {
+    let (paper_w, paper_h) = doc.paper_size_mm();
+    let height = 150_f32.min(panel.height() * 0.35).max(60.);
+    let width = (height * paper_w / paper_h)
+        .min(panel.width() * 0.3)
+        .max(30.);
+    let label = Vec2::new(width, height * width / (height * paper_w / paper_h));
+    let caption = crate::i18n::tr("As printed");
+    let card = Rect::from_min_size(
+        panel.right_bottom() - label - Vec2::new(36., 58.),
+        label + Vec2::new(24., 46.),
+    );
+    let painter = ui.painter();
+    let visuals = ui.visuals();
+    painter.rect_filled(
+        card.translate(Vec2::new(0., 2.)),
+        10.,
+        Color32::from_black_alpha(30),
+    );
+    painter.rect_filled(card, 10., visuals.window_fill);
+    painter.rect_stroke(card, 10., visuals.window_stroke, StrokeKind::Inside);
+    painter.text(
+        Pos2::new(card.left() + 12., card.top() + 16.),
+        egui::Align2::LEFT_CENTER,
+        caption,
+        egui::FontId::proportional(12.),
+        visuals.weak_text_color(),
+    );
+    let paper = Rect::from_min_size(Pos2::new(card.left() + 12., card.top() + 32.), label);
+    let uv = printed_corners(doc.rotate_counterclockwise);
+    let mut mesh = egui::Mesh::with_texture(texture.id());
+    for (corner, uv) in [
+        paper.left_top(),
+        paper.right_top(),
+        paper.right_bottom(),
+        paper.left_bottom(),
+    ]
+    .into_iter()
+    .zip(uv)
+    {
+        mesh.vertices.push(egui::epaint::Vertex {
+            pos: corner,
+            uv,
+            color: Color32::WHITE,
+        });
+    }
+    mesh.indices.extend([0, 1, 2, 0, 2, 3]);
+    painter.add(egui::Shape::mesh(mesh));
+    painter.rect_stroke(
+        paper,
+        2.,
+        Stroke::new(1., visuals.widgets.noninteractive.bg_stroke.color),
+        StrokeKind::Outside,
+    );
 }
 
 /// Why no unprintable border can be shown, so that "Show printable area" never looks broken.
@@ -5422,5 +5618,34 @@ mod printable_border_tests {
                 .contains("reports no unprintable border"),
             "matching media with no border means the driver says everything is printable"
         );
+    }
+}
+
+#[cfg(test)]
+mod printed_preview_tests {
+    use super::*;
+
+    /// The corner preview samples the canvas render the same way the print is turned.
+    #[test]
+    fn the_preview_shows_the_label_exactly_as_it_prints() {
+        let source = image::RgbImage::from_fn(3, 2, |x, y| image::Rgb([(x * 10 + y) as u8, 0, 0]));
+        for counterclockwise in [false, true] {
+            let printed = if counterclockwise {
+                image::imageops::rotate270(&source)
+            } else {
+                image::imageops::rotate90(&source)
+            };
+            let (w, h) = (printed.width() - 1, printed.height() - 1);
+            let corners = [(0, 0), (w, 0), (w, h), (0, h)];
+            for (uv, (x, y)) in printed_corners(counterclockwise).into_iter().zip(corners) {
+                let sx = (uv.x * (source.width() - 1) as f32) as u32;
+                let sy = (uv.y * (source.height() - 1) as f32) as u32;
+                assert_eq!(
+                    source.get_pixel(sx, sy),
+                    printed.get_pixel(x, y),
+                    "counterclockwise: {counterclockwise}, corner ({x}, {y})"
+                );
+            }
+        }
     }
 }
