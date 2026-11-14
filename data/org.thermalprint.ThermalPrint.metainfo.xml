@@ -60,6 +60,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.11.1" date="2026-11-14">
+      <description>
+        <p>Easier to find in software centers.</p>
+        <ul>
+          <li>Searching for a shipping label, a thermal or 4×6 label printer, barcodes, ZPL, or Vinted, eBay or Etsy now finds ThermalPrint in software centers and in your desktop's app search.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.11.0" date="2026-11-14">
       <description>
         <p>More fonts for label text, and a font chooser that shows them.</p>
