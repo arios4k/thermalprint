@@ -6,6 +6,7 @@ on: [push, pull_request]
 
 jobs:
   build:
+    name: Manual build
     # The APT release job runs on Ubuntu 22.04 (Python 3.10), so build the manual there.
     runs-on: ubuntu-22.04
     steps:
@@ -15,6 +16,7 @@ jobs:
           python3 --version
           python3 scripts/build-manual.py --output target/manual
   test:
+    name: Manual tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
