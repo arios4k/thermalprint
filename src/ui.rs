@@ -113,6 +113,11 @@ pub struct ThermalPrint {
     history: Vec<crate::history::Entry>,
     history_stamp: Option<std::time::SystemTime>,
     last_watch: Instant,
+    /// The next watcher started is the one at app start, which also picks up labels saved
+    /// while the app was closed.
+    resume_watch: bool,
+    /// When the watch folder's check time was last saved.
+    watch_checked_saved: Instant,
     notices: notices::Notices,
     /// Why the watch folder is not working, shown beside its controls.
     watch_error: Option<String>,
@@ -244,6 +249,8 @@ impl ThermalPrint {
             history: vec![],
             history_stamp: None,
             last_watch: Instant::now(),
+            resume_watch: true,
+            watch_checked_saved: Instant::now(),
             notices: notices::Notices::default(),
             watch_error: None,
             last_error: String::new(),
@@ -353,6 +360,8 @@ impl ThermalPrint {
     }
     /// Start or stop the folder watcher to match the saved settings.
     fn sync_watcher(&mut self) {
+        // Only the check when the app opens can pick up labels saved while it was closed.
+        let at_start = std::mem::take(&mut self.resume_watch);
         let wanted = self
             .settings
             .watch_enabled
@@ -366,10 +375,24 @@ impl ThermalPrint {
         if self.watcher.as_ref().is_some_and(|w| w.dir() == folder) {
             return;
         }
-        match crate::watch::check(&folder).and_then(|()| crate::watch::Watcher::new(&folder)) {
+        // When the app opens, labels saved after the folder was last checked arrived while it
+        // was closed and are imported. Turning watching on, or choosing another folder, still
+        // leaves the files already there alone.
+        let resume_from = at_start
+            .then_some(self.settings.watch_checked_at)
+            .flatten()
+            .map(|seconds| std::time::UNIX_EPOCH + Duration::from_secs(seconds));
+        let started = crate::watch::check(&folder).and_then(|()| match resume_from {
+            Some(checked_at) => crate::watch::Watcher::resume(&folder, checked_at),
+            None => crate::watch::Watcher::new(&folder),
+        });
+        match started {
             Ok(watcher) => {
                 self.watcher = Some(watcher);
                 self.watch_error = None;
+                if resume_from.is_none() {
+                    self.save_watch_checked();
+                }
             }
             Err(error) => {
                 self.watcher = None;
@@ -378,6 +401,22 @@ impl ThermalPrint {
                 self.watch_error = Some(self.status.clone());
                 self.error = true;
             }
+        }
+    }
+    /// Remember when the watch folder was checked, so labels saved there while the app is
+    /// closed are imported when it opens again.
+    fn save_watch_checked(&mut self) {
+        let Some(watcher) = &self.watcher else {
+            return;
+        };
+        let seconds = watcher
+            .checked_at()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+        self.watch_checked_saved = Instant::now();
+        if self.settings.watch_checked_at != Some(seconds) {
+            self.settings.watch_checked_at = Some(seconds);
+            self.persist();
         }
     }
     fn watch_tick(&mut self, ctx: &egui::Context) {
@@ -389,7 +428,24 @@ impl ThermalPrint {
             return;
         }
         self.last_watch = Instant::now();
-        match watcher.scan() {
+        let scanned = watcher.scan();
+        let closed: HashSet<PathBuf> = scanned
+            .as_ref()
+            .map(|files| {
+                files
+                    .iter()
+                    .filter(|file| watcher.arrived_while_closed(file))
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        // Saved once a minute, and whenever labels arrive.
+        if scanned.as_ref().is_ok_and(|files| !files.is_empty())
+            || self.watch_checked_saved.elapsed() >= Duration::from_secs(60)
+        {
+            self.save_watch_checked();
+        }
+        match scanned {
             Ok(files) => {
                 if self.watch_error.take().is_some() {
                     self.notices
@@ -398,8 +454,23 @@ impl ThermalPrint {
                 if files.is_empty() {
                     return;
                 }
+                // Labels saved while the app was closed are treated like any arrival: with
+                // automatic printing on, they print after the usual Cancel countdown.
+                let while_closed = closed.len();
                 if self.settings.auto_print {
                     self.watch_arrivals.extend(files.iter().cloned());
+                }
+                if while_closed > 0 {
+                    let text = if self.settings.auto_print {
+                        format!(
+                            "{while_closed} label(s) saved while ThermalPrint was closed were added from the watch folder and will print automatically. Press Cancel or Pause auto-print to stop them."
+                        )
+                    } else {
+                        format!(
+                            "{while_closed} label(s) saved while ThermalPrint was closed were added from the watch folder."
+                        )
+                    };
+                    self.notices.push(text, false, None);
                 }
                 let count = files.len();
                 let visible = matches!(self.area, Area::Home | Area::Import);
@@ -487,7 +558,7 @@ impl ThermalPrint {
         egui::CollapsingHeader::new(crate::i18n::tr("Watch a folder"))
             .default_open(capturing)
             .show(ui, |ui| {
-            ui.label(RichText::new(crate::i18n::tr("Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there are ignored.")).small().weak());
+            ui.label(RichText::new(crate::i18n::tr("Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there when you turn this on are ignored; labels saved while ThermalPrint is closed are added when it opens.")).small().weak());
             let folder = self.settings.watch_folder.clone();
             ui.horizontal_wrapped(|ui| {
                 if ui.button(crate::i18n::tr("Choose folder…")).clicked()

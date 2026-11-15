@@ -320,8 +320,8 @@ const ES: &[(&str, &str)] = &[
     ),
     ("Actual size", "Tamaño real"),
     (
-        "Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there are ignored.",
-        "Añade automáticamente las nuevas etiquetas PDF y de imagen que aparezcan en una carpeta, como Descargas. Los archivos que ya estén ahí se ignoran.",
+        "Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there when you turn this on are ignored; labels saved while ThermalPrint is closed are added when it opens.",
+        "Añade automáticamente las nuevas etiquetas PDF e imagen cuando aparecen en una carpeta, como Descargas. Los archivos que ya estaban al activarlo se ignoran; las etiquetas guardadas con ThermalPrint cerrado se añaden al abrirlo.",
     ),
     ("Alignment", "Alineación"),
     ("Back", "Atrás"),
@@ -1498,8 +1498,8 @@ const DE: &[(&str, &str)] = &[
     ),
     ("Actual size", "Tatsächliche Größe"),
     (
-        "Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there are ignored.",
-        "Neue PDF- und Bild-Etiketten werden automatisch hinzugefügt, sobald sie in einem Ordner (z. B. Downloads) erscheinen. Bereits vorhandene Dateien werden ignoriert.",
+        "Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there when you turn this on are ignored; labels saved while ThermalPrint is closed are added when it opens.",
+        "Neue PDF- und Bildetiketten automatisch hinzufügen, sobald sie in einem Ordner wie Downloads erscheinen. Dateien, die beim Einschalten schon da sind, werden ignoriert; Etiketten, die bei geschlossenem ThermalPrint gespeichert wurden, kommen beim Öffnen hinzu.",
     ),
     ("Alignment", "Ausrichtung"),
     ("Back", "Zurück"),
@@ -2646,8 +2646,8 @@ const FR: &[(&str, &str)] = &[
     ),
     ("Actual size", "Taille réelle"),
     (
-        "Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there are ignored.",
-        "Ajoute automatiquement les nouvelles étiquettes PDF et image qui apparaissent dans un dossier, comme Téléchargements. Les fichiers déjà présents sont ignorés.",
+        "Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there when you turn this on are ignored; labels saved while ThermalPrint is closed are added when it opens.",
+        "Ajouter automatiquement les nouvelles étiquettes PDF et image dès qu'elles apparaissent dans un dossier, comme Téléchargements. Les fichiers déjà présents à l'activation sont ignorés ; les étiquettes enregistrées quand ThermalPrint est fermé sont ajoutées à son ouverture.",
     ),
     ("Alignment", "Alignement"),
     ("Back", "Retour"),
