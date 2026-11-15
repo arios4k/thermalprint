@@ -182,7 +182,10 @@ An upload doesn't change the store listing's description. When you change the
 `description` in [`snapcraft.yaml`](../snap/snapcraft.yaml), update the listing
 too: paste it into the **Description** box at
 <https://snapcraft.io/thermalprint/listing> and press **Save**. Don't use
-`snapcraft upload-metadata`: it rewrites the listing's images.
+`snapcraft upload-metadata`: it rewrites the listing's images. The listing's
+**Website** is the user manual, <https://arios4k.github.io/thermalprint/manual/>,
+like `website:` in `snapcraft.yaml`; the source code and issue tracker links point
+to GitHub.
 
 The listing's images are uploaded on the same page:
 

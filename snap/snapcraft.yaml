@@ -6,7 +6,7 @@ license: MIT
 grade: stable
 confinement: strict
 icon: data/org.thermalprint.ThermalPrint.png
-website: https://github.com/arios4k/thermalprint
+website: https://arios4k.github.io/thermalprint/manual/
 source-code: https://github.com/arios4k/thermalprint
 issues: https://github.com/arios4k/thermalprint/issues
 description: |
