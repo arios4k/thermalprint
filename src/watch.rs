@@ -68,8 +68,8 @@ impl Watcher {
         Ok(watcher)
     }
 
-    /// Whether a file was saved while the app was closed. Such labels are imported for you
-    /// to review, but never printed automatically.
+    /// Whether a file was saved while the app was closed, so the app can say how many it
+    /// found when it opened.
     pub fn arrived_while_closed(&self, path: &Path) -> bool {
         self.while_closed.contains(path)
     }

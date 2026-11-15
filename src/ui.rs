@@ -454,17 +454,16 @@ impl ThermalPrint {
                 if files.is_empty() {
                     return;
                 }
-                // Labels saved while the app was closed are added for review, never printed
-                // automatically: the app may have been opened hours later.
+                // Labels saved while the app was closed are treated like any arrival: with
+                // automatic printing on, they print after the usual Cancel countdown.
                 let while_closed = closed.len();
                 if self.settings.auto_print {
-                    self.watch_arrivals
-                        .extend(files.iter().filter(|file| !closed.contains(*file)).cloned());
+                    self.watch_arrivals.extend(files.iter().cloned());
                 }
                 if while_closed > 0 {
                     let text = if self.settings.auto_print {
                         format!(
-                            "{while_closed} label(s) saved while ThermalPrint was closed were added from the watch folder. They are not printed automatically: review them and press Print."
+                            "{while_closed} label(s) saved while ThermalPrint was closed were added from the watch folder and will print automatically. Press Cancel or Pause auto-print to stop them."
                         )
                     } else {
                         format!(
