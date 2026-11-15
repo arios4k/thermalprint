@@ -13,16 +13,9 @@ on:
       - 'scripts/*snap*'
       - 'docs/SNAP.md'
       - '.github/workflows/snap.yml'
+  # Pull requests always start this workflow, so "Snap build" can be a required check;
+  # the "changes" job skips the build when a pull request touches none of the paths above.
   pull_request:
-    paths:
-      - 'snap/**'
-      - 'src/**'
-      - 'data/**'
-      - 'assets/**'
-      - 'Cargo.*'
-      - 'scripts/*snap*'
-      - 'docs/SNAP.md'
-      - '.github/workflows/snap.yml'
 
 permissions:
   contents: read
@@ -32,7 +25,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Snap changes
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.diff.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        name: Does this change need the Snap build?
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo relevant=true >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --name-only "$BASE" HEAD \
+            | grep -qE '^(snap/|src/|data/|assets/|Cargo\.|scripts/[^/]*snap[^/]*$|docs/SNAP\.md$|\.github/workflows/snap\.yml$)'; then
+            echo relevant=true >> "$GITHUB_OUTPUT"
+          else
+            echo relevant=false >> "$GITHUB_OUTPUT"
+          fi
   build:
+    name: Snap build
+    needs: changes
+    # A skipped job counts as passed for a required check.
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
