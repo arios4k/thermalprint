@@ -100,6 +100,9 @@ pub struct Settings {
     pub keep_going: bool,
     /// A printer to switch to whenever a label from the watch folder is shown.
     pub watch_printer: Option<String>,
+    /// When the watch folder was last checked, in seconds since 1970. When the app opens,
+    /// labels saved there after this time arrived while it was closed and are imported.
+    pub watch_checked_at: Option<u64>,
     /// Labels still waiting in the queue when the app last closed.
     pub saved_queue: Vec<SavedItem>,
     /// The first-run checklist on Home was closed.
@@ -151,6 +154,7 @@ impl Default for Settings {
             trust_auto_crop: false,
             keep_going: false,
             watch_printer: None,
+            watch_checked_at: None,
             saved_queue: vec![],
             setup_dismissed: false,
             auto_print: false,

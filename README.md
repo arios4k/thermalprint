@@ -35,7 +35,7 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 - **Get the size right.** Start at **4 × 6 inches** or any size you need; ThermalPrint explains printer media and matches the output to it. Wide labels can be designed on their side and rotated 90° when they print.
 - **Print or export.** Print through CUPS, or save a PDF, PNG, SVG or raster ZPL.
 - **Print many at once.** Numbered runs, several labels on an A4 or Letter sheet, and one label per row of a spreadsheet.
-- **Save clicks.** Watch a folder such as Downloads so new labels join the queue, and optionally print them by themselves.
+- **Save clicks.** Watch a folder such as Downloads so new labels join the queue, even ones saved while the app was closed, and optionally print them by themselves.
 - **Stay comfortable.** Light and dark themes; English, Spanish, German and French; keyboard shortcuts; and a guide to printing terms.
 
 Document processing happens on your computer. ThermalPrint works with local files from carriers and marketplaces, including Vinted, eBay, Etsy, Shopify, USPS, UPS, and FedEx, without connecting to their accounts.

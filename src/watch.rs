@@ -1,6 +1,8 @@
 //! Import new label files as they appear in a folder, such as Downloads.
 //! Files are imported only after their size has stopped changing, so a download
-//! in progress is never opened half-written. Existing files are never imported.
+//! in progress is never opened half-written. Files already in the folder when watching
+//! starts are not imported, except, when the app opens, labels saved after the folder was
+//! last checked: those arrived while the app was closed.
 use anyhow::{Context, Result, bail};
 use std::{
     collections::HashMap,
@@ -23,6 +25,8 @@ pub struct Watcher {
     seen: HashMap<PathBuf, Stamp>,
     /// Stamp at the previous scan, for files that may still be downloading.
     pending: HashMap<PathBuf, Stamp>,
+    /// Files saved while the app was closed, found when it opened.
+    while_closed: std::collections::HashSet<PathBuf>,
 }
 
 fn supported(path: &Path) -> bool {
@@ -41,11 +45,50 @@ impl Watcher {
             dir: dir.to_owned(),
             seen: HashMap::new(),
             pending: HashMap::new(),
+            while_closed: Default::default(),
         };
         for (path, stamp) in watcher.candidates()?.0 {
             watcher.seen.insert(path, stamp);
         }
         Ok(watcher)
+    }
+
+    /// Start watching again when the app opens. Files modified after `checked_at` (when the
+    /// folder was last checked) arrived while the app was closed, so they are imported like
+    /// new arrivals; older files are remembered, not imported.
+    pub fn resume(dir: &Path, checked_at: SystemTime) -> Result<Self> {
+        let mut watcher = Self::new(dir)?;
+        watcher.seen.retain(|path, (_, modified)| {
+            let arrived = modified.is_some_and(|modified| modified > checked_at);
+            if arrived {
+                watcher.while_closed.insert(path.clone());
+            }
+            !arrived
+        });
+        Ok(watcher)
+    }
+
+    /// Whether a file was saved while the app was closed. Such labels are imported for you
+    /// to review, but never printed automatically.
+    pub fn arrived_while_closed(&self, path: &Path) -> bool {
+        self.while_closed.contains(path)
+    }
+
+    /// The time the folder can be called checked: now, or, while a file is still being
+    /// written, just before it changed, so a download finishing as the app closes is still
+    /// imported next time.
+    pub fn checked_at(&self) -> SystemTime {
+        let now = SystemTime::now();
+        self.pending
+            .values()
+            .filter_map(|(_, modified)| *modified)
+            .min()
+            .map_or(now, |oldest| {
+                oldest
+                    .checked_sub(std::time::Duration::from_secs(1))
+                    .unwrap_or(oldest)
+                    .min(now)
+            })
     }
 
     pub fn dir(&self) -> &Path {
@@ -369,5 +412,60 @@ mod tests {
         );
         let portal = Path::new("/run/user/1000/doc/ab12/Downloads");
         assert_eq!(snap_access_hint(portal, Some(home), true), None);
+    }
+
+    fn set_modified(path: &Path, time: SystemTime) {
+        std::fs::File::options()
+            .write(true)
+            .open(path)
+            .unwrap()
+            .set_modified(time)
+            .unwrap();
+    }
+
+    #[test]
+    fn labels_saved_while_the_app_was_closed_are_imported_when_it_opens() {
+        use std::time::Duration;
+        let dir = tempfile::tempdir().unwrap();
+        let checked_at = SystemTime::now() - Duration::from_secs(3600);
+        let old = write(dir.path(), "printed-yesterday.pdf", b"%PDF old");
+        set_modified(&old, checked_at - Duration::from_secs(600));
+        let new = write(dir.path(), "arrived-while-closed.pdf", b"%PDF new");
+        set_modified(&new, checked_at + Duration::from_secs(600));
+        let mut watcher = Watcher::resume(dir.path(), checked_at).unwrap();
+        // Like any arrival, it is imported once its size has been seen twice.
+        assert!(watcher.scan().unwrap().is_empty());
+        assert_eq!(watcher.scan().unwrap(), std::slice::from_ref(&new));
+        assert!(
+            watcher.scan().unwrap().is_empty(),
+            "the old file is left alone"
+        );
+        assert!(watcher.arrived_while_closed(&new) && !watcher.arrived_while_closed(&old));
+
+        // Starting to watch (rather than reopening the app) still ignores both.
+        let mut fresh = Watcher::new(dir.path()).unwrap();
+        assert!(fresh.scan().unwrap().is_empty() && fresh.scan().unwrap().is_empty());
+    }
+
+    #[test]
+    fn the_check_time_stays_before_a_download_that_is_still_being_written() {
+        use std::time::Duration;
+        let dir = tempfile::tempdir().unwrap();
+        let mut watcher = Watcher::new(dir.path()).unwrap();
+        let before = SystemTime::now();
+        assert!(watcher.checked_at() >= before);
+        let downloading = write(dir.path(), "downloading.pdf", b"%PDF part");
+        let written = SystemTime::now() - Duration::from_secs(30);
+        set_modified(&downloading, written);
+        assert!(
+            watcher.scan().unwrap().is_empty(),
+            "seen once, not yet stable"
+        );
+        assert!(
+            watcher.checked_at() < written,
+            "reopening the app would still import it"
+        );
+        assert_eq!(watcher.scan().unwrap(), std::slice::from_ref(&downloading));
+        assert!(watcher.checked_at() >= before, "nothing pending any more");
     }
 }

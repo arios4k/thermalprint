@@ -22,7 +22,7 @@ Paper size, DPI, rotation, margins, scaling, enhancement, printer, media, resolu
 
 ## 🎨 Design a label from scratch
 
-With **Print labels automatically** (off by default, under *Watch a folder*), single-page labels whose crop needs no review print by themselves a few seconds after they land in the watch folder, with a Cancel button, a Pause button, a per-minute limit and an optional file-name filter. Use a folder that only receives labels. See the manual page on folder watching.
+With **Print labels automatically** (off by default, under *Watch a folder*), single-page labels whose crop needs no review print by themselves a few seconds after they land in the watch folder, with a Cancel button, a Pause button, a per-minute limit and an optional file-name filter. Use a folder that only receives labels. Labels saved in the watch folder while ThermalPrint is closed are added to the queue when it opens (it remembers when it last checked the folder), but they are never printed automatically. See the manual page on folder watching.
 
 A QR code can carry a logo in its center (**Logo in the center** in the properties panel). The code then uses the highest error correction and at least 37 × 37 squares, and the logo box is limited to 30 % of the code's width; tests decode rendered codes to check that this still scans. Scan one printed label before a large batch.
 
