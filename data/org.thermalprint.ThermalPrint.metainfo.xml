@@ -60,6 +60,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.12.0" date="2026-11-14">
+      <description>
+        <p>Labels saved while ThermalPrint was closed are no longer missed.</p>
+        <ul>
+          <li>When the app opens, labels saved in the watch folder while it was closed are added to the queue, and a message says how many.</li>
+          <li>With Print labels automatically on, they print like any new label, each after the Cancel countdown. Files that were already in the folder when watching was turned on are still never printed.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.11.1" date="2026-11-14">
       <description>
         <p>Easier to find in software centers.</p>
