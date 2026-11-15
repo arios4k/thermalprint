@@ -6,32 +6,31 @@ license: MIT
 grade: stable
 confinement: strict
 icon: data/org.thermalprint.ThermalPrint.png
-website: https://github.com/arios4k/thermalprint
+website: https://arios4k.github.io/thermalprint/manual/
 source-code: https://github.com/arios4k/thermalprint
 issues: https://github.com/arios4k/thermalprint/issues
 description: |
   ThermalPrint is a local workspace for designing, preparing, and printing labels on thermal label printers, with a native Linux desktop interface. It prints through CUPS, so it also works with regular laser and inkjet printers.
 
-  Design
-  - Start from a template or a blank label, then add text, addresses, logos, shapes, real barcodes, and QR codes.
-  - Position objects precisely with a custom grid, smart guides, arrow-key nudging, and align, distribute, flip, and lock tools. Rotate freely, including fractional angles.
-  - Wrap or shrink text to fit its box, use your own fonts, dither photos for thermal printing, and see the printer's unprintable border.
-  - Make GS1-128 and GS1 Data Matrix barcodes with an SSCC helper, and fill QR codes from website, Wi-Fi, contact, email, and phone forms.
-  - Add shipping symbols, saved logos, and addresses from an address book; browse templates in a gallery with previews.
-  - Save reusable designs as editable .thermalprint files, and your own templates. Unsaved changes are recovered after an unexpected exit.
+  Prepare shipping labels
+  - Import PDF and image labels (PNG, JPEG, TIFF, BMP, WebP) from carriers and marketplaces such as Vinted, eBay, Etsy, Shopify, USPS, UPS, and FedEx. No account connection is needed.
+  - Crop away instructions and whitespace automatically, review the result, and print a queue of labels in order.
+  - Watch a folder such as Downloads: new labels join the queue by themselves, even ones saved while the app was closed, and can optionally print automatically after a short countdown you can cancel.
 
-  Prepare existing labels
-  - Import PDF and image labels (PNG, JPEG, TIFF, BMP, WebP) from carriers and marketplaces such as Vinted, eBay, Etsy, Shopify, USPS, UPS, and FedEx.
-  - Crop instructions and whitespace, review the result, and arrange several labels in a print queue. No account connection is needed.
+  Design your own labels
+  - Start from a template or a blank label, then add text, addresses, logos, shapes, shipping symbols, real barcodes (including GS1-128 and GS1 Data Matrix), and QR codes.
+  - Six built-in fonts chosen for labels, or any font on your computer, picked from a list that shows each font as it looks.
+  - Design wide labels on their side with rotated printing: they print turned to fit the label stock, with a preview of the printed label.
+  - Position objects precisely with a grid, smart guides, and align, distribute, flip, and lock tools. Wrap or shrink text to fit, and see the printer's unprintable border.
+  - Save reusable designs as .thermalprint files and your own templates. Unsaved changes are recovered after an unexpected exit.
 
   Print or export
-  - Start at 4 x 6 inches, choose another preset, or enter custom dimensions.
-  - Print through CUPS with media size matching, resolution (DPI) options, copies, and job status.
-  - Print a numbered range, place several labels on an A4 or Letter sheet, or merge a spreadsheet into a design. Labels for continuous rolls can size themselves to their content.
+  - Start at 4 x 6 inches, choose another preset, or enter custom dimensions. Size checks explain printer media in plain language.
+  - Print a numbered range, merge a spreadsheet into a design, or place several labels on an A4 or Letter sheet.
   - Export a dimensioned PDF or PNG, an SVG design, or raster ZPL for a ZPL-compatible raw queue.
 
   Comfort
-  - Light, dark, and system themes, keyboard shortcuts, and a searchable guide that explains CUPS, DPI, document formats, and barcode terms.
+  - Follows your system's light or dark style and language (English, Spanish, German, or French). Keyboard shortcuts, a searchable guide to printing terms, and a full user manual (press F1).
 
   Privacy and permissions
   - Documents are processed on your computer; nothing is uploaded.
@@ -48,7 +47,7 @@ description: |
   - Open saved .thermalprint files by double-click. Run this once from your normal terminal (not snap run):
   /snap/thermalprint/current/usr/share/doc/thermalprint/register-mime.sh
 
-  Source code, status, and issue tracker: see the project page.
+  Source code, user manual, and issue tracker: see the project page.
 
 platforms:
   amd64:

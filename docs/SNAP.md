@@ -175,3 +175,29 @@ confirm the `cups` connection.
 References: [CUPS interface](https://snapcraft.io/docs/reference/interfaces/cups-interface/),
 [GNOME extension](https://ubuntu.com/docs/snapcraft/9/reference/extensions/gnome-extension/),
 [desktop portals](https://snapcraft.io/docs/explanation/snap-development/xdg-desktop-portals/).
+
+### The store listing
+
+An upload doesn't change the store listing's description. When you change the
+`description` in [`snapcraft.yaml`](../snap/snapcraft.yaml), update the listing
+too: paste it into the **Description** box at
+<https://snapcraft.io/thermalprint/listing> and press **Save**. Don't use
+`snapcraft upload-metadata`: it rewrites the listing's images. The listing's
+**Website** is the user manual, <https://arios4k.github.io/thermalprint/manual/>,
+like `website:` in `snapcraft.yaml`; the source code and issue tracker links point
+to GitHub.
+
+The listing's images are uploaded on the same page:
+
+- **Icon:** `data/org.thermalprint.ThermalPrint.png`.
+- **Screenshots** (in this order): `docs/screenshots/designer-light.png`,
+  `docs/screenshots/import-light.png`, `docs/manual/img/designer-rotated-light.png`,
+  `docs/screenshots/print-center-light.png`, and `docs/screenshots/home-dark.png`.
+- **Banner:** `docs/store/banner.png` (1920 × 640), made by
+  `python3 scripts/make-store-banner.py` (needs Pillow, pycairo, librsvg and the
+  Inter font) from the app icon and the README screenshots. Regenerate it, and
+  upload the screenshots again, when the app's look changes.
+
+The page can't load images from GitHub, so pick the files from disk in each
+upload box, then press **Save**. Check the result with
+`curl -s -H 'Snap-Device-Series: 16' 'https://api.snapcraft.io/v2/snaps/info/thermalprint?fields=description,media'`.
