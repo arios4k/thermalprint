@@ -69,24 +69,43 @@ pub fn load(path: &Path, index: usize) -> Result<Page> {
         path: path.into(),
     })
 }
+#[cfg(unix)]
 fn load_pdfium(path: &Path, index: usize) -> Result<Page> {
     let bindings = if let Some(dir) = std::env::var_os("THERMALPRINT_PDFIUM_DIR") {
         Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path(&dir))?
     } else {
-        #[cfg(unix)]
-        let bindings = Pdfium::bind_to_system_library()?;
-        #[cfg(windows)]
-        let bindings = {
-            let executable = std::env::current_exe()?;
-            let directory = executable
-                .parent()
-                .context("Missing application directory")?;
-            Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path(&directory))
-                .context("Could not load the bundled PDFium library")?
-        };
-        bindings
+        Pdfium::bind_to_system_library()?
     };
     let pdfium = Pdfium::new(bindings);
+    render_pdf_page(&pdfium, path, index)
+}
+
+#[cfg(windows)]
+fn load_pdfium(path: &Path, index: usize) -> Result<Page> {
+    use std::sync::LazyLock;
+
+    // pdfium-render installs process-wide bindings once. Its thread-safe feature
+    // lets the import and automatic printing workers share the same instance.
+    static PDFIUM: LazyLock<Result<Pdfium>> = LazyLock::new(|| {
+        let directory = match std::env::var_os("THERMALPRINT_PDFIUM_DIR") {
+            Some(directory) => PathBuf::from(directory),
+            None => std::env::current_exe()?
+                .parent()
+                .context("Missing application directory")?
+                .to_path_buf(),
+        };
+        let bindings =
+            Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path(&directory))
+                .context("Could not load PDFium")?;
+        Ok(Pdfium::new(bindings))
+    });
+    let pdfium = PDFIUM
+        .as_ref()
+        .map_err(|error| anyhow::anyhow!("{error:#}"))?;
+    render_pdf_page(pdfium, path, index)
+}
+
+fn render_pdf_page(pdfium: &Pdfium, path: &Path, index: usize) -> Result<Page> {
     let doc = pdfium.load_pdf_from_file(path, None)?;
     let count = doc.pages().len() as usize;
     if index >= count {
