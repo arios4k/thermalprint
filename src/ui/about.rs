@@ -3,7 +3,9 @@ use eframe::egui::{self, Color32, RichText, Vec2};
 
 /// Icons for the author's other apps, shown in the "More from the author" card.
 pub(super) struct AppIcons {
+    #[cfg(unix)]
     pub voltkit: egui::TextureHandle,
+    #[cfg(unix)]
     pub battery_health_center: egui::TextureHandle,
 }
 
@@ -18,6 +20,7 @@ impl AppIcons {
                 priority: egui::epaint::text::FontPriority::Highest,
             }],
         ));
+        #[cfg(unix)]
         let texture = |name: &str, bytes: &[u8]| {
             let image = image::load_from_memory(bytes)
                 .expect("bundled app icon must decode")
@@ -32,10 +35,12 @@ impl AppIcons {
             )
         };
         Self {
+            #[cfg(unix)]
             voltkit: texture(
                 "voltkit-icon",
                 include_bytes!("../../assets/apps/voltkit.png"),
             ),
+            #[cfg(unix)]
             battery_health_center: texture(
                 "battery-health-center-icon",
                 include_bytes!("../../assets/apps/battery-health-center.png"),
@@ -220,7 +225,7 @@ fn gradient_card(
     egui::Shape::Vec(shapes)
 }
 
-fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle, apps: &AppIcons, compact: bool) -> bool {
+fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle, _apps: &AppIcons, compact: bool) -> bool {
     let dark = ui.visuals().dark_mode;
     let backdrop = ui.painter().add(egui::Shape::Noop);
     let hero = egui::Frame::new()
@@ -255,7 +260,8 @@ fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle, apps: &AppIcons, compa
         project(ui);
         license = credits(ui);
     }
-    more_apps(ui, apps);
+    #[cfg(unix)]
+    more_apps(ui, _apps);
     ui.vertical_centered(|ui| {
         ui.label(
             RichText::new(concat!("© 2026 ", env!("CARGO_PKG_AUTHORS")))
@@ -363,6 +369,7 @@ fn project(ui: &mut egui::Ui) {
     });
 }
 
+#[cfg(unix)]
 fn more_apps(ui: &mut egui::Ui, apps: &AppIcons) {
     ui.heading(
         RichText::new(crate::i18n::tr("More from the author"))
@@ -396,6 +403,7 @@ fn more_apps(ui: &mut egui::Ui, apps: &AppIcons) {
 }
 
 /// An icon with a title and subtitle that opens the app's project page.
+#[cfg(unix)]
 fn app_link(ui: &mut egui::Ui, icon: &egui::TextureHandle, title: &str, subtitle: &str) -> bool {
     let subtitle = crate::i18n::tr(subtitle);
     const ICON: f32 = 36.;
