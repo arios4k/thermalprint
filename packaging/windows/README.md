@@ -25,7 +25,18 @@ Set the following GitHub Actions repository variables using the values shown und
 | `THERMALPRINT_STORE_PUBLISHER` | Package/Identity/Publisher |
 | `THERMALPRINT_STORE_PUBLISHER_DISPLAY_NAME` | Package/Properties/PublisherDisplayName |
 
-The Windows workflow builds on release tags alongside the Linux jobs. It takes the package version from `Cargo.toml` and uses `0` for the fourth component. Download the **ThermalPrint-Windows-x64-store** artifact, extract the MSIX, and submit it under the reserved ThermalPrint listing. Local installation requires a signature trusted by the test machine. Microsoft signs the published Store package during certification.
+### Build a Windows-only Store update
+
+Commit the updated `Cargo.toml` version and `Cargo.lock`, then tag that commit with `windows-vMAJOR.MINOR.PATCH`. Use a version higher than the current Store package. For example, for version `0.12.1`:
+
+```sh
+git tag windows-v0.12.1
+git push origin windows-v0.12.1
+```
+
+The **Windows 11** workflow requires the tag to match the Cargo version and all three Store identity variables to be set. The MSIX version for this example is `0.12.1.0`. A `windows-v*` tag starts the Windows build without releasing Linux packages. Use the regular `v*` tag when releasing both platforms.
+
+Download the **ThermalPrint-Windows-x64-store** artifact, extract the MSIX, and upload it through **Partner Center → ThermalPrint → Start update → Packages**. Submit the update for certification. Local installation requires a signature trusted by the test machine. Microsoft signs the published Store package during certification.
 
 For the initial Store release, set the US base price to **$4.99** and select a **7-day time-limited trial** under **Pricing and availability**. The trial offers the full app so customers can test their printer and label stock. Linux remains free. [Microsoft Store pricing and trials](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/price-and-availability)
 
