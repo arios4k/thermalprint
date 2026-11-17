@@ -10,13 +10,13 @@ summary: Fixes for printers that are not listed, labels that print wrong, extra 
   <tr><th>Symptom</th><th>What to check</th></tr>
   <tr><td>No printers are listed</td><td><a href="#no-printers-are-listed">See below.</a></td></tr>
   <tr><td>The Print button is gray</td><td><a href="#the-print-button-is-disabled">See below.</a></td></tr>
-  <tr><td>A PDF will not open</td><td>Install PDFium or Poppler's <code>pdfinfo</code> and <code>pdftoppm</code> (the packages include Poppler). Re-export encrypted or damaged PDFs.</td></tr>
+  <tr><td>A PDF will not open</td><td>Try another PDF or ask the sender to re-export an encrypted or damaged file. The Windows package bundles PDFium. Linux packages include Poppler's <code>pdfinfo</code> and <code>pdftoppm</code>.</td></tr>
   <tr><td>Print all is blocked</td><td>Select and review each label in the queue. Every entry needs its own review.</td></tr>
   <tr><td>The label is too small</td><td>Crop away empty space first, then compare <em>Fit within paper</em> and <em>Actual size</em>. Check the paper size.</td></tr>
   <tr><td>Edges are cut off</td><td>Check the printer media matches the labels, try a small margin, and use the <a href="print-center.html#alignment-and-printer-profiles">alignment offset</a>.</td></tr>
   <tr><td>Everything is shifted to one side</td><td>Use the <a href="print-center.html#alignment-and-printer-profiles">alignment test</a> and offset.</td></tr>
   <tr><td>Extra blank labels or a banner page</td><td><a href="#extra-labels-or-banner-pages">See below.</a></td></tr>
-  <tr><td>CUPS accepted the job, nothing printed</td><td>Check <em>Job status</em>, the printer's power, cable or network, label roll, and the CUPS queue state.</td></tr>
+  <tr><td>The job was accepted, but nothing printed</td><td>Check <em>Job status</em>, the printer's power, cable or network, label roll, and the system print queue.</td></tr>
   <tr><td>A barcode will not scan</td><td><a href="#barcodes-that-do-not-scan">See below.</a></td></tr>
   <tr><td>Text is missing or cut off in a design</td><td>Text does not wrap. Make the box bigger, use the <kbd>Enter</kbd> key for new lines, or reduce the font size.</td></tr>
   <tr><td>Text is cut off even with a big box</td><td>Tick <strong>Wrap long lines</strong> or <strong>Shrink to fit the box</strong> in the text settings.</td></tr>
@@ -35,6 +35,7 @@ summary: Fixes for printers that are not listed, labels that print wrong, extra 
 </table>
 
 <h2 id="no-printers-are-listed">No printers are listed</h2>
+<p>For Windows 11, follow the <a href="#windows-printer-setup">Windows checks below</a>. On Linux:</p>
 <ol>
   <li>Make sure the printer is on and connected, and that it appears in your desktop's printer settings.</li>
   <li>In a terminal, run <code>lpstat -p</code>. If it lists your printer, press <strong>Refresh printers</strong> in ThermalPrint.</li>
@@ -42,6 +43,14 @@ summary: Fixes for printers that are not listed, labels that print wrong, extra 
   <li><strong>Snap:</strong> check <code>snap connections thermalprint</code> and see <a href="snap.html#if-printing-is-not-connected">If printing is not connected</a>.</li>
 </ol>
 <p>You can still export files with no printer; see <a href="export.html">Exporting</a>.</p>
+
+<h2 id="windows-printer-setup">Windows printer and media checks</h2>
+<ol>
+  <li>Open <strong>Settings → Bluetooth &amp; devices → Printers &amp; scanners</strong>. Check that Windows lists your printer. For USB printers, verify the cable and power and try another USB port if needed.</li>
+  <li>Select the printer, open <strong>Printer properties</strong>, and print a Windows test page using suitable stock. If that job stalls, check the Windows print queue for an offline or error status.</li>
+  <li>In ThermalPrint, choose <strong>Refresh printers</strong> in <strong>Print Center</strong>. If the printer appears but the media is missing, configure the stock size in the Windows driver's printing preferences and refresh again.</li>
+  <li>If the Windows test succeeds and ThermalPrint still cannot print, include the printer model, driver, and the exact ThermalPrint message in your issue report.</li>
+</ol>
 
 <h2 id="the-print-button-is-disabled">The Print button is disabled</h2>
 <p>Printing needs all of these. The status notice in Print Center tells you which one is missing:</p>
@@ -58,7 +67,7 @@ summary: Fixes for printers that are not listed, labels that print wrong, extra 
 <ul>
   <li>Check whether the labels are really blank pages from the printer's own settings, such as a "gap detect" or "page length" option set for a different label size. Run the printer's calibration (usually a button or a button combination on the printer).</li>
   <li>Check that the printer media matches the label size. A taller media size than the label feeds extra labels.</li>
-  <li>Print one label and look at the CUPS job in your printer settings to see how many pages it has. A single page means the printer feed is the cause.</li>
+  <li>Print one label and check the job in your system print queue. If it shows a single page, check the printer's feed settings and calibration.</li>
 </ul>
 
 <h2 id="barcodes-that-do-not-scan">Barcodes that do not scan</h2>

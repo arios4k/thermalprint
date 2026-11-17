@@ -1029,22 +1029,28 @@ impl Designer {
         let settings = settings.clone();
         let raw = self.raw_zpl;
         let path = self.path.clone();
-        self.start_job("Submitting design to CUPS…", move || {
-            let submitted = if raw {
-                let bytes = zpl::encode_design(&doc, settings.dpi)?;
-                printing::submit_raw_zpl(&bytes, &settings, &printer)
-            } else {
-                let output = design_render::render_for_print(&doc, settings.dpi)?;
-                printing::submit(&output, &settings, &printer)
-            }?;
-            crate::history::record(crate::history::design_entry(
-                &doc,
-                path.as_deref(),
-                &settings.printer,
-                settings.copies,
-            ));
-            Ok(submitted)
-        });
+        self.start_job(
+            printing::platform_message(
+                "Submitting design to CUPS…",
+                "Submitting design to Windows…",
+            ),
+            move || {
+                let submitted = if raw {
+                    let bytes = zpl::encode_design(&doc, settings.dpi)?;
+                    printing::submit_raw_zpl(&bytes, &settings, &printer)
+                } else {
+                    let output = design_render::render_for_print(&doc, settings.dpi)?;
+                    printing::submit(&output, &settings, &printer)
+                }?;
+                crate::history::record(crate::history::design_entry(
+                    &doc,
+                    path.as_deref(),
+                    &settings.printer,
+                    settings.copies,
+                ));
+                Ok(submitted)
+            },
+        );
     }
     fn batch_choose(state: &mut BatchState) {
         let Some(path) = rfd::FileDialog::new()
@@ -2008,7 +2014,7 @@ impl Designer {
                     }
                     ui.separator();
                     ui.checkbox(&mut self.raw_zpl, crate::i18n::tr("Print using raw ZPL"))
-                        .on_hover_text(crate::i18n::tr("Requires a ZPL-compatible printer and raw CUPS queue."));
+                        .on_hover_text(crate::i18n::tr(printing::platform_message("Requires a ZPL-compatible printer and raw CUPS queue.", "Requires a ZPL-compatible printer that accepts RAW jobs.")));
                 });
                 if ui
                     .selectable_label(self.focus_canvas, crate::i18n::tr("Focus"))

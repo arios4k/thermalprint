@@ -358,9 +358,12 @@ mod tests {
         write(dir.path(), ".hidden.pdf", b"x");
         write(dir.path(), "empty.pdf", b"");
         write(dir.path(), "part.pdf.crdownload", b"x");
-        let outside = tempfile::tempdir().unwrap();
-        let target = write(outside.path(), "secret.pdf", b"%PDF");
-        std::os::unix::fs::symlink(&target, dir.path().join("link.pdf")).unwrap();
+        #[cfg(unix)]
+        {
+            let outside = tempfile::tempdir().unwrap();
+            let target = write(outside.path(), "secret.pdf", b"%PDF");
+            std::os::unix::fs::symlink(&target, dir.path().join("link.pdf")).unwrap();
+        }
         for _ in 0..3 {
             assert!(watcher.scan().unwrap().is_empty());
         }

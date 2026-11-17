@@ -31,6 +31,9 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 datamatrix = "0.3.3"
 csv = "1"
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Globalization", "Win32_Graphics_Gdi", "Win32_Graphics_Printing", "Win32_Storage_Xps"] }
+
 [profile.release]
 lto = "thin"
 strip = true

@@ -8,7 +8,7 @@ summary: Choose your printer and media, remember settings per printer, fix off-c
 {{figure:print-center-annotated|Print Center with numbered callouts on printer and media, label stock, queue and diagnostics, output settings, and alignment|Print Center. (1) Printer &amp; media, (2) Label stock, (3) Queue &amp; diagnostics, (4) Output settings, (5) Alignment. Recent prints is further down the page.}}
 
 <h2 id="printer-and-media">Printer and media</h2>
-<p>ThermalPrint prints through <strong>CUPS</strong>, the standard Linux printing system, using its command-line tools. If your printer works in other Linux programs, it works here. Add the printer first in your desktop's printer settings.</p>
+<p>ThermalPrint prints through <strong>CUPS</strong> on Linux and the <strong>Windows print spooler</strong> on Windows 11. Add the printer in your system's printer settings first. On Windows, configure the label stock in the printer driver so ThermalPrint can list its dimensions. See <a href="install.html#windows-11">Windows setup</a>.</p>
 <table>
   <tr><th>Setting</th><th>What it means</th></tr>
   <tr><td><strong>Printer queue</strong></td><td>The printers your system knows. The line below shows a best-effort hint such as <em>Likely thermal label printer</em>. It is based on the name and media, and is a hint only.</td></tr>
@@ -32,7 +32,7 @@ summary: Choose your printer and media, remember settings per printer, fix off-c
 <ul>
   <li><strong>A status notice</strong> that says what to do next: <em>Add a label</em>, <em>Review the crop</em>, <em>Choose a printer</em>, <em>Choose printer media</em>, <em>Label size differs from printer media</em>, <em>Verify the loaded stock</em>, or <em>Ready to submit</em>.</li>
   <li>How many imported labels are queued, with <strong>Open import queue</strong> to jump there.</li>
-  <li><strong>Check CUPS job status</strong>: asks CUPS what is waiting. A message that a job was accepted means the scheduler took it, not that the printer produced a label. Look at the printer.</li>
+  <li><strong>Job status</strong> checks the system print queue. When a job is accepted, check the physical output to confirm it printed correctly.</li>
 </ul>
 
 <h2 id="alignment-and-printer-profiles">Alignment and printer profiles</h2>
