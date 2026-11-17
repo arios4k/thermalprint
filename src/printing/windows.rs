@@ -214,6 +214,9 @@ fn printer_dc(p: &Printer, s: &Settings, output: &Output) -> Result<PrinterDc> {
         let fields = &mut (*mode).Anonymous1.Anonymous1;
         fields.dmOrientation = DMORIENT_PORTRAIT as i16;
         fields.dmCopies = 1;
+        if (*mode).dmFields & DM_SCALE != 0 {
+            fields.dmScale = 100;
+        }
         (*mode).dmDuplex = DMDUP_SIMPLEX;
         (*mode).dmFields |= DM_ORIENTATION | DM_COPIES | DM_DUPLEX;
         (*mode).dmFields &= !(DM_FORMNAME | DM_PAPERWIDTH | DM_PAPERLENGTH | DM_PAPERSIZE);
@@ -296,6 +299,25 @@ pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
     }
     let output = output.shifted(s.offset_x_mm, s.offset_y_mm);
     let (w, h) = (output.image.width() as i32, output.image.height() as i32);
+    let (left, top) = (cap(PHYSICALOFFSETX), cap(PHYSICALOFFSETY));
+    let (right, bottom) = (left + cap(HORZRES), top + cap(VERTRES));
+    let scale = |position: i32, source: i32, destination: i32| {
+        (f64::from(position) * f64::from(source) / f64::from(destination)).round() as u32
+    };
+    let margins = (
+        scale(left, w, physical_w),
+        scale(top, h, physical_h),
+        scale(right, w, physical_w),
+        scale(bottom, h, physical_h),
+    );
+    if (left > 0 || top > 0 || right < physical_w || bottom < physical_h)
+        && output.image.enumerate_pixels().any(|(x, y, pixel)| {
+            let (left, top, right, bottom) = margins;
+            (x < left || x >= right || y < top || y >= bottom) && pixel.0 != [255; 3]
+        })
+    {
+        bail!("Printing blocked: content would be clipped by the driver’s printable area");
+    }
     let pixels: Vec<[u8; 4]> = output
         .image
         .pixels()
@@ -313,7 +335,6 @@ pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
         },
         ..Default::default()
     };
-    let (left, top) = (cap(PHYSICALOFFSETX), cap(PHYSICALOFFSETY));
     let title = wide("ThermalPrint label");
     let doc = DOCINFOW {
         cbSize: size_of::<DOCINFOW>() as i32,
