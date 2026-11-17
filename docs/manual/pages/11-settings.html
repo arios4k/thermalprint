@@ -78,8 +78,8 @@ summary: What ThermalPrint remembers, where it is stored, the built-in limits, a
 <h2>Environment variables</h2>
 <table>
   <tr><th>Variable</th><th>Effect</th></tr>
-  <tr><td><code>THERMALPRINT_PDFIUM_DIR</code></td><td>Folder containing <code>libpdfium.so</code>, to use PDFium instead of Poppler.</td></tr>
-  <tr><td><code>CUPS_SERVER</code></td><td>Use a different CUPS server. A path to a socket is supported; remote servers are not used for reading printer details.</td></tr>
+  <tr><td><code>THERMALPRINT_PDFIUM_DIR</code></td><td>Folder containing a custom PDFium library. Use <code>libpdfium.so</code> on Linux or <code>pdfium.dll</code> on Windows. The Windows package already includes PDFium.</td></tr>
+  <tr><td><code>CUPS_SERVER</code></td><td>On Linux, use a different CUPS server. A path to a socket is supported. Remote servers are not used for reading printer details.</td></tr>
   <tr><td><code>RUST_LOG=thermalprint=debug</code></td><td>Print diagnostic details to the terminal. Keep logs private; they can include file paths.</td></tr>
-  <tr><td><code>LC_ALL</code>, <code>LC_MESSAGES</code>, <code>LANGUAGE</code>, <code>LANG</code></td><td>Your system language, which ThermalPrint follows (Spanish, German, French; otherwise English).</td></tr>
+  <tr><td><code>LC_ALL</code>, <code>LC_MESSAGES</code>, <code>LANGUAGE</code>, <code>LANG</code></td><td>Set the locale on Linux. On Windows, ThermalPrint reads your Windows regional settings. The interface supports Spanish, German, French, and English.</td></tr>
 </table>

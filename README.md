@@ -4,9 +4,9 @@
 
 # ThermalPrint
 
-**Your labels. Your printer. Your Linux desktop.**
+**Design, prepare, and print labels on Linux and Windows 11.**
 
-Design custom labels, prepare downloaded PDFs, and print on thermal stock—all in one local workspace. ThermalPrint is made for thermal label printers, but it prints through CUPS, so it also works with regular laser and inkjet printers (choose the paper size, such as A4 or Letter, and use the sheet printing to place several labels on a page).
+Design custom labels, prepare downloaded PDFs, and print on thermal stock—all in one local workspace. ThermalPrint uses CUPS on Linux and the Windows print spooler on Windows 11. It also works with regular laser and inkjet printers when you choose a supported paper size such as A4 or Letter.
 
 [![Latest release](https://img.shields.io/github/v/release/arios4k/thermalprint?label=download&color=207568)](https://github.com/arios4k/thermalprint/releases/latest)
 [![Rust CI](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml/badge.svg)](https://github.com/arios4k/thermalprint/actions/workflows/ci.yml)
@@ -33,7 +33,7 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 - **Create your own.** Design labels from templates with text, addresses, logos, shapes, shipping symbols, real barcodes (including GS1) and QR codes, with six built-in fonts chosen for labels (or any font on your computer), precise alignment tools and saved templates.
 - **Prepare existing labels.** Import PDFs or images from carriers and marketplaces, crop away instructions and whitespace, and review the result before printing.
 - **Get the size right.** Start at **4 × 6 inches** or any size you need; ThermalPrint explains printer media and matches the output to it. Wide labels can be designed on their side and rotated 90° when they print.
-- **Print or export.** Print through CUPS, or save a PDF, PNG, SVG or raster ZPL.
+- **Print or export.** Print to a configured system printer, or save a PDF, PNG, SVG or raster ZPL.
 - **Print many at once.** Numbered runs, several labels on an A4 or Letter sheet, and one label per row of a spreadsheet.
 - **Save clicks.** Watch a folder such as Downloads so new labels join the queue, even ones saved while the app was closed, and optionally print them by themselves.
 - **Stay comfortable.** Light and dark themes; English, Spanish, German and French; keyboard shortcuts; and a guide to printing terms.
@@ -46,7 +46,15 @@ Document processing happens on your computer. ThermalPrint works with local file
 
 ## Install
 
-Packages include the application, desktop launcher, icons, CUPS client tools, and Poppler PDF utilities. Configure your printer in your desktop's printer settings, then launch **ThermalPrint** from the applications menu.
+### Windows 11
+
+ThermalPrint 0.12.0 for Windows 11 x64 has been submitted to the Microsoft Store for certification. Once published, the US Store price will be **$4.99** with a **7-day trial**. The Linux version remains free. [Microsoft Store listing](https://apps.microsoft.com/detail/9NXDXRSQW0ZF) · [Windows setup guide](https://arios4k.github.io/thermalprint/manual/install.html#windows-11)
+
+Add your printer in **Settings → Bluetooth & devices → Printers & scanners**. Then open **Print Center** in ThermalPrint, refresh the printer list, and select the media size that matches your stock. PDF rendering is bundled in the Windows package.
+
+### Linux
+
+Linux packages include the application, desktop launcher, icons, CUPS client tools, and Poppler PDF utilities. Configure your printer in your desktop's printer settings, then launch **ThermalPrint** from the applications menu.
 
 ### Fedora
 
@@ -112,13 +120,13 @@ Run these from the download folder, keeping only the RPM matching your Fedora re
 | Output | PDF, PNG; design SVG with embedded raster output; raster ZPL |
 | Layout | Automatic/manual/full-page extraction, rotation, fit/actual/custom scale, margins |
 | Print resolution | 203, 300, or 600 DPI |
-| Desktop | Linux with X11 or Wayland; configured CUPS printer |
+| Desktop | Linux with X11 or Wayland and a configured CUPS printer, or Windows 11 x64 and an installed Windows printer |
 
 ThermalPrint prepares labels; it does not purchase postage or generate carrier tracking numbers. Raw ZPL requires a compatible printer and deliberately configured raw queue. This is an early release: check a physical test print and scan before relying on a shipping workflow. The app does not currently decode imported barcodes or verify physical scan quality. See the [manual](https://arios4k.github.io/thermalprint/manual/) for processing limits and printer details, and [Troubleshooting](https://arios4k.github.io/thermalprint/manual/troubleshooting.html) when a print comes out wrong.
 
 ## Build from source
 
-Requires **Rust 1.96+**, a C/C++ build toolchain, and the usual Linux development libraries. Install CUPS client tools and Poppler utilities for printing and PDF fallback support.
+On Linux, you need **Rust 1.96+**, a C/C++ build toolchain, and the usual Linux development libraries. Install CUPS client tools and Poppler utilities for printing and PDF fallback support. On Windows, see the [Windows build and packaging instructions](packaging/windows/README.md).
 
 ```sh
 git clone https://github.com/arios4k/thermalprint.git
