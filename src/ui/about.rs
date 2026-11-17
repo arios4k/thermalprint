@@ -105,9 +105,10 @@ fn hero_details(ui: &mut egui::Ui) {
             .color(ui.visuals().strong_text_color()),
     );
     ui.label(
-        RichText::new(crate::i18n::tr(
+        RichText::new(crate::i18n::tr(crate::printing::platform_message(
             "Design and prepare thermal labels for Linux.",
-        ))
+            "Design and prepare thermal labels for Windows 11.",
+        )))
         .weak(),
     );
     let copied = ui
@@ -269,7 +270,10 @@ fn content(ui: &mut egui::Ui, icon: &egui::TextureHandle, apps: &AppIcons, compa
 fn tags(ui: &mut egui::Ui, dark: bool) {
     const TAGS: [(&str, &str); 3] = [
         ("Print device", "Thermal labels"),
-        ("System", "Linux app"),
+        (
+            "System",
+            crate::printing::platform_message("Linux app", "Windows 11 app"),
+        ),
         ("External link", "Open source"),
     ];
     const ICON: f32 = 24.;

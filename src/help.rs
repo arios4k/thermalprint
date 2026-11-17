@@ -1,7 +1,15 @@
 //! Short explanations shared by contextual help and the printing glossary.
 use eframe::egui;
 
+pub const PRINT_SERVICE: &str = crate::printing::platform_message("CUPS", "Windows print queue");
+
 pub const TERMS: &[(&str, &str)] = &[
+    #[cfg(windows)]
+    (
+        PRINT_SERVICE,
+        "Windows manages printers, drivers, and queued jobs. After submitting a job, check the physical output.",
+    ),
+    #[cfg(unix)]
     (
         "CUPS",
         "Common UNIX Printing System: Linux’s printing service. It manages printers, drivers, and queued jobs. Accepted by CUPS means the job was submitted, not that paper has printed.",
@@ -175,7 +183,7 @@ pub fn glossary(ui: &mut egui::Ui, search: &mut String) {
                 ui.spacing_mut().item_spacing.y = 10.;
                 let mut found = false;
                 for (group, terms) in [
-                    ("Printers & quality", &["CUPS", "DPI", "ZPL"][..]),
+                    ("Printers & quality", &[PRINT_SERVICE, "DPI", "ZPL"][..]),
                     (
                         "Documents & images",
                         &["PDF", "PNG", "SVG", "JPEG", "TIFF", "BMP", "WebP"][..],
@@ -200,7 +208,7 @@ pub fn glossary(ui: &mut egui::Ui, search: &mut String) {
                     ui.label(egui::RichText::new(group).strong().color(accent));
                     for term in matches {
                         let icon = match term {
-                            "CUPS" => "Print device",
+                            PRINT_SERVICE => "Print device",
                             "DPI" => "Grid",
                             "PDF" => "New document",
                             "SVG" => "Design label",

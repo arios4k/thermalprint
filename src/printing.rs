@@ -1,14 +1,27 @@
 //! CUPS client tools provide driver/IPP negotiation without linking libcups.
 //! Arguments never pass through a shell. A successful lp call means submitted,
 //! not physically printed; job status is queried separately.
+#[cfg(unix)]
 use crate::{export, layout::Output, settings::Settings};
+#[cfg(unix)]
 use anyhow::{Context, Result, bail};
+use std::collections::HashMap;
+
+#[cfg(unix)]
 use std::{
-    collections::HashMap,
     io::{Read, Write},
     process::Command,
     time::Duration,
 };
+#[cfg(windows)]
+mod windows;
+#[cfg(windows)]
+pub use windows::{discover, job_status, snap_connection_hint, submit, submit_raw_zpl};
+
+pub const fn platform_message(cups: &'static str, windows: &'static str) -> &'static str {
+    if cfg!(windows) { windows } else { cups }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Printer {
     pub name: String,
@@ -66,11 +79,13 @@ impl Printer {
 
 /// Read the public driver description through CUPS; the on-disk PPD may be root-only.
 /// HTTP/1.0 avoids chunked transfer encoding, and the response is bounded.
+#[cfg(unix)]
 fn driver_description(name: &str) -> Option<String> {
     let server = std::env::var("CUPS_SERVER").ok();
     driver_description_from(name, server.as_deref(), std::env::var_os("SNAP").is_none())
 }
 
+#[cfg(unix)]
 fn driver_description_from(
     name: &str,
     server: Option<&str>,
@@ -117,6 +132,7 @@ fn driver_description_from(
     Some(body.into())
 }
 
+#[cfg(unix)]
 fn media_sizes(ppd: &str) -> HashMap<String, (f32, f32)> {
     ppd.lines()
         .filter_map(|line| {
@@ -133,6 +149,7 @@ fn media_sizes(ppd: &str) -> HashMap<String, (f32, f32)> {
 
 /// Unprintable margins from `*ImageableArea` lines, which give the printable rectangle in
 /// points from the lower-left corner of the page.
+#[cfg(unix)]
 fn media_margins(ppd: &str) -> HashMap<String, (f32, f32, f32, f32)> {
     let sizes = media_sizes(ppd);
     let to_mm = 25.4 / 72.;
@@ -164,6 +181,7 @@ fn media_margins(ppd: &str) -> HashMap<String, (f32, f32, f32, f32)> {
         .collect()
 }
 
+#[cfg(unix)]
 fn media_labels(ppd: &str) -> HashMap<String, String> {
     let mut labels = HashMap::new();
     for line in ppd.lines() {
@@ -190,6 +208,7 @@ fn media_labels(ppd: &str) -> HashMap<String, String> {
     labels
 }
 
+#[cfg(unix)]
 fn run(program: &str, args: &[&str]) -> Result<String> {
     let o = Command::new(program)
         .args(args)
@@ -206,6 +225,7 @@ fn run(program: &str, args: &[&str]) -> Result<String> {
 /// Inside a Snap, printing works only while the `cups` interface is connected
 /// (a sideloaded package is not auto-connected). Returns a hint when the
 /// printing socket is missing; `None` outside a Snap or when it is available.
+#[cfg(unix)]
 pub fn snap_connection_hint() -> Option<&'static str> {
     snap_hint_for(
         std::env::var_os("SNAP").is_some(),
@@ -213,6 +233,7 @@ pub fn snap_connection_hint() -> Option<&'static str> {
     )
 }
 
+#[cfg(unix)]
 fn snap_hint_for(in_snap: bool, server: Option<&str>) -> Option<&'static str> {
     const HINT: &str = "Printing is not connected. In a terminal run: sudo snap connect thermalprint:cups cups:cups (install the cups Snap first if needed)";
     let socket = match server {
@@ -223,6 +244,7 @@ fn snap_hint_for(in_snap: bool, server: Option<&str>) -> Option<&'static str> {
     (in_snap && !std::path::Path::new(socket).exists()).then_some(HINT)
 }
 
+#[cfg(unix)]
 pub fn discover() -> Result<Vec<Printer>> {
     if let Some(hint) = snap_connection_hint() {
         bail!(hint);
@@ -275,6 +297,7 @@ pub fn discover() -> Result<Vec<Printer>> {
     }
     Ok(list)
 }
+#[cfg(unix)]
 pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
     if output.clipped {
         bail!("Printing blocked: content would be clipped");
@@ -346,6 +369,7 @@ pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
         Ok(text)
     }
 }
+#[cfg(unix)]
 pub fn job_status(printer: &str) -> Result<String> {
     let pending = run("lpstat", &["-W", "not-completed", "-o", printer])?;
     let state = run("lpstat", &["-p", printer])?;
@@ -394,6 +418,7 @@ pub fn thermal_hint(p: &Printer) -> &'static str {
 
 /// Submit native ZPL to a deliberately configured raw CUPS queue. The user
 /// must know that this destination understands ZPL; CUPS cannot infer it.
+#[cfg(unix)]
 pub fn submit_raw_zpl(data: &[u8], s: &Settings, p: &Printer) -> Result<String> {
     if s.printer != p.name {
         bail!("Printer selection changed");
@@ -431,7 +456,7 @@ pub fn submit_raw_zpl(data: &[u8], s: &Settings, p: &Printer) -> Result<String> 
     ))
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod media_tests {
     use super::*;
     #[test]
@@ -496,7 +521,7 @@ mod media_tests {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod snap_hint_tests {
     use super::*;
 
@@ -512,7 +537,7 @@ mod snap_hint_tests {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod confined_driver_tests {
     use super::*;
     use std::os::unix::net::UnixListener;
@@ -552,7 +577,7 @@ mod confined_driver_tests {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod margin_tests {
     use super::*;
 

@@ -1,3 +1,5 @@
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 use thermalprint::ui::ThermalPrint;
 fn main() -> eframe::Result {
     // File managers start `thermalprint --thumbnail IN OUT SIZE`: no window, no logging setup.

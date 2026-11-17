@@ -198,14 +198,26 @@ pub fn parse_fc_list(output: &str) -> Vec<SystemFont> {
 /// When fontconfig is missing, look through the usual font folders and name fonts after
 /// their files.
 fn scan_font_folders() -> Vec<SystemFont> {
-    let mut roots = vec![
-        PathBuf::from("/usr/share/fonts"),
-        PathBuf::from("/usr/local/share/fonts"),
-    ];
-    if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
-        roots.push(home.join(".local/share/fonts"));
-        roots.push(home.join(".fonts"));
-    }
+    #[cfg(unix)]
+    let roots = {
+        let mut roots = vec![
+            PathBuf::from("/usr/share/fonts"),
+            PathBuf::from("/usr/local/share/fonts"),
+        ];
+        if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+            roots.push(home.join(".local/share/fonts"));
+            roots.push(home.join(".fonts"));
+        }
+        roots
+    };
+    #[cfg(windows)]
+    let roots: Vec<_> = [
+        ("SystemRoot", "Fonts"),
+        ("LOCALAPPDATA", "Microsoft/Windows/Fonts"),
+    ]
+    .into_iter()
+    .filter_map(|(key, subdir)| std::env::var_os(key).map(|root| PathBuf::from(root).join(subdir)))
+    .collect();
     let mut lines = String::new();
     let mut stack = roots;
     let mut visited = 0;
@@ -238,6 +250,9 @@ fn scan_font_folders() -> Vec<SystemFont> {
 pub fn system_fonts() -> &'static [SystemFont] {
     static FONTS: OnceLock<Vec<SystemFont>> = OnceLock::new();
     FONTS.get_or_init(|| {
+        #[cfg(windows)]
+        return scan_font_folders();
+        #[cfg(unix)]
         std::process::Command::new("fc-list")
             .args([
                 ":lang=en",

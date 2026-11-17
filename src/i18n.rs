@@ -34,12 +34,21 @@ pub fn detect(locale: &str) -> Resolved {
 }
 
 /// The first usable locale variable. Snap and desktop sessions pass these through.
+#[cfg(unix)]
 fn system_locale() -> String {
     ["LC_ALL", "LC_MESSAGES", "LANGUAGE", "LANG"]
         .iter()
         .filter_map(|name| std::env::var(name).ok())
         .find(|value| !value.is_empty() && value != "C" && value != "POSIX")
         .unwrap_or_default()
+}
+
+#[cfg(windows)]
+fn system_locale() -> String {
+    use windows_sys::Win32::Globalization::GetUserDefaultLocaleName;
+    let mut locale = [0; 85];
+    let len = unsafe { GetUserDefaultLocaleName(locale.as_mut_ptr(), locale.len() as i32) };
+    String::from_utf16_lossy(&locale[..len.saturating_sub(1).max(0) as usize])
 }
 
 /// Use the system language when it is translated, and English otherwise. There is no

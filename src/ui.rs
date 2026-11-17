@@ -328,9 +328,13 @@ impl ThermalPrint {
         });
     }
     fn refresh_printers(&mut self) {
-        self.task("Looking for CUPS printers…", || {
-            Ok(Message::Printers(printing::discover()?))
-        });
+        self.task(
+            printing::platform_message(
+                "Looking for CUPS printers…",
+                "Looking for Windows printers…",
+            ),
+            || Ok(Message::Printers(printing::discover()?)),
+        );
     }
     fn load(&mut self, path: PathBuf, index: usize) {
         self.task("Rendering document at 300 DPI…", move || {
@@ -788,53 +792,63 @@ impl ThermalPrint {
         let queue = self.queue.clone();
         let settings = self.settings.clone();
         let keep_going = settings.keep_going;
-        self.task("Submitting labels to CUPS in order…", move || {
-            let total = queue.len();
-            let mut printed = Vec::new();
-            let mut failed: Vec<(usize, String)> = Vec::new();
-            for (index, item) in queue.iter().enumerate() {
-                let result = (|| -> anyhow::Result<()> {
-                    let page = document::load(&item.path, item.page)?;
-                    let crop = if item.mode == Mode::FullPage {
-                        Crop::FULL
-                    } else {
-                        item.crop
-                    };
-                    let output = layout::render(&page, crop, &settings)?;
-                    printing::submit(&output, &settings, &printer)?;
-                    crate::history::record(crate::history::import_entry(
-                        &item.path,
-                        item.page,
-                        &settings.printer,
-                        settings.copies,
-                    ));
-                    Ok(())
-                })();
-                match result {
-                    Ok(()) => printed.push(index),
-                    Err(e) => {
-                        failed.push((index, format!("{e:#}")));
-                        if !keep_going {
-                            break;
+        self.task(
+            printing::platform_message(
+                "Submitting labels to CUPS in order…",
+                "Submitting labels to Windows in order…",
+            ),
+            move || {
+                let total = queue.len();
+                let mut printed = Vec::new();
+                let mut failed: Vec<(usize, String)> = Vec::new();
+                for (index, item) in queue.iter().enumerate() {
+                    let result = (|| -> anyhow::Result<()> {
+                        let page = document::load(&item.path, item.page)?;
+                        let crop = if item.mode == Mode::FullPage {
+                            Crop::FULL
+                        } else {
+                            item.crop
+                        };
+                        let output = layout::render(&page, crop, &settings)?;
+                        printing::submit(&output, &settings, &printer)?;
+                        crate::history::record(crate::history::import_entry(
+                            &item.path,
+                            item.page,
+                            &settings.printer,
+                            settings.copies,
+                        ));
+                        Ok(())
+                    })();
+                    match result {
+                        Ok(()) => printed.push(index),
+                        Err(e) => {
+                            failed.push((index, format!("{e:#}")));
+                            if !keep_going {
+                                break;
+                            }
                         }
                     }
                 }
-            }
-            let detail = match failed.first() {
-                None => "All labels submitted to CUPS in order".to_string(),
-                Some((index, e)) if keep_going => format!(
-                    "{} label(s) failed and stayed in the queue · first, label {}: {e}",
-                    failed.len(),
-                    index + 1
-                ),
-                Some((index, e)) => format!("Stopped at label {}: {e}", index + 1),
-            };
-            Ok(Message::BatchDone {
-                printed,
-                total,
-                detail,
-            })
-        });
+                let detail = match failed.first() {
+                    None => printing::platform_message(
+                        "All labels submitted to CUPS in order",
+                        "All labels submitted to Windows in order",
+                    )
+                    .to_string(),
+                    Some((index, e)) if keep_going => format!(
+                        "{} label(s) failed and stayed in the queue · first, label {}: {e}",
+                        failed.len(),
+                        index + 1
+                    ),
+                    Some((index, e)) => format!("Stopped at label {}: {e}", index + 1),
+                };
+                Ok(Message::BatchDone {
+                    printed,
+                    total,
+                    detail,
+                })
+            },
+        );
     }
     fn render(&mut self) {
         let Some(page) = self.page.clone() else {
@@ -1046,7 +1060,11 @@ impl ThermalPrint {
                             .unwrap_or("No printers found. Add a label printer in your system settings; export is available.")
                             .into()
                     } else {
-                        "CUPS printers refreshed".into()
+                        printing::platform_message(
+                            "CUPS printers refreshed",
+                            "Windows printers refreshed",
+                        )
+                        .into()
                     };
                 }
                 Message::BatchDone {
@@ -1140,7 +1158,9 @@ impl ThermalPrint {
             .find(|p| p.name == self.settings.printer)
             .cloned()
         else {
-            self.status = "Select a CUPS printer".into();
+            self.status =
+                printing::platform_message("Select a CUPS printer", "Select a Windows printer")
+                    .into();
             self.error = true;
             return;
         };
@@ -1151,21 +1171,24 @@ impl ThermalPrint {
             .and_then(|i| self.queue.get(i))
             .map(|item| (item.path.clone(), item.page));
         self.persist();
-        self.task("Submitting to CUPS…", move || {
-            let submitted = printing::submit(&output, &settings, &printer)?;
-            if let Some((path, page)) = source {
-                crate::history::record(crate::history::import_entry(
-                    &path,
-                    page,
-                    &settings.printer,
-                    settings.copies,
-                ));
-            }
-            Ok(Message::PrintedOne {
-                detail: format!("Submitted · {submitted}. Use Job status to check the queue."),
-                index,
-            })
-        });
+        self.task(
+            printing::platform_message("Submitting to CUPS…", "Submitting to Windows…"),
+            move || {
+                let submitted = printing::submit(&output, &settings, &printer)?;
+                if let Some((path, page)) = source {
+                    crate::history::record(crate::history::import_entry(
+                        &path,
+                        page,
+                        &settings.printer,
+                        settings.copies,
+                    ));
+                }
+                Ok(Message::PrintedOne {
+                    detail: format!("Submitted · {submitted}. Use Job status to check the queue."),
+                    index,
+                })
+            },
+        );
     }
     /// Take printed labels out of the queue and move their files to the Processed folder.
     /// Files still needed by another queued page (multi-page PDFs) stay until the last one.
@@ -1545,7 +1568,9 @@ impl ThermalPrint {
             .find(|p| p.name == self.settings.printer)
             .cloned()
         else {
-            self.status = "Select a CUPS printer".into();
+            self.status =
+                printing::platform_message("Select a CUPS printer", "Select a Windows printer")
+                    .into();
             self.error = true;
             return;
         };
@@ -2303,7 +2328,7 @@ impl ThermalPrint {
                     });
                 }
             }
-            if crate::designer_ui::icon_action(ui, "Refresh", "Refresh printers", "Refresh available CUPS printers", true, false).clicked() {
+            if crate::designer_ui::icon_action(ui, "Refresh", "Refresh printers", printing::platform_message("Refresh available CUPS printers", "Refresh available Windows printers"), true, false).clicked() {
                 self.refresh_printers();
             }
             ui.separator();
@@ -2468,22 +2493,22 @@ impl ThermalPrint {
         Self::section_frame(ui).show(ui, |ui| {
             ui.set_width(ui.available_width());
             Self::center_heading(ui, crate::i18n::tr("Queue & diagnostics"), "Choose a label template");
-            ui.horizontal(|ui| { ui.label(crate::i18n::tr("Printing service: CUPS")); crate::help::hint(ui, "CUPS"); });
+            ui.horizontal(|ui| { ui.label(crate::i18n::tr(printing::platform_message("Printing service: CUPS", "Printing service: Windows"))); crate::help::hint(ui, crate::help::PRINT_SERVICE); });
             self.print_readiness(ui, false);
             ui.add_space(6.);
             ui.label(format!("{} imported labels queued", self.queue.len()));
             if crate::designer_ui::icon_action(ui, "Import label", "Open import queue", "Open imported labels for review", true, false).clicked() {
                 self.area = Area::Import;
             }
-            if crate::designer_ui::icon_action(ui, "Status", "Check CUPS job status", "Check jobs submitted to the selected printer", !self.settings.printer.is_empty() && !self.busy, false).clicked() {
+            if crate::designer_ui::icon_action(ui, "Status", printing::platform_message("Check CUPS job status", "Check Windows print queue status"), "Check jobs submitted to the selected printer", !self.settings.printer.is_empty() && !self.busy, false).clicked() {
                 let p = self.settings.printer.clone();
                 if !p.is_empty() {
-                    self.task("Checking CUPS queue…", move || {
+                    self.task(printing::platform_message("Checking CUPS queue…", "Checking Windows print queue…"), move || {
                         Ok(Message::Done(printing::job_status(&p)?))
                     });
                 }
             }
-            ui.label(RichText::new(crate::i18n::tr("A successful submission means CUPS accepted the job; check physical output and barcode readability.")).small().weak());
+            ui.label(RichText::new(crate::i18n::tr(printing::platform_message("A successful submission means CUPS accepted the job; check physical output and barcode readability.", "Windows accepted the job. Check the printed label and scan its barcode."))).small().weak());
 
         });
     }
@@ -2937,7 +2962,7 @@ impl ThermalPrint {
             ui.add_space(10.);
             Self::section_frame(ui).show(ui, |ui| { ui.set_width(ui.available_width());
             Self::import_step_heading(ui, "03  PRINT & EXPORT", "Print device");
-            ui.horizontal(|ui| { ui.label(crate::i18n::tr("Printing service: CUPS")); crate::help::hint(ui, "CUPS"); });
+            ui.horizontal(|ui| { ui.label(crate::i18n::tr(printing::platform_message("Printing service: CUPS", "Printing service: Windows"))); crate::help::hint(ui, crate::help::PRINT_SERVICE); });
             let previous=self.settings.printer.clone();
             egui::ComboBox::from_id_salt("printer").selected_text(if previous.is_empty(){"Choose a printer"}else{&previous}).width(ui.available_width()-12.).show_ui(ui,|ui|{for p in &self.printers{ui.selectable_value(&mut self.settings.printer,p.name.clone(),format!("{}{}",p.name,if p.is_default{" (default)"}else{""}));}});
             if previous!=self.settings.printer {self.settings.media.clear();self.settings.resolution.clear();self.select_default_media();}
@@ -2948,7 +2973,7 @@ impl ThermalPrint {
                 ui.label(RichText::new(crate::i18n::tr("Driver media must match the paper dimensions above. Check your printer's unprintable margins.")).small());
                 if !p.resolutions.is_empty(){ui.collapsing(crate::i18n::tr("Advanced driver resolution"), |ui| {egui::ComboBox::from_id_salt("resolution").selected_text(if self.settings.resolution.is_empty(){"Driver default resolution"}else{&self.settings.resolution}).show_ui(ui,|ui|{ui.selectable_value(&mut self.settings.resolution,String::new(),crate::i18n::tr("Driver default resolution"));for r in &p.resolutions{ui.selectable_value(&mut self.settings.resolution,r.clone(),r);}});});}
             }
-            ui.horizontal(|ui|{ui.label(crate::i18n::tr("Copies"));ui.add(egui::DragValue::new(&mut self.settings.copies).range(1..=999));if crate::designer_ui::icon_action(ui, "Refresh", "", "Refresh available CUPS printers", !self.busy, false).clicked(){self.refresh_printers();}});
+            ui.horizontal(|ui|{ui.label(crate::i18n::tr("Copies"));ui.add(egui::DragValue::new(&mut self.settings.copies).range(1..=999));if crate::designer_ui::icon_action(ui, "Refresh", "", printing::platform_message("Refresh available CUPS printers", "Refresh available Windows printers"), !self.busy, false).clicked(){self.refresh_printers();}});
             self.print_readiness(ui, true);
             if !self.settings.printer.is_empty() {
                 ui.label(
@@ -2971,7 +2996,7 @@ impl ThermalPrint {
             }
             ui.horizontal(|ui|{if crate::designer_ui::icon_action(ui, "Export document", "PDF", "Export the prepared label as PDF", self.ready(), false).clicked(){self.export(true);}
                 if crate::designer_ui::icon_action(ui, "Add image / logo...", "PNG", "Export the prepared label as PNG", self.ready(), false).clicked(){self.export(false);}});
-            if crate::designer_ui::icon_action(ui, "Status", "Job status", "Check jobs submitted to the selected CUPS printer", !self.settings.printer.is_empty() && !self.busy, false).clicked(){let p=self.settings.printer.clone();self.task("Checking CUPS queue…",move||Ok(Message::Done(printing::job_status(&p)?)));}
+            if crate::designer_ui::icon_action(ui, "Status", "Job status", printing::platform_message("Check jobs submitted to the selected CUPS printer", "Check jobs submitted to the selected Windows printer"), !self.settings.printer.is_empty() && !self.busy, false).clicked(){let p=self.settings.printer.clone();self.task(printing::platform_message("Checking CUPS queue…", "Checking Windows print queue…"),move||Ok(Message::Done(printing::job_status(&p)?)));}
             });
         });
     }
