@@ -27,4 +27,6 @@ Set the following GitHub Actions repository variables using the values shown und
 
 The Windows workflow builds on release tags alongside the Linux jobs. It takes the package version from `Cargo.toml` and uses `0` for the fourth component. Download the **ThermalPrint-Windows-x64-store** artifact, extract the MSIX, and submit it under the reserved ThermalPrint listing. Local installation requires a signature trusted by the test machine. Microsoft signs the published Store package during certification.
 
+For the initial Store release, set the US base price to **$4.99** and select a **7-day time-limited trial** under **Pricing and availability**. The trial offers the full app so customers can test their printer and label stock. Linux remains free. [Microsoft Store pricing and trials](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/price-and-availability)
+
 Before submitting, install a signed test package on Windows 11. Open a `.thermalprint` design through File Explorer, import a mixed-size PDF, and verify image and label exports. Print a 4 × 6 label and a Letter or A4 sheet. Check physical dimensions, offsets, copies, queue status, and barcode scans. Repeat with a RAW ZPL queue and test watched-folder printing with fictional labels.

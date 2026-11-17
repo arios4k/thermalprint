@@ -9,5 +9,5 @@ Invoke-WebRequest -Uri "https://github.com/bblanchon/pdfium-binaries/releases/do
 if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $hash) {
     throw 'PDFium download failed SHA-256 verification.'
 }
-& tar.exe -xf $archive -C $directory.FullName bin/pdfium.dll LICENSE
+& tar.exe -xf $archive -C $directory.FullName bin/pdfium.dll LICENSE licenses
 if ($LASTEXITCODE -ne 0) { throw 'Could not extract the PDFium runtime and license.' }

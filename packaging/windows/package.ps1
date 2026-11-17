@@ -27,7 +27,9 @@ $assets = New-Item -ItemType Directory -Path (Join-Path $stage 'Assets') -Force
 try {
     Copy-Item -LiteralPath $Executable -Destination (Join-Path $stage 'thermalprint.exe')
     Copy-Item -LiteralPath (Join-Path $PdfiumDirectory 'bin/pdfium.dll') -Destination $stage
-    Copy-Item -LiteralPath (Join-Path $PdfiumDirectory 'LICENSE') -Destination (Join-Path $stage 'LICENSE-PDFium.txt')
+    $notices = New-Item -ItemType Directory -Path (Join-Path $stage 'PDFium')
+    Copy-Item -LiteralPath (Join-Path $PdfiumDirectory 'LICENSE') -Destination $notices.FullName
+    Copy-Item -LiteralPath (Join-Path $PdfiumDirectory 'licenses') -Destination $notices.FullName -Recurse
     Copy-Item -LiteralPath (Join-Path $repo 'LICENSE') -Destination (Join-Path $stage 'LICENSE-ThermalPrint.txt')
     foreach ($font in 'LICENSE.txt', 'LICENSE-Noto.txt', 'LICENSE-VarelaRound.txt') {
         Copy-Item -LiteralPath (Join-Path $repo "assets/fonts/$font") -Destination (Join-Path $stage "Fonts-$font")
