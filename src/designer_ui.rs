@@ -5321,7 +5321,7 @@ mod document_lifecycle_tests {
         let original = designer.doc.clone();
         assert!(designer.layer_swap(false).is_none());
         let frame = |designer: &mut Designer, events| {
-            ctx.run_ui(
+            let mut output = ctx.run_ui(
                 egui::RawInput {
                     events,
                     ..Default::default()
@@ -5329,7 +5329,9 @@ mod document_lifecycle_tests {
                 |root| {
                     egui::CentralPanel::default().show(root, |ui| designer.inspector(ui));
                 },
-            )
+            );
+            output.textures_delta.clear();
+            output
         };
         frame(&mut designer, vec![]);
         let output = frame(&mut designer, vec![]);
