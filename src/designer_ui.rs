@@ -400,7 +400,10 @@ impl Designer {
         }
     }
     fn checkpoint(&mut self) {
-        self.undo.push(self.doc.clone());
+        self.push_undo(self.doc.clone());
+    }
+    fn push_undo(&mut self, doc: LabelDocument) {
+        self.undo.push(doc);
         if self.undo.len() > 80 {
             self.undo.remove(0);
         }
@@ -565,22 +568,22 @@ impl Designer {
         self.copy();
         self.paste();
     }
-    fn layer(&mut self, forward: bool) {
+    fn layer_swap(&self, forward: bool) -> Option<(usize, usize)> {
         if self.selected.len() != 1 {
-            return;
+            return None;
         }
-        let Some(i) = self
+        let i = self
             .doc
             .objects
             .iter()
-            .position(|o| self.selected.contains(&o.id))
-        else {
+            .position(|o| o.id == self.selected[0])?;
+        let j = if forward { i + 1 } else { i.checked_sub(1)? };
+        (j < self.doc.objects.len()).then_some((i, j))
+    }
+    fn layer(&mut self, forward: bool) {
+        let Some((i, j)) = self.layer_swap(forward) else {
             return;
         };
-        let j = if forward { i + 1 } else { i.saturating_sub(1) };
-        if j >= self.doc.objects.len() || j == i {
-            return;
-        }
         self.checkpoint();
         self.doc.objects.swap(i, j);
         self.changed();
@@ -2784,8 +2787,7 @@ impl Designer {
             ui.label(crate::i18n::tr("Select an object on the canvas."));
             ui.label(RichText::new(crate::i18n::tr("Shift-click to select multiple objects. Use Ctrl+C/V, Ctrl+D, Delete, Ctrl+Z/Y.")).small().weak());
             if self.doc != before {
-                self.undo.push(before);
-                self.redo.clear();
+                self.push_undo(before);
                 self.changed();
             }
             return;
@@ -3412,6 +3414,11 @@ impl Designer {
         if let Some(data) = save_logo {
             self.save_logo(&data);
         }
+        // The actions below take their own checkpoints. Record direct field edits first.
+        if self.doc != before {
+            self.push_undo(before);
+            self.changed();
+        }
         if center.0 {
             self.arrange(
                 design::Alignment::CenterHorizontally,
@@ -3427,7 +3434,7 @@ impl Designer {
                 "Move up",
                 "Forward",
                 "Move object one layer forward",
-                true,
+                self.layer_swap(true).is_some(),
                 false,
             )
             .clicked()
@@ -3439,7 +3446,7 @@ impl Designer {
                 "Move down",
                 "Backward",
                 "Move object one layer backward",
-                true,
+                self.layer_swap(false).is_some(),
                 false,
             )
             .clicked()
@@ -3470,11 +3477,6 @@ impl Designer {
         .clicked()
         {
             self.delete();
-        }
-        if self.doc != before {
-            self.undo.push(before);
-            self.redo.clear();
-            self.changed();
         }
     }
     fn canvas(&mut self, ui: &mut egui::Ui) {
@@ -5302,6 +5304,67 @@ pub(crate) fn icon_action(
 #[cfg(test)]
 mod document_lifecycle_tests {
     use super::*;
+
+    #[test]
+    fn inspector_layer_moves_once_and_disables_the_boundary_action() {
+        let ctx = egui::Context::default();
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(100., 100.);
+        let shape = Element::Shape {
+            kind: ShapeKind::Rectangle,
+            stroke_mm: 0.4,
+            filled: true,
+        };
+        let back = designer.doc.add(shape.clone(), 10., 10., 30., 30.);
+        let front = designer.doc.add(shape, 20., 20., 30., 30.);
+        designer.selected = vec![back];
+        let original = designer.doc.clone();
+        assert!(designer.layer_swap(false).is_none());
+        let frame = |designer: &mut Designer, events| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    events,
+                    ..Default::default()
+                },
+                |root| {
+                    egui::CentralPanel::default().show(root, |ui| designer.inspector(ui));
+                },
+            );
+            output.textures_delta.clear();
+            output
+        };
+        frame(&mut designer, vec![]);
+        let output = frame(&mut designer, vec![]);
+        let pos = output
+            .shapes
+            .iter()
+            .find_map(|shape| match &shape.shape {
+                egui::Shape::Text(text) if text.galley.text() == "Forward" => {
+                    Some(text.pos + text.galley.size() / 2.)
+                }
+                _ => None,
+            })
+            .expect("Forward button label");
+        let button = |pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        frame(
+            &mut designer,
+            vec![egui::Event::PointerMoved(pos), button(true)],
+        );
+        frame(&mut designer, vec![button(false)]);
+        assert_eq!(designer.doc.objects[0].id, front);
+        assert_eq!(designer.doc.objects[1].id, back);
+        assert!(designer.layer_swap(true).is_none());
+        assert_eq!(designer.undo.len(), 1);
+        designer.undo();
+        assert_eq!(designer.doc, original);
+        designer.redo();
+        assert_eq!(designer.doc.objects[1].id, back);
+    }
 
     #[test]
     fn opening_saved_design_preserves_path_and_starts_clean() {

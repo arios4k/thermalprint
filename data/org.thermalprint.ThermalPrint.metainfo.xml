@@ -60,6 +60,11 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.12.1" date="2026-11-18">
+      <description>
+        <p>The Label Designer disables layer controls at the front or back of the stack. Each layer move takes one undo step.</p>
+      </description>
+    </release>
     <release version="0.12.0" date="2026-11-14">
       <description>
         <p>Labels saved while ThermalPrint was closed are no longer missed.</p>
