@@ -48,7 +48,7 @@ Document processing happens on your computer. ThermalPrint works with local file
 
 ### Windows 11
 
-ThermalPrint 0.12.0 for Windows 11 x64 has been submitted to the Microsoft Store for certification. Once published, the US Store price will be **$4.99** with a **7-day trial**. The Linux version remains free. [Microsoft Store listing](https://apps.microsoft.com/detail/9NXDXRSQW0ZF) · [Windows setup guide](https://arios4k.github.io/thermalprint/manual/install.html#windows-11)
+ThermalPrint 0.12.0 is available for Windows 11 x64 in the Microsoft Store. The US Store price is **$4.99** with a **7-day trial**. The Linux version remains free. [Microsoft Store listing](https://apps.microsoft.com/detail/9NXDXRSQW0ZF) · [Windows setup guide](https://arios4k.github.io/thermalprint/manual/install.html#windows-11)
 
 Add your printer in **Settings → Bluetooth & devices → Printers & scanners**. Then open **Print Center** in ThermalPrint, refresh the printer list, and select the media size that matches your stock. PDF rendering is bundled in the Windows package.
 
