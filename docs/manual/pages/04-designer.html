@@ -5,7 +5,7 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 -->
 <p>The <strong>Label Designer</strong> is for labels you make yourself: shelf tags, price tags, inventory stickers, return address labels, shipping labels, and more. The canvas is the exact size of your label, measured in millimeters, so what you see is what the printer gets.</p>
 
-{{figure:designer-annotated|The Label Designer with numbered callouts on the toolbar, element palette, canvas, properties panel, status bar, and sidebar|The Label Designer. (1) toolbar, (2) element palette, (3) canvas, (4) properties panel, (5) status bar, (6) sidebar.}}
+{{figure:designer-annotated|The Label Designer in version 0.13.0, with its toolbar, element palette, canvas, properties panel, status bar and sidebar|The current Label Designer, shown with a fictional shipping label.}}
 
 <h2>Starting a label</h2>
 <ul>
@@ -100,6 +100,16 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <h2>The template gallery</h2>
 <p><strong>File → Template gallery…</strong> shows every built-in template and every template you saved as a small preview, with a search box. Click a card to open it as an unsaved copy; the trash button under one of your own templates removes it.</p>
 {{figure:designer-gallery|The Template gallery window with previews of the built-in templates|The template gallery. Previews appear a few at a time so the window opens at once.}}
+<p>The element palette's <strong>Choose a label template</strong> icon opens the same built-in layouts as a compact menu. Version 0.13.0 adds <strong>Cable flag</strong>, <strong>Price and barcode</strong>, <strong>Shelf barcode</strong>, and <strong>Small product QR</strong>, each with a matching icon. Choosing a template asks about unsaved changes before replacing your label.</p>
+{{figure:designer-templates|The template menu with all fifteen built-in templates, including matching icons for the four new layouts|Use the template menu for a quick choice, or the gallery for larger previews.}}
+<table>
+  <tr><th>New template</th><th>Starting size</th><th>Use it for</th></tr>
+  <tr><td>Cable flag</td><td>76.2 × 25.4 mm</td><td>Repeated cable identifiers separated by a fold line.</td></tr>
+  <tr><td>Price and barcode</td><td>76.2 × 50.8 mm</td><td>A product name and price with a stock barcode.</td></tr>
+  <tr><td>Shelf barcode</td><td>101.6 × 38.1 mm</td><td>A shelf location and stock barcode.</td></tr>
+  <tr><td>Small product QR</td><td>38.1 × 25.4 mm</td><td>A compact product identifier and QR code.</td></tr>
+</table>
+<p>Replace sample names, prices, identifiers and code contents before printing. Match the design's dimensions to your actual stock and printer media.</p>
 
 <h2>Your own templates</h2>
 <p>When you reuse a design, choose <strong>File → Save as template…</strong>. The design is stored in a <code>templates</code> folder inside ThermalPrint's settings folder, named after the label, and appears under <em>Your templates</em> in the template menu next to the built-in ones. Choosing one opens an unsaved copy, so the template itself never changes. Saving a template under a name you already used replaces it, and the trash button beside a template removes it. You can keep up to 100.</p>
@@ -156,4 +166,11 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 
 <h2 id="code-preflight">Checking barcodes and QR codes</h2>
 <p><strong>Check barcodes</strong> checks generated code content, dimensions at the selected DPI, clear space, overlap with other objects, and paper-edge clipping. Invalid or obscured codes also block rendering before printing. Test the physical print with your scanner to check the printer, stock, and scan conditions.</p>
-<p>The built-in gallery also includes <strong>Cable flag</strong>, <strong>Price and barcode</strong>, <strong>Shelf barcode</strong>, and <strong>Small product QR</strong>. Their sample contents are editable.</p>
+{{figure:designer-code-check|Small product QR template in the Label Designer with the Check barcodes toolbar action and a successful preflight report below the canvas|Check barcodes reports content, size and clear-space results at the selected DPI. It does not replace testing a physical print.}}
+<ol>
+  <li>Select the intended printer DPI in Print Center and enter the final barcode or QR data.</li>
+  <li>Choose <strong>Check barcodes</strong> in the Designer toolbar.</li>
+  <li>If a code is invalid or too small, correct its content or enlarge the object. If another object obscures it, move the objects apart and preserve its surrounding clear space.</li>
+  <li>Keep the complete code inside the label, check again, and scan one physical test print before starting a batch.</li>
+</ol>
+<p>The check applies to generated barcode and QR objects. A barcode that is part of an imported photo or PDF is not decoded by this Designer check; inspect its crop and scan a test print separately.</p>
