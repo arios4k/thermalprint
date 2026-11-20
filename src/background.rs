@@ -355,11 +355,18 @@ mod tests {
         );
         assert!(dir.path().join("open-request.json").is_file());
         drop(owner);
-        assert!(
-            acquire_in(dir.path().to_owned(), &launch)
+        // Another parallel test can fork while the lock is held. Its child briefly
+        // shares the open description until exec closes CLOEXEC descriptors.
+        let released = (0..100).any(|_| {
+            let acquired = acquire_in(dir.path().to_owned(), &launch)
                 .unwrap()
-                .is_some()
-        );
+                .is_some();
+            if !acquired {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            acquired
+        });
+        assert!(released, "The owner lock was not released after closing it");
         assert!(!dir.path().join("open-request.json").exists());
     }
 
