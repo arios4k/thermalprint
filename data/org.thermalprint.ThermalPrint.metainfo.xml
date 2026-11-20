@@ -60,6 +60,19 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.13.0" date="2026-11-20">
+      <description>
+        <p>Background printing, safer automatic jobs, and a clearer printer setup workflow.</p>
+        <ul>
+          <li>Optional tray controls and startup at login keep folder watching active while the window is closed.</li>
+          <li>Content-based duplicate protection persists across renamed files and restarts.</li>
+          <li>Print history supports confirmed reprints using recorded settings.</li>
+          <li>Guided printer setup and named label stock profiles simplify switching stock.</li>
+          <li>Barcode preflight checks content, size, and clear space before printing.</li>
+          <li>Four new templates include cable flags, price and shelf barcodes, and compact product QR labels, with matching menu icons.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.12.1" date="2026-11-18">
       <description>
         <p>The Label Designer disables layer controls at the front or back of the stack. Each layer move takes one undo step.</p>
