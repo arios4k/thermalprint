@@ -1045,12 +1045,16 @@ impl Designer {
                     let output = design_render::render_for_print(&doc, settings.dpi)?;
                     printing::submit(&output, &settings, &printer)
                 }?;
-                crate::history::record(crate::history::design_entry(
-                    &doc,
-                    path.as_deref(),
-                    &settings.printer,
-                    settings.copies,
-                ));
+                crate::history::record(
+                    crate::history::design_entry(
+                        &doc,
+                        path.as_deref(),
+                        &settings.printer,
+                        settings.copies,
+                    )
+                    .with_settings(&settings, None)
+                    .with_raw_zpl(raw),
+                );
                 Ok(submitted)
             },
         );
@@ -2019,6 +2023,12 @@ impl Designer {
                     ui.checkbox(&mut self.raw_zpl, crate::i18n::tr("Print using raw ZPL"))
                         .on_hover_text(crate::i18n::tr(printing::platform_message("Requires a ZPL-compatible printer and raw CUPS queue.", "Requires a ZPL-compatible printer that accepts RAW jobs.")));
                 });
+                if ui.button(crate::i18n::tr("Check barcodes")).clicked() {
+                    match design_render::check_codes(&self.doc,settings.dpi) {
+                        Ok(message) => { self.status=message;self.error=false; }
+                        Err(error) => { self.status=format!("{error:#}");self.error=true; }
+                    }
+                }
                 if ui
                     .selectable_label(self.focus_canvas, crate::i18n::tr("Focus"))
                     .on_hover_text(crate::i18n::tr("Hide navigation and properties to expand the canvas"))

@@ -7,6 +7,18 @@ fn main() -> eframe::Result {
     if let Some(code) = thermalprint::thumbnail::run_from_args(&args) {
         std::process::exit(code);
     }
+    let _instance = if std::env::var_os("THERMALPRINT_SCREENSHOTS").is_none() {
+        match thermalprint::background::acquire() {
+            Ok(Some(lock)) => Some(lock),
+            Ok(None) => return Ok(()),
+            Err(error) => {
+                eprintln!("Cannot start ThermalPrint: {error:#}");
+                return Ok(());
+            }
+        }
+    } else {
+        None
+    };
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()

@@ -30,9 +30,19 @@ base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 datamatrix = "0.3.3"
 csv = "1"
+tray-icon = { version = "0.26.1", default-features = false, features = ["ksni"] }
+sha2 = "0.10"
+fs2 = "0.4"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = "5.19"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61.2", features = ["Win32_Globalization", "Win32_Graphics_Gdi", "Win32_Graphics_Printing", "Win32_Storage_Xps"] }
+windows-sys = { version = "0.61.2", features = ["Win32_Globalization", "Win32_Graphics_Gdi", "Win32_Graphics_Printing", "Win32_Storage_Xps", "Win32_System_Registry", "Win32_Security"] }
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.62.2"
+features = ["ApplicationModel", "Foundation"]
 
 [profile.release]
 lto = "thin"

@@ -60,7 +60,7 @@ pub const MAX_SAFE_MARGIN_MM: f32 = 10.;
 pub const MAX_OFFSET_MM: f32 = 10.;
 const MAX_PROFILES: usize = 50;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     pub width_mm: f32,
@@ -109,12 +109,20 @@ pub struct Settings {
     pub setup_dismissed: bool,
     /// Print labels that land in the watch folder by themselves. Off until you turn it on.
     pub auto_print: bool,
+    pub background_printing: bool,
+    pub start_at_login: bool,
+    pub stock_profiles: BTreeMap<String, StockProfile>,
     /// The warning about automatic printing was shown and accepted once.
     pub auto_print_warned: bool,
     /// Only files whose names match this filter print automatically; empty allows every file.
     pub auto_print_pattern: String,
     /// The most labels printed automatically per minute.
     pub auto_print_per_minute: u8,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct StockProfile {
+    pub printer: String,
+    pub settings: PrinterProfile,
 }
 /// A queued label remembered between sessions.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -158,6 +166,9 @@ impl Default for Settings {
             saved_queue: vec![],
             setup_dismissed: false,
             auto_print: false,
+            background_printing: false,
+            start_at_login: false,
+            stock_profiles: BTreeMap::new(),
             auto_print_warned: false,
             auto_print_pattern: String::new(),
             auto_print_per_minute: crate::autoprint::DEFAULT_PER_MINUTE,
@@ -201,6 +212,12 @@ impl Settings {
                     .collect();
                 while s.profiles.len() > MAX_PROFILES {
                     s.profiles.pop_last();
+                }
+                while s.stock_profiles.len() > MAX_PROFILES {
+                    s.stock_profiles.pop_last();
+                }
+                for stock in s.stock_profiles.values_mut() {
+                    stock.settings.clean();
                 }
                 for profile in s.profiles.values_mut() {
                     profile.clean();
@@ -263,6 +280,17 @@ impl Settings {
         self.offset_y_mm = profile.offset_y_mm;
         self.safe_margin_mm = profile.safe_margin_mm;
         true
+    }
+    pub fn apply_profile(&mut self, profile: &PrinterProfile) {
+        self.media = profile.media.clone();
+        self.resolution = profile.resolution.clone();
+        self.dpi = profile.dpi;
+        self.width_mm = profile.width_mm;
+        self.height_mm = profile.height_mm;
+        self.copies = profile.copies;
+        self.offset_x_mm = profile.offset_x_mm;
+        self.offset_y_mm = profile.offset_y_mm;
+        self.safe_margin_mm = profile.safe_margin_mm;
     }
     pub fn remember(&mut self, path: PathBuf) {
         self.recent.retain(|p| p != &path);
@@ -419,5 +447,38 @@ mod profile_tests {
             (profile.offset_x_mm, profile.dpi, profile.copies),
             (MAX_OFFSET_MM, 203, 1)
         );
+    }
+}
+
+#[cfg(test)]
+mod stock_profile_tests {
+    use super::*;
+    #[test]
+    fn stock_profiles_keep_media_alignment_and_dimensions_per_printer() {
+        let mut settings = Settings {
+            printer: "Thermal".into(),
+            width_mm: 50.8,
+            height_mm: 25.4,
+            offset_x_mm: 1.5,
+            media: "2x1".into(),
+            ..Default::default()
+        };
+        let profile = settings.current_profile();
+        settings.stock_profiles.insert(
+            "Thermal · 2x1".into(),
+            StockProfile {
+                printer: settings.printer.clone(),
+                settings: profile.clone(),
+            },
+        );
+        let mut restored: Settings =
+            serde_json::from_slice(&serde_json::to_vec(&settings).unwrap()).unwrap();
+        restored.width_mm = 101.6;
+        restored.offset_x_mm = 0.;
+        restored.apply_profile(&profile);
+        assert_eq!(restored.width_mm, 50.8);
+        assert_eq!(restored.offset_x_mm, 1.5);
+        assert_eq!(restored.media, "2x1");
+        assert_eq!(restored.stock_profiles.len(), 1);
     }
 }

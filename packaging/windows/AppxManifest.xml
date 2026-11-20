@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
          xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-         IgnorableNamespaces="uap uap10 rescap">
+         IgnorableNamespaces="uap uap10 rescap desktop">
   <Identity Name="ThermalPrint.Development" Publisher="CN=ThermalPrint Development"
             Version="0.0.0.0" ProcessorArchitecture="x64" />
   <Properties>
@@ -27,6 +28,9 @@
                           Square150x150Logo="Assets\Square150x150Logo.png"
                           Square44x44Logo="Assets\Square44x44Logo.png" BackgroundColor="transparent" />
       <Extensions>
+        <desktop:Extension Category="windows.startupTask" uap10:Parameters="--background" Executable="thermalprint.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="ThermalPrintBackground" Enabled="false" DisplayName="ThermalPrint" />
+        </desktop:Extension>
         <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="thermalprint">
             <uap:DisplayName>ThermalPrint Label</uap:DisplayName>

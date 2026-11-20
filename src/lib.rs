@@ -1,5 +1,6 @@
 pub mod address_book;
 pub mod autoprint;
+pub mod background;
 pub mod batch;
 pub mod calibration;
 pub mod design;
@@ -7,6 +8,7 @@ pub mod design_render;
 pub mod designer_ui;
 pub mod detection;
 pub mod document;
+pub mod duplicates;
 pub mod export;
 pub mod history;
 pub mod i18n;

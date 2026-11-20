@@ -32,8 +32,37 @@ pub struct Entry {
     pub page: usize,
     /// The design as printed, for designs that were never saved.
     pub design: Option<LabelDocument>,
+    pub settings: Option<crate::settings::Settings>,
+    pub crop: Option<crate::detection::Crop>,
+    pub fingerprint: Option<String>,
+    pub raw_zpl: bool,
 }
 
+impl Entry {
+    pub fn with_raw_zpl(mut self, raw: bool) -> Self {
+        self.raw_zpl = raw;
+        self
+    }
+    pub fn with_settings(
+        mut self,
+        settings: &crate::settings::Settings,
+        crop: Option<crate::detection::Crop>,
+    ) -> Self {
+        let mut saved = settings.clone();
+        saved.recent.clear();
+        saved.saved_queue.clear();
+        saved.profiles.clear();
+        saved.stock_profiles.clear();
+        saved.print_history.clear();
+        self.settings = Some(saved);
+        self.crop = crop;
+        self.fingerprint = self
+            .source
+            .as_ref()
+            .and_then(|p| crate::duplicates::fingerprint(p, self.page).ok());
+        self
+    }
+}
 pub fn now() -> String {
     chrono::Local::now().format("%Y-%m-%d %H:%M").to_string()
 }
@@ -51,6 +80,7 @@ pub fn import_entry(path: &Path, page: usize, printer: &str, copies: u16) -> Ent
         source: Some(path.to_owned()),
         page,
         design: None,
+        ..Default::default()
     }
 }
 
@@ -67,6 +97,7 @@ pub fn design_entry(doc: &LabelDocument, path: Option<&Path>, printer: &str, cop
         source: path.map(Path::to_owned),
         page: 0,
         design: snapshot,
+        ..Default::default()
     }
 }
 
@@ -110,10 +141,13 @@ pub fn record_to(path: &Path, entry: Entry) -> Result<()> {
     });
     entries.insert(0, entry);
     let entries = clean(entries);
+    save_to(path, &entries)
+}
+fn save_to(path: &Path, entries: &[Entry]) -> Result<()> {
     let parent = path.parent().context("History path has no folder")?;
     std::fs::create_dir_all(parent)?;
     let mut file = tempfile::NamedTempFile::new_in(parent)?;
-    serde_json::to_writer(file.as_file_mut(), &entries)?;
+    serde_json::to_writer(file.as_file_mut(), entries)?;
     file.as_file().sync_all()?;
     file.persist(path)?;
     Ok(())
@@ -121,6 +155,11 @@ pub fn record_to(path: &Path, entry: Entry) -> Result<()> {
 
 /// Best effort: a history write problem must never fail a print that already succeeded.
 pub fn record(entry: Entry) {
+    if let Some(fingerprint) = &entry.fingerprint
+        && let Err(error) = crate::duplicates::submitted(fingerprint)
+    {
+        tracing::warn!(%error,"Cannot remember duplicate protection after printing");
+    }
     if let Some(path) = history_path()
         && let Err(error) = record_to(&path, entry)
     {
@@ -128,6 +167,25 @@ pub fn record(entry: Entry) {
     }
 }
 
+/// Keep reprints working when a watched file moves to or from Processed.
+pub fn relocate(old: &Path, new: &Path) -> Result<()> {
+    let path = history_path().context("No history folder")?;
+    relocate_in(&path, old, new)
+}
+fn relocate_in(path: &Path, old: &Path, new: &Path) -> Result<()> {
+    let mut entries = load_from(path);
+    let mut changed = false;
+    for entry in &mut entries {
+        if entry.source.as_deref() == Some(old) {
+            entry.source = Some(new.to_owned());
+            changed = true;
+        }
+    }
+    if changed {
+        save_to(path, &entries)?;
+    }
+    Ok(())
+}
 pub fn clear() {
     if let Some(path) = history_path() {
         let _ = std::fs::remove_file(path);
@@ -200,5 +258,54 @@ mod tests {
         let loaded = load_from(&path);
         assert_eq!(loaded.len(), 1);
         assert_eq!((loaded[0].copies, loaded[0].title.len()), (999, MAX_TEXT));
+    }
+}
+
+#[cfg(test)]
+mod recipe_tests {
+    use super::*;
+    #[test]
+    fn records_page_crop_and_rendering_settings_without_queue_state() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("label.pdf");
+        std::fs::write(&source, b"sample").unwrap();
+        let settings = crate::settings::Settings {
+            rotation: 90,
+            dpi: 300,
+            scale_percent: 80.,
+            ..Default::default()
+        };
+        let crop = crate::detection::Crop {
+            x: 0.1,
+            y: 0.2,
+            w: 0.6,
+            h: 0.7,
+        };
+        let entry = import_entry(&source, 2, "printer", 1).with_settings(&settings, Some(crop));
+        let restored: Entry = serde_json::from_slice(&serde_json::to_vec(&entry).unwrap()).unwrap();
+        assert_eq!(restored.page, 2);
+        assert_eq!(restored.crop, Some(crop));
+        assert_eq!(restored.settings.unwrap().rotation, 90);
+        assert_eq!(
+            restored.fingerprint,
+            Some(crate::duplicates::fingerprint(&source, 2).unwrap())
+        );
+    }
+}
+
+#[cfg(test)]
+mod relocation_tests {
+    use super::*;
+    #[test]
+    fn archived_labels_and_undo_keep_the_reprint_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let history = dir.path().join("history.json");
+        let a = dir.path().join("label.png");
+        let b = dir.path().join("Processed/label.png");
+        record_to(&history, import_entry(&a, 0, "printer", 1)).unwrap();
+        relocate_in(&history, &a, &b).unwrap();
+        assert_eq!(load_from(&history)[0].source, Some(b.clone()));
+        relocate_in(&history, &b, &a).unwrap();
+        assert_eq!(load_from(&history)[0].source, Some(a));
     }
 }

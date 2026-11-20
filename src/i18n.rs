@@ -91,6 +91,109 @@ pub fn tr(text: &str) -> &str {
 }
 
 const ES: &[(&str, &str)] = &[
+    ("No matches", "Sin coincidencias"),
+    ("Open ThermalPrint", "Abrir ThermalPrint"),
+    ("Check barcodes", "Comprobar códigos"),
+    ("Background printing", "Impresión en segundo plano"),
+    (
+        "Keep running when the window is closed",
+        "Seguir ejecutándose al cerrar la ventana",
+    ),
+    (
+        "The tray menu opens ThermalPrint, pauses automatic printing, or quits. Your computer must be awake.",
+        "El menú de la bandeja permite abrir ThermalPrint, pausar la impresión automática o salir. El equipo debe estar activo.",
+    ),
+    ("Start at login", "Iniciar al iniciar sesión"),
+    (
+        "Automatic printing checks file contents to prevent repeat prints, even after a file is renamed.",
+        "La impresión automática comprueba el contenido para evitar duplicados, incluso si se cambia el nombre del archivo.",
+    ),
+    (
+        "Clear duplicate protection…",
+        "Borrar protección contra duplicados…",
+    ),
+    (
+        "Clear duplicate protection?",
+        "¿Borrar protección contra duplicados?",
+    ),
+    (
+        "Previously printed files can print automatically again if they arrive in the watch folder.",
+        "Los archivos ya impresos podrán volver a imprimirse automáticamente si llegan a la carpeta supervisada.",
+    ),
+    (
+        "Clear duplicate protection",
+        "Borrar protección contra duplicados",
+    ),
+    (
+        "Printer setup assistant",
+        "Asistente de configuración de impresora",
+    ),
+    (
+        "Set up printer and label stock",
+        "Configurar impresora y etiquetas",
+    ),
+    ("Next", "Siguiente"),
+    ("Print one test label", "Imprimir una etiqueta de prueba"),
+    ("Close assistant", "Cerrar asistente"),
+    (
+        "Match media to label size",
+        "Ajustar papel al tamaño de etiqueta",
+    ),
+    (
+        "This printer does not advertise a matching media size. Configure the stock in its driver.",
+        "La impresora no indica un tamaño compatible. Configure las etiquetas en su controlador.",
+    ),
+    ("Saved label stock", "Etiquetas guardadas"),
+    ("Load profile", "Cargar perfil"),
+    ("Stock profile name", "Nombre del perfil de etiquetas"),
+    ("Save stock profile", "Guardar perfil de etiquetas"),
+    ("Reprint…", "Reimprimir…"),
+    (
+        "Review and reprint with the recorded settings",
+        "Revisar y reimprimir con los ajustes guardados",
+    ),
+    ("Reprint label?", "¿Reimprimir etiqueta?"),
+    (
+        "This sends another print job using the recorded settings.",
+        "Esto envía otro trabajo con los ajustes guardados.",
+    ),
+    ("Reprint", "Reimprimir"),
+    ("Cable flag", "Bandera para cable"),
+    (
+        "Matching cable IDs on both sides of a fold",
+        "Identificadores iguales a ambos lados del pliegue",
+    ),
+    ("Price and barcode", "Precio y código de barras"),
+    (
+        "Product, price, and scannable stock code",
+        "Producto, precio y código de inventario",
+    ),
+    ("Shelf barcode", "Código de estante"),
+    (
+        "Shelf location with a stock barcode",
+        "Ubicación de estante con código de inventario",
+    ),
+    ("Small product QR", "QR de producto pequeño"),
+    (
+        "Compact product details and QR code",
+        "Datos compactos del producto y código QR",
+    ),
+    (
+        "Choose your printer above. Refresh printers if it is missing.",
+        "Elija la impresora arriba. Actualice la lista si no aparece.",
+    ),
+    (
+        "Measure the loaded label. Set its width, height, orientation, media size, and DPI above.",
+        "Mida la etiqueta cargada. Ajuste arriba su ancho, alto, orientación, papel y PPP.",
+    ),
+    (
+        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets above.",
+        "Imprima una prueba de alineación. Compare el borde de 1 mm con la etiqueta y ajuste los desplazamientos arriba.",
+    ),
+    (
+        "Give this stock profile a name and save it below. Load it whenever you use this printer and label stock.",
+        "Asigne un nombre y guarde el perfil abajo. Cárguelo al usar esta impresora y estas etiquetas.",
+    ),
     ("Printing", "Imprimiendo"),
     (
         "Print labels automatically?",
@@ -1269,6 +1372,103 @@ const ES: &[(&str, &str)] = &[
     ("Choose a font", "Elegir una fuente"),
 ];
 const DE: &[(&str, &str)] = &[
+    ("No matches", "Keine Treffer"),
+    ("Open ThermalPrint", "ThermalPrint öffnen"),
+    ("Check barcodes", "Barcodes prüfen"),
+    ("Background printing", "Drucken im Hintergrund"),
+    (
+        "Keep running when the window is closed",
+        "Nach dem Schließen des Fensters weiterlaufen",
+    ),
+    (
+        "The tray menu opens ThermalPrint, pauses automatic printing, or quits. Your computer must be awake.",
+        "Über das Infobereich-Menü können Sie ThermalPrint öffnen, den automatischen Druck pausieren oder beenden. Der Computer muss eingeschaltet sein.",
+    ),
+    ("Start at login", "Bei der Anmeldung starten"),
+    (
+        "Automatic printing checks file contents to prevent repeat prints, even after a file is renamed.",
+        "Der automatische Druck prüft den Dateiinhalt, um doppelte Ausdrucke auch nach dem Umbenennen zu verhindern.",
+    ),
+    (
+        "Clear duplicate protection…",
+        "Duplikatschutz zurücksetzen…",
+    ),
+    (
+        "Clear duplicate protection?",
+        "Duplikatschutz zurücksetzen?",
+    ),
+    (
+        "Previously printed files can print automatically again if they arrive in the watch folder.",
+        "Bereits gedruckte Dateien können erneut automatisch gedruckt werden, wenn sie im überwachten Ordner eintreffen.",
+    ),
+    ("Clear duplicate protection", "Duplikatschutz zurücksetzen"),
+    ("Printer setup assistant", "Druckereinrichtungsassistent"),
+    (
+        "Set up printer and label stock",
+        "Drucker und Etikettenmaterial einrichten",
+    ),
+    ("Next", "Weiter"),
+    ("Print one test label", "Ein Testetikett drucken"),
+    ("Close assistant", "Assistent schließen"),
+    (
+        "Match media to label size",
+        "Papierformat an Etikettengröße anpassen",
+    ),
+    (
+        "This printer does not advertise a matching media size. Configure the stock in its driver.",
+        "Der Drucker meldet kein passendes Papierformat. Konfigurieren Sie das Material im Druckertreiber.",
+    ),
+    ("Saved label stock", "Gespeichertes Etikettenmaterial"),
+    ("Load profile", "Profil laden"),
+    ("Stock profile name", "Name des Materialprofils"),
+    ("Save stock profile", "Materialprofil speichern"),
+    ("Reprint…", "Erneut drucken…"),
+    (
+        "Review and reprint with the recorded settings",
+        "Mit den gespeicherten Einstellungen prüfen und erneut drucken",
+    ),
+    ("Reprint label?", "Etikett erneut drucken?"),
+    (
+        "This sends another print job using the recorded settings.",
+        "Dies sendet einen weiteren Druckauftrag mit den gespeicherten Einstellungen.",
+    ),
+    ("Reprint", "Erneut drucken"),
+    ("Cable flag", "Kabelfahne"),
+    (
+        "Matching cable IDs on both sides of a fold",
+        "Gleiche Kabelkennung auf beiden Seiten der Falz",
+    ),
+    ("Price and barcode", "Preis und Barcode"),
+    (
+        "Product, price, and scannable stock code",
+        "Produkt, Preis und scanbarer Artikelcode",
+    ),
+    ("Shelf barcode", "Regalbarcode"),
+    (
+        "Shelf location with a stock barcode",
+        "Regalplatz mit Artikelbarcode",
+    ),
+    ("Small product QR", "Kleiner Produkt-QR-Code"),
+    (
+        "Compact product details and QR code",
+        "Kompakte Produktangaben und QR-Code",
+    ),
+    (
+        "Choose your printer above. Refresh printers if it is missing.",
+        "Wählen Sie oben den Drucker. Aktualisieren Sie die Liste, falls er fehlt.",
+    ),
+    (
+        "Measure the loaded label. Set its width, height, orientation, media size, and DPI above.",
+        "Messen Sie das eingelegte Etikett. Stellen Sie oben Breite, Höhe, Ausrichtung, Papierformat und DPI ein.",
+    ),
+    (
+        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets above.",
+        "Drucken Sie einen Ausrichtungstest. Vergleichen Sie den 1-mm-Rand mit den Etikettenkanten und korrigieren Sie oben den Versatz.",
+    ),
+    (
+        "Give this stock profile a name and save it below. Load it whenever you use this printer and label stock.",
+        "Benennen und speichern Sie unten dieses Materialprofil. Laden Sie es bei Verwendung dieses Druckers und Materials.",
+    ),
     ("Printing", "Druckt"),
     (
         "Print labels automatically?",
@@ -2420,6 +2620,109 @@ const DE: &[(&str, &str)] = &[
     ("Choose a font", "Schrift wählen"),
 ];
 const FR: &[(&str, &str)] = &[
+    ("No matches", "Aucun résultat"),
+    ("Open ThermalPrint", "Ouvrir ThermalPrint"),
+    ("Check barcodes", "Vérifier les codes"),
+    ("Background printing", "Impression en arrière-plan"),
+    (
+        "Keep running when the window is closed",
+        "Continuer après la fermeture de la fenêtre",
+    ),
+    (
+        "The tray menu opens ThermalPrint, pauses automatic printing, or quits. Your computer must be awake.",
+        "Le menu de notification permet d’ouvrir ThermalPrint, de suspendre l’impression automatique ou de quitter. L’ordinateur doit rester éveillé.",
+    ),
+    ("Start at login", "Démarrer à la connexion"),
+    (
+        "Automatic printing checks file contents to prevent repeat prints, even after a file is renamed.",
+        "L’impression automatique vérifie le contenu pour éviter les doublons, même après un changement de nom.",
+    ),
+    (
+        "Clear duplicate protection…",
+        "Réinitialiser la protection contre les doublons…",
+    ),
+    (
+        "Clear duplicate protection?",
+        "Réinitialiser la protection contre les doublons ?",
+    ),
+    (
+        "Previously printed files can print automatically again if they arrive in the watch folder.",
+        "Les fichiers déjà imprimés pourront être réimprimés automatiquement s’ils arrivent dans le dossier surveillé.",
+    ),
+    (
+        "Clear duplicate protection",
+        "Réinitialiser la protection contre les doublons",
+    ),
+    (
+        "Printer setup assistant",
+        "Assistant de configuration de l’imprimante",
+    ),
+    (
+        "Set up printer and label stock",
+        "Configurer l’imprimante et les étiquettes",
+    ),
+    ("Next", "Suivant"),
+    ("Print one test label", "Imprimer une étiquette de test"),
+    ("Close assistant", "Fermer l’assistant"),
+    (
+        "Match media to label size",
+        "Adapter le support à la taille de l’étiquette",
+    ),
+    (
+        "This printer does not advertise a matching media size. Configure the stock in its driver.",
+        "L’imprimante n’indique aucun format adapté. Configurez le support dans son pilote.",
+    ),
+    ("Saved label stock", "Supports d’étiquettes enregistrés"),
+    ("Load profile", "Charger le profil"),
+    ("Stock profile name", "Nom du profil de support"),
+    ("Save stock profile", "Enregistrer le profil de support"),
+    ("Reprint…", "Réimprimer…"),
+    (
+        "Review and reprint with the recorded settings",
+        "Vérifier et réimprimer avec les paramètres enregistrés",
+    ),
+    ("Reprint label?", "Réimprimer l’étiquette ?"),
+    (
+        "This sends another print job using the recorded settings.",
+        "Cela envoie une nouvelle tâche avec les paramètres enregistrés.",
+    ),
+    ("Reprint", "Réimprimer"),
+    ("Cable flag", "Étiquette de câble"),
+    (
+        "Matching cable IDs on both sides of a fold",
+        "Même identifiant de câble des deux côtés du pli",
+    ),
+    ("Price and barcode", "Prix et code-barres"),
+    (
+        "Product, price, and scannable stock code",
+        "Produit, prix et code article lisible",
+    ),
+    ("Shelf barcode", "Code-barres de rayon"),
+    (
+        "Shelf location with a stock barcode",
+        "Emplacement de rayon avec code article",
+    ),
+    ("Small product QR", "Petit QR code produit"),
+    (
+        "Compact product details and QR code",
+        "Informations produit compactes et QR code",
+    ),
+    (
+        "Choose your printer above. Refresh printers if it is missing.",
+        "Choisissez l’imprimante ci-dessus. Actualisez la liste si elle manque.",
+    ),
+    (
+        "Measure the loaded label. Set its width, height, orientation, media size, and DPI above.",
+        "Mesurez l’étiquette chargée. Réglez sa largeur, hauteur, orientation, son format et sa résolution ci-dessus.",
+    ),
+    (
+        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets above.",
+        "Imprimez un test d’alignement. Comparez sa bordure de 1 mm aux bords de l’étiquette, puis ajustez les décalages ci-dessus.",
+    ),
+    (
+        "Give this stock profile a name and save it below. Load it whenever you use this printer and label stock.",
+        "Nommez et enregistrez ce profil ci-dessous. Chargez-le lorsque vous utilisez cette imprimante et ce support.",
+    ),
     ("Printing", "Impression de"),
     (
         "Print labels automatically?",
@@ -3687,6 +3990,8 @@ mod tests {
     fn every_translated_string_exists_in_the_interface_code() {
         let sources = [
             include_str!("ui.rs"),
+            include_str!("ui/workflows.rs"),
+            include_str!("background.rs"),
             include_str!("ui/about.rs"),
             include_str!("ui/notices.rs"),
             include_str!("ui/window_chrome.rs"),

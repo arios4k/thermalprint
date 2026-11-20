@@ -229,6 +229,7 @@ impl Capture {
                     app.settings.auto_print_pattern = "label*.pdf".into();
                     app.auto_next_id = 1;
                     app.auto_jobs.push(super::AutoJob {
+                        fingerprint: "demo".into(),
                         id: 1,
                         path: PathBuf::from("/home/demo/Labels/label-1049.pdf"),
                         page: 0,
