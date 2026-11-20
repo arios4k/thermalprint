@@ -99,15 +99,16 @@ impl ThermalPrint {
     pub(super) fn stock_setup(&mut self, ui: &mut egui::Ui) {
         Self::section_frame(ui).show(ui, |ui| {
             Self::center_heading(ui, crate::i18n::tr("Printer setup assistant"), "Status");
-            let start = ui.button(crate::i18n::tr("Set up printer and label stock"));
-            if self.setup_step.is_none() && start.clicked() {
+            if self.setup_step.is_none()
+                && ui.button(crate::i18n::tr("Set up printer and label stock")).clicked()
+            {
                 self.setup_step = Some(0);
             }
             if let Some(step) = self.setup_step {
                 let instructions = [
-                    "Choose your printer above. Refresh printers if it is missing.",
-                    "Measure the loaded label. Set its width, height, orientation, media size, and DPI above.",
-                    "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets above.",
+                    "Choose your printer below. Refresh printers if it is missing.",
+                    "Measure the loaded label. Set its width, height, orientation, media size, and DPI below.",
+                    "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets below.",
                     "Give this stock profile a name and save it below. Load it whenever you use this printer and label stock."
                 ];
                 ui.label(crate::i18n::tr(instructions[step]));

@@ -179,16 +179,16 @@ const ES: &[(&str, &str)] = &[
         "Datos compactos del producto y código QR",
     ),
     (
-        "Choose your printer above. Refresh printers if it is missing.",
-        "Elija la impresora arriba. Actualice la lista si no aparece.",
+        "Choose your printer below. Refresh printers if it is missing.",
+        "Elija la impresora abajo. Actualice la lista si no aparece.",
     ),
     (
-        "Measure the loaded label. Set its width, height, orientation, media size, and DPI above.",
-        "Mida la etiqueta cargada. Ajuste arriba su ancho, alto, orientación, papel y PPP.",
+        "Measure the loaded label. Set its width, height, orientation, media size, and DPI below.",
+        "Mida la etiqueta cargada. Ajuste abajo su ancho, alto, orientación, papel y PPP.",
     ),
     (
-        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets above.",
-        "Imprima una prueba de alineación. Compare el borde de 1 mm con la etiqueta y ajuste los desplazamientos arriba.",
+        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets below.",
+        "Imprima una prueba de alineación. Compare el borde de 1 mm con la etiqueta y ajuste los desplazamientos abajo.",
     ),
     (
         "Give this stock profile a name and save it below. Load it whenever you use this printer and label stock.",
@@ -1454,16 +1454,16 @@ const DE: &[(&str, &str)] = &[
         "Kompakte Produktangaben und QR-Code",
     ),
     (
-        "Choose your printer above. Refresh printers if it is missing.",
-        "Wählen Sie oben den Drucker. Aktualisieren Sie die Liste, falls er fehlt.",
+        "Choose your printer below. Refresh printers if it is missing.",
+        "Wählen Sie unten den Drucker. Aktualisieren Sie die Liste, falls er fehlt.",
     ),
     (
-        "Measure the loaded label. Set its width, height, orientation, media size, and DPI above.",
-        "Messen Sie das eingelegte Etikett. Stellen Sie oben Breite, Höhe, Ausrichtung, Papierformat und DPI ein.",
+        "Measure the loaded label. Set its width, height, orientation, media size, and DPI below.",
+        "Messen Sie das eingelegte Etikett. Stellen Sie unten Breite, Höhe, Ausrichtung, Papierformat und DPI ein.",
     ),
     (
-        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets above.",
-        "Drucken Sie einen Ausrichtungstest. Vergleichen Sie den 1-mm-Rand mit den Etikettenkanten und korrigieren Sie oben den Versatz.",
+        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets below.",
+        "Drucken Sie einen Ausrichtungstest. Vergleichen Sie den 1-mm-Rand mit den Etikettenkanten und korrigieren Sie unten den Versatz.",
     ),
     (
         "Give this stock profile a name and save it below. Load it whenever you use this printer and label stock.",
@@ -2708,16 +2708,16 @@ const FR: &[(&str, &str)] = &[
         "Informations produit compactes et QR code",
     ),
     (
-        "Choose your printer above. Refresh printers if it is missing.",
-        "Choisissez l’imprimante ci-dessus. Actualisez la liste si elle manque.",
+        "Choose your printer below. Refresh printers if it is missing.",
+        "Choisissez l’imprimante ci-dessous. Actualisez la liste si elle manque.",
     ),
     (
-        "Measure the loaded label. Set its width, height, orientation, media size, and DPI above.",
-        "Mesurez l’étiquette chargée. Réglez sa largeur, hauteur, orientation, son format et sa résolution ci-dessus.",
+        "Measure the loaded label. Set its width, height, orientation, media size, and DPI below.",
+        "Mesurez l’étiquette chargée. Réglez sa largeur, hauteur, orientation, son format et sa résolution ci-dessous.",
     ),
     (
-        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets above.",
-        "Imprimez un test d’alignement. Comparez sa bordure de 1 mm aux bords de l’étiquette, puis ajustez les décalages ci-dessus.",
+        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets below.",
+        "Imprimez un test d’alignement. Comparez sa bordure de 1 mm aux bords de l’étiquette, puis ajustez les décalages ci-dessous.",
     ),
     (
         "Give this stock profile a name and save it below. Load it whenever you use this printer and label stock.",
