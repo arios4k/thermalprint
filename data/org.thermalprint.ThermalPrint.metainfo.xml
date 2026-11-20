@@ -60,6 +60,18 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.13.1" date="2026-11-20">
+      <description>
+        <p>More reliable background startup and tray recovery on Linux and Windows.</p>
+        <ul>
+          <li>Retry tray initialization when the desktop is still starting, including inside the Snap.</li>
+          <li>Check Windows notification-icon registration and recover when Explorer is not ready.</li>
+          <li>Apply startup hiding after tray initialization and preserve windows opened by the user.</li>
+          <li>Keep repeated background activations from revealing the existing window.</li>
+          <li>Rename the help menu action to Help &amp; Manual and separate Quit.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.13.0" date="2026-11-20">
       <description>
         <p>Background printing, safer automatic jobs, and a clearer printer setup workflow.</p>
