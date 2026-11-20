@@ -920,9 +920,21 @@ pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
         .filter(|o| matches!(o.element, Element::Barcode { .. } | Element::Qr { .. }))
     {
         let code = render_object(object, dpi, doc.serial_number)?;
+        // Transparent rotation padding is outside the object's clear space.
+        let footprint = rotate_layer(
+            RgbaImage::from_pixel(
+                dots(object.width_mm, dpi).max(1),
+                dots(object.height_mm, dpi).max(1),
+                Rgba([255; 4]),
+            ),
+            object.rotation,
+        )?;
         let x0 = (object.x_mm * dpi as f32 / 25.4).round() as i64;
         let y0 = (object.y_mm * dpi as f32 / 25.4).round() as i64;
         let changed = code.enumerate_pixels().any(|(x, y, pixel)| {
+            if footprint.get_pixel(x, y)[3] == 0 {
+                return false;
+            }
             let (x, y) = (x0 + x as i64, y0 + y as i64);
             if x < 0 || y < 0 || x >= w as i64 || y >= h as i64 {
                 return false;
@@ -1945,5 +1957,32 @@ mod code_preflight_tests {
             30.,
         );
         assert!(format!("{:#}", check_codes(&doc, 203).unwrap_err()).contains("overlaps"));
+    }
+
+    #[test]
+    fn rotated_code_allows_objects_outside_its_clear_space() {
+        let mut doc = LabelDocument::blank(101.6, 152.4);
+        doc.add(
+            Element::Qr {
+                data: "SKU-001".into(),
+            },
+            4.,
+            4.,
+            30.,
+            30.,
+        );
+        doc.objects[0].rotation = 45.;
+        doc.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 1.,
+                filled: true,
+            },
+            4.,
+            4.,
+            2.,
+            2.,
+        );
+        assert!(check_codes(&doc, 203).is_ok());
     }
 }
