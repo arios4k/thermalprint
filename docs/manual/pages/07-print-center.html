@@ -1,11 +1,11 @@
 <!--
 title: Print Center
 group: The app
-summary: Choose your printer and media, remember settings per printer, fix off-center printing, and reopen recent prints.
+summary: Set up a printer, save label stock profiles, fix alignment, and review or reprint recent jobs.
 -->
 <p><strong>Print Center</strong> is where you tell ThermalPrint about your printer. You usually set it up once. The same printer, media, and options are then used by both Import &amp; Convert and the Label Designer.</p>
 
-{{figure:print-center-annotated|Print Center with numbered callouts on printer and media, label stock, queue and diagnostics, output settings, and alignment|Print Center. (1) Printer &amp; media, (2) Label stock, (3) Queue &amp; diagnostics, (4) Output settings, (5) Alignment. Recent prints is further down the page.}}
+{{figure:print-center-annotated|Print Center in version 0.13.0, with its setup assistant, saved label stock, printer and media, output settings, alignment and diagnostics|The current Print Center. Recent prints appears below these settings. Screenshots show Linux; Windows uses its native print spooler.}}
 
 <h2 id="printer-and-media">Printer and media</h2>
 <p>ThermalPrint prints through <strong>CUPS</strong> on Linux and the <strong>Windows print spooler</strong> on Windows 11. Add the printer in your system's printer settings first. On Windows, configure the label stock in the printer driver so ThermalPrint can list its dimensions. See <a href="install.html#windows-11">Windows setup</a>.</p>
@@ -45,7 +45,7 @@ summary: Choose your printer and media, remember settings per printer, fix off-c
 <h3>Fixing a printer that prints off-center</h3>
 <p>Some printers feed labels a little to one side, so the content is shifted or the edge is cut off. The <strong>alignment offset</strong> moves everything by a small amount to correct this.</p>
 <ol>
-  <li><strong>Print the test label.</strong> Press <strong>Print alignment test</strong>. It prints a ruler label with a thin border 1 mm in from every edge, a cross at the center, and tick marks every 5 mm.</li>
+  <li><strong>Print the test label.</strong> Press <strong>Print alignment test</strong>. It prints one ruler label, even if Copies is set higher, with a thin border 1 mm in from every edge, a cross at the center, and tick marks every 5 mm.</li>
   <li><strong>Measure.</strong> On a correctly aligned label the border is the same distance from each edge. Measure how far it is shifted.</li>
   <li><strong>Enter the correction.</strong> Set <strong>Horizontal</strong> and <strong>Vertical</strong> in millimeters (positive moves content right and down, negative moves it left and up). The range is −10 to +10 mm.</li>
   <li><strong>Print the test again</strong> and adjust until the border is even.</li>
@@ -56,7 +56,8 @@ summary: Choose your printer and media, remember settings per printer, fix off-c
 
 <h2 id="recent-prints">Recent prints</h2>
 <p>Batch runs and number ranges are recorded once, with the count in the title, for example <em>Customer label · batch of 50</em> or <em>Shelf tag · numbers 20</em>; reopening one opens the original design, not a single numbered label.</p>
-<p>Each label you print is added to <strong>Recent prints</strong> at the bottom of Print Center, with the date and time, printer, and copies. It shows your last ten prints (the app keeps up to 50).</p>
+<p>Each label you print is added to <strong>Recent prints</strong> at the bottom of Print Center, with the date and time, printer, and copies. The app keeps up to 50 entries. Search by label name or printer; <strong>Clear</strong> beside the search field clears the search, while <strong>Clear history</strong> removes the entries.</p>
+{{figure:print-history|Recent prints in version 0.13.0, with a search field, Open and Reprint buttons, and recorded media, dimensions, DPI and copies|Search recent jobs and choose Open for review or Reprint for a confirmed repeat job.}}
 <ul>
   <li>Press <strong>Open</strong> to bring the label back. A <strong>design</strong> reopens in the Label Designer as an unsaved copy exactly as it was printed; an <strong>imported label</strong> returns to the queue in Import &amp; Convert.</li>
   <li><strong>Nothing prints when you press Open.</strong> You review the label, then press Print yourself.</li>
@@ -67,7 +68,17 @@ summary: Choose your printer and media, remember settings per printer, fix off-c
 
 
 <h2 id="guided-setup">Printer setup assistant and label stock</h2>
-<p>Choose <strong>Set up printer and label stock</strong> to walk through printer selection, measured stock size and orientation, matching driver media, and a one-copy alignment test. Enter offsets after checking the test label against the stock edges. Save a named stock profile to keep different label sizes for the same printer. <strong>Load profile</strong> restores its size, media, DPI, offsets, copies, and safe margin.</p>
+<p>The <strong>Printer setup assistant</strong> card is at the top of Print Center. Choose <strong>Set up printer and label stock</strong>:</p>
+<ol>
+  <li>Choose the installed printer below the assistant. Use <strong>Refresh printers</strong> if it is missing.</li>
+  <li>Measure the loaded label and set its width, height, orientation, driver media, and DPI. <strong>Match media to label size</strong> selects a matching media size when the driver offers one.</li>
+  <li>Print one alignment test, compare the 1 mm border to the stock edges, and adjust the offsets below.</li>
+  <li>Enter a <strong>Stock profile name</strong> and choose <strong>Save stock profile</strong>.</li>
+</ol>
+{{figure:printer-setup|Printer setup assistant in version 0.13.0, above the printer, media, size and alignment controls|The assistant guides the existing controls below it. This example shows a fictional 4 × 6 printer.}}
+<p>Named profiles let the same printer use several kinds of stock. Find the profile under <strong>Saved label stock</strong> and choose its <strong>Load profile</strong> button to restore its size, media, driver resolution, DPI, offsets, copies, and safe margin. A profile belongs to its printer; switch to that printer before loading it. Up to 50 named profiles are retained. <strong>Close assistant</strong> closes the guide; your current printer settings remain in use.</p>
 
 <h2 id="reprint">Reprinting from history</h2>
 <p>Search <strong>Recent prints</strong> by label name or printer. New entries record their crop, page, print settings, and editable design when small enough to retain. <strong>Reprint…</strong> shows the recorded settings and asks before sending another job. A changed or missing source file requires you to open it for review. Labels moved to <strong>Processed</strong> keep their history link. Older entries can still be opened for review.</p>
+{{figure:history-reprint|Reprint label confirmation showing the recorded printer, copies, dimensions, DPI and media, with Cancel and Reprint actions|Reprint sends a new job only after confirmation. Cancel sends nothing.}}
+<p>The recorded printer must still be available. A saved design snapshot can be reprinted even if its original file is gone; imported labels need the unchanged source file. <strong>Reprint…</strong> is disabled for entries without a complete recipe, including older entries and batch or numbered runs. Use <strong>Open</strong> and review those jobs instead. Confirmed reprints are added to history. Clearing history does not reset automatic-print duplicate protection.</p>

@@ -5,6 +5,8 @@ summary: Design, prepare, and print thermal labels on Linux and Windows 11.
 -->
 <p><strong>ThermalPrint</strong> is a desktop app for people who print shipping labels, price tags, shelf labels, and inventory stickers. Label files are processed on your computer. ThermalPrint uses CUPS on Linux and the Windows print spooler on Windows 11. You can also use a <strong>laser or inkjet printer</strong> with supported paper sizes, or place several labels on an A4 or Letter sheet.</p>
 <p>See <a href="install.html#windows-11">Getting started on Windows 11</a> for Store availability, printer setup, and your first print. Most screenshots in this manual were captured on Linux.</p>
+<p>This manual covers <strong>version 0.13.0</strong>, including background printing, named stock profiles, confirmed reprints and the new templates. Screenshots follow your browser's light or dark theme. See <a href="whats-new.html#version-0-13-0">What's new in 0.13.0</a> for the release overview.</p>
+<p>If a control is missing, check your installed version in <strong>About ThermalPrint</strong> and update through your installation channel. Microsoft Store updates appear after certification.</p>
 {{figure:home|The ThermalPrint home screen with two large cards, Create a label and Import and convert, above a row of label templates|The Home screen: two ways to start, plus ready-made templates.}}
 <h2 id="how-to-read-this-manual">How to read this manual</h2>
 <ul>
@@ -12,6 +14,7 @@ summary: Design, prepare, and print thermal labels on Linux and Windows 11.
 <li><strong>Have a shipping label file?</strong> Go to <a href="import.html">Import and Convert</a>.</li>
 <li><strong>Making your own labels?</strong> Go to <a href="designer.html">Label Designer</a> and <a href="objects.html">Objects</a>.</li>
 <li><strong>Printing many labels from a spreadsheet, or a numbered run?</strong> See <a href="batch.html">Batch printing</a> and the numbered runs and sheets in <a href="designer.html#numbered-runs-and-sheets">Label Designer</a>.</li>
+<li><strong>Want incoming labels to print while the window is closed?</strong> See <a href="automation.html#background-printing">Background printing</a>. For repeat stock sizes and recent jobs, see <a href="print-center.html#guided-setup">Printer setup and stock profiles</a> and <a href="print-center.html#reprint">Reprinting from history</a>.</li>
 <li><strong>Looking for a barcode type, a setting, or a limit?</strong> See the <a href="barcodes.html">Barcode reference</a> and <a href="settings.html">Settings and privacy</a>.</li>
 <li><strong>Something is not working?</strong> See <a href="troubleshooting.html">Troubleshooting</a>.</li>
 <li>Press <kbd>/</kbd> anywhere in the manual to search it.</li>
@@ -20,11 +23,11 @@ summary: Design, prepare, and print thermal labels on Linux and Windows 11.
 {{pages-table}}
 <h2 id="principles">Principles</h2>
 <ul>
-<li><strong>Free and open source.</strong> ThermalPrint is released under the MIT license. There is no account, no advertising, and no tracking.</li>
+<li><strong>Open source.</strong> ThermalPrint is released under the MIT license. There is no account, no advertising, and no tracking. The Linux edition is free; Windows is distributed through the Microsoft Store.</li>
 <li><strong>Private by design.</strong> Labels are processed on your computer. The only things that leave it are the print job you send to your printer and the links you click yourself, such as this manual.</li>
 <li><strong>Uses printers already configured on your system.</strong> Choose your printer and a media size it supports in Print Center.</li>
 <li><strong>Careful before it prints.</strong> A label that would be cut off is blocked, and a batch is checked row by row before anything is sent.</li>
-<li><strong>Accessible.</strong> Every button has a name for screen readers, and everything works from the keyboard.</li>
+<li><strong>Keyboard controls.</strong> Named controls, shortcuts and numeric position, size and rotation fields help you work without dragging. See <a href="workspace.html#keyboard-shortcuts">Keyboard shortcuts</a>.</li>
 <li><strong>In your language.</strong> The app follows your system language: English, Spanish, German, and French. This manual is in English.</li>
 </ul>
 <h2 id="getting-help">Getting help</h2>

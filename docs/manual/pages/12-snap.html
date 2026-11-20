@@ -1,7 +1,7 @@
 <!--
 title: Using the Snap
 group: Settings and data
-summary: What the Snap package can reach, the optional connections, and double-click opening.
+summary: Printing, watched folders, background startup, saved designs, and the Snap's private data.
 -->
 <p>The Snap runs inside a protected sandbox ("strict confinement"). That keeps your system safe, and it means a few things work a little differently from the APT and Fedora packages.</p>
 
@@ -37,6 +37,11 @@ summary: What the Snap package can reach, the optional connections, and double-c
   <tr><td>Other disks, <code>/media</code>, <code>/mnt</code></td><td>Only after <code>removable-media</code> is connected.</td></tr>
 </table>
 <p>When you choose a folder the Snap cannot read, the <a href="automation.html#watching-a-folder">Watch a folder</a> section shows a hint explaining why, and watching stays off.</p>
+
+<h2 id="background-and-startup">Background printing and startup</h2>
+<p>The Snap supports the same optional <a href="automation.html#background-printing">background printing</a>, tray controls, and startup at login as the native Linux package. Open <strong>Import &amp; Convert → Background printing</strong>, above the Watch a folder section, enable <strong>Keep running when the window is closed</strong>, then optionally <strong>Start at login</strong>.</p>
+<p>Your desktop must provide a StatusNotifier/AppIndicator tray host. If it does not, ThermalPrint keeps its window visible and explains that tray support is missing. The Snap declares the standard <code>unity7</code> tray connection; check it with <code>snap connections thermalprint</code> if the desktop has tray support but the icon is unavailable. The computer must be awake and signed in, and the watched folder must remain accessible inside confinement.</p>
+<p>Closing the window keeps the same process running; choosing <strong>Quit</strong> stops it. Login startup starts that same app in the background, rather than installing a system service. Turning the background option off disables its startup entry. Duplicate records, stock profiles, and history stay in the Snap's private data and remain separate from native installations.</p>
 
 <h2>Opening this manual and web links</h2>
 <p>The Help button opens the manual in your default web browser. This uses the Snap's network permission only to hand the link to your browser; ThermalPrint does not download anything itself.</p>

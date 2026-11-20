@@ -15,11 +15,14 @@ summary: What ThermalPrint remembers, where it is stored, the built-in limits, a
   <tr><td>Watch folder and whether it is on</td><td>Yes.</td></tr>
   <tr><td>Move printed labels to a Processed folder</td><td>Yes. Off by default.</td></tr>
   <tr><td>Printer for watched labels</td><td>Yes. Current printer by default.</td></tr>
+  <tr><td>Named label stock profiles</td><td>Yes. Up to 50 profiles, associated with their printer.</td></tr>
+  <tr><td>Keep running when the window is closed / Start at login</td><td>Yes. Both off by default. Background mode needs a usable desktop tray; startup is a separate opt-in setting.</td></tr>
+  <tr><td>Automatic-print duplicate protection</td><td>Yes. Up to 10,000 content records, including uncertain submissions. These survive restarts and are separate from print history.</td></tr>
   <tr><td>Print labels automatically, the file-name filter, and Most per minute</td><td>Yes. <strong>Off by default.</strong> The first-time warning is remembered once you accept it. Pausing is <em>not</em> remembered.</td></tr>
   <tr><td>Skip review for automatic crops, and Keep going if a label fails</td><td>Yes. Both off by default.</td></tr>
   <tr><td>The Get ready to print checklist on Home</td><td>Hidden for good once you press Hide this.</td></tr>
   <tr><td>Recent documents (up to 8 file locations)</td><td>Yes.</td></tr>
-  <tr><td>Recent prints (up to 50)</td><td>Yes, in a separate file.</td></tr>
+  <tr><td>Recent prints (up to 50)</td><td>Yes, in a separate file, with recorded settings and retained design snapshots when available.</td></tr>
   <tr><td>Window size and position</td><td>Yes.</td></tr>
   <tr><td>The print queue in Import &amp; Convert</td><td>Yes, as file locations, pages, and crops. At the next start you choose <strong>Restore</strong> or <strong>Discard</strong>. Review states are not kept.</td></tr>
   <tr><td>Recent messages</td><td>No. The list behind the Messages button is cleared when you quit.</td></tr>
@@ -32,14 +35,18 @@ summary: What ThermalPrint remembers, where it is stored, the built-in limits, a
   <tr><th>File</th><th>Holds</th><th>Normal install</th><th>Snap</th></tr>
   <tr><td><code>settings.json</code></td><td>Preferences and printer profiles</td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
   <tr><td><code>history.json</code></td><td>Recent prints</td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
+  <tr><td><code>automatic-prints.json</code></td><td>Content fingerprints reserved for automatic printing</td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
   <tr><td><code>templates/</code></td><td>Designs saved with <em>Save as template…</em></td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
   <tr><td><code>logos/</code></td><td>Images saved with <em>Save as logo</em></td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
   <tr><td><code>fonts/</code></td><td>Fonts you added to text objects</td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
   <tr><td><code>addresses.json</code></td><td>The address book</td><td><code>~/.config/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.config/thermalprint/</code></td></tr>
-  <tr><td><code>recovery.thermalprint</code></td><td>A copy of unsaved changes, removed when you save or discard</td><td><code>~/.local/share/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.local/share/</code></td></tr>
-  <tr><td><code>app.ron</code></td><td>Window state</td><td><code>~/.local/share/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.local/share/</code></td></tr>
+  <tr><td><code>recovery.thermalprint</code></td><td>A copy of unsaved changes, removed when you save or discard</td><td><code>~/.local/share/thermalprint/</code></td><td><code>~/snap/thermalprint/current/.local/share/thermalprint/</code></td></tr>
+  <tr><td><code>app.ron</code></td><td>Window and interface state</td><td><code>~/.local/share/org.thermalprint.thermalprint/</code></td><td><code>~/snap/thermalprint/current/.local/share/thermalprint_thermalprint/</code> (default Snap instance)</td></tr>
 </table>
 <p>To start fresh, quit ThermalPrint and delete these files. A damaged or hand-edited settings file is checked when it is read: impossible values are corrected, and an unreadable file is ignored.</p>
+<p>On Windows, configuration files use <code>%APPDATA%\ThermalPrint\ThermalPrint\config</code>, designer recovery uses <code>%LOCALAPPDATA%\ThermalPrint\ThermalPrint\data</code>, and <code>app.ron</code> uses <code>%APPDATA%\org.thermalprint.ThermalPrint\data</code>. On Linux, custom <code>XDG_CONFIG_HOME</code> and <code>XDG_DATA_HOME</code> values can change the paths shown above.</p>
+<p>Disable <strong>Start at login</strong> before removing settings if you also want to remove ThermalPrint's startup entry. With background mode enabled, closing the window does not quit the process: choose <strong>Quit</strong> from the app or tray menu before managing its files.</p>
+<p>A damaged duplicate-protection file pauses automatic printing instead of being ignored, so an unreadable record cannot silently cause repeat jobs. Review previous jobs before using <strong>Clear duplicate protection…</strong>. Clearing print history does not clear these records.</p>
 <div class="callout note"><p>Recent documents and recent prints contain <strong>file names and locations</strong>, and a printed design's contents. Use <strong>Clear history</strong> in Print Center before sharing your settings folder.</p></div>
 
 <h2>Privacy</h2>
@@ -72,6 +79,8 @@ summary: What ThermalPrint remembers, where it is stored, the built-in limits, a
   <tr><td>Text line spacing / bottom margin (auto-length)</td><td>0.5 to 3 times / 0 to 50 mm</td></tr>
   <tr><td>Watch folder</td><td>Files up to 50 MB; up to 20 new files per check; a check every 2 seconds</td></tr>
   <tr><td>Automatic printing</td><td>1 to 60 labels per minute (default 10); a 5-second countdown before each; a file-name filter of up to 200 characters</td></tr>
+  <tr><td>Automatic duplicate records / named stock profiles</td><td>10,000 / 50</td></tr>
+  <tr><td>Reprint source validation</td><td>Source files up to 50 MB. Open larger files for review and print them manually.</td></tr>
 </table>
 <p>These limits protect against accidental memory exhaustion. They are not a security sandbox for untrusted files; open labels only from sources you trust.</p>
 
