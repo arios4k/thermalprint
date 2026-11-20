@@ -2240,6 +2240,8 @@ impl ThermalPrint {
         );
         ui.add_space(14.);
         let old = self.settings.clone();
+        self.stock_setup(ui);
+        ui.add_space(12.);
         if ui.available_width() >= 900. {
             ui.columns(2, |columns| {
                 self.print_settings(&mut columns[0]);
@@ -2250,7 +2252,6 @@ impl ThermalPrint {
             ui.add_space(12.);
             self.print_overview(ui);
         }
-        self.stock_setup(ui);
         self.recent_prints(ui);
         if serde_json::to_string(&old).ok() != serde_json::to_string(&self.settings).ok() {
             self.persist();

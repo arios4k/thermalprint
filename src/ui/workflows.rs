@@ -70,6 +70,7 @@ impl ThermalPrint {
         }
         let response = egui::Modal::new(egui::Id::unique("clear-automatic-duplicates"))
             .show(ui.ctx(), |ui| {
+                ui.set_max_width(440.);
                 ui.heading(crate::i18n::tr("Clear duplicate protection?"));
                 ui.label(crate::i18n::tr("Previously printed files can print automatically again if they arrive in the watch folder."));
                 ui.horizontal(|ui| {
@@ -199,6 +200,7 @@ impl ThermalPrint {
         let mut print = false;
         let mut cancel = false;
         let response = egui::Modal::new(egui::Id::unique("reprint-history")).show(ctx, |ui| {
+            ui.set_max_width(480.);
             ui.heading(crate::i18n::tr("Reprint label?"));
             ui.label(&entry.title);
             if let Some(settings) = &entry.settings {
