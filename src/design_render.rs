@@ -855,6 +855,24 @@ pub fn render_for_print(doc: &LabelDocument, dpi: u32) -> Result<Output> {
     }
     Ok(output)
 }
+/// Preflight uses the same DPI, encoders, clear-space and clipping rules as printing.
+pub fn check_codes(doc: &LabelDocument, dpi: u32) -> Result<String> {
+    let count = doc
+        .objects
+        .iter()
+        .filter(|o| matches!(o.element, Element::Barcode { .. } | Element::Qr { .. }))
+        .count();
+    if count == 0 {
+        return Ok("This design has no barcodes or QR codes.".into());
+    }
+    let output = render_label(doc, dpi)?;
+    if output.clipped {
+        bail!("A code or other object extends beyond the label. Move it inside the paper.");
+    }
+    Ok(format!(
+        "{count} code(s) passed content, size, and clear-space checks at {dpi} DPI. Check a physical print with your scanner."
+    ))
+}
 /// The label as designed, the same way up as the canvas.
 pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
     doc.validate()?;
@@ -894,6 +912,45 @@ pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
                 dest[channel] =
                     ((p[channel] as u16 * a + dest[channel] as u16 * (255 - a) + 127) / 255) as u8;
             }
+        }
+    }
+    for object in doc
+        .objects
+        .iter()
+        .filter(|o| matches!(o.element, Element::Barcode { .. } | Element::Qr { .. }))
+    {
+        let code = render_object(object, dpi, doc.serial_number)?;
+        // Transparent rotation padding is outside the object's clear space.
+        let footprint = rotate_layer(
+            RgbaImage::from_pixel(
+                dots(object.width_mm, dpi).max(1),
+                dots(object.height_mm, dpi).max(1),
+                Rgba([255; 4]),
+            ),
+            object.rotation,
+        )?;
+        let x0 = (object.x_mm * dpi as f32 / 25.4).round() as i64;
+        let y0 = (object.y_mm * dpi as f32 / 25.4).round() as i64;
+        let changed = code.enumerate_pixels().any(|(x, y, pixel)| {
+            if footprint.get_pixel(x, y)[3] == 0 {
+                return false;
+            }
+            let (x, y) = (x0 + x as i64, y0 + y as i64);
+            if x < 0 || y < 0 || x >= w as i64 || y >= h as i64 {
+                return false;
+            }
+            let expected = image::Rgb(std::array::from_fn(|c| {
+                ((pixel[c] as u32 * pixel[3] as u32 + 255 * (255 - pixel[3] as u32) + 127) / 255)
+                    as u8
+            }));
+            image.get_pixel(x as u32, y as u32) != &expected
+        });
+        if changed {
+            bail!(
+                "{} #{} overlaps another object. Move the objects apart to preserve the code and its clear space.",
+                object.label(),
+                object.id
+            );
         }
     }
     Ok(Output {
@@ -1845,5 +1902,87 @@ mod built_in_font_tests {
         for font in crate::fonts::BUILT_IN {
             assert_ne!(render_with(&font.key()), default, "{}", font.name);
         }
+    }
+}
+
+#[cfg(test)]
+mod code_preflight_tests {
+    use super::*;
+    #[test]
+    fn detects_invalid_narrow_and_obscured_codes_before_printing() {
+        let mut doc = LabelDocument::blank(101.6, 152.4);
+        doc.add(
+            Element::Barcode {
+                kind: BarcodeKind::Ean13,
+                data: "invalid".into(),
+                show_text: true,
+            },
+            4.,
+            4.,
+            80.,
+            20.,
+        );
+        assert!(check_codes(&doc, 203).is_err());
+        doc.objects.clear();
+        doc.add(
+            Element::Qr {
+                data: "SKU-001".into(),
+            },
+            4.,
+            4.,
+            2.,
+            2.,
+        );
+        assert!(check_codes(&doc, 203).is_err());
+        doc.objects.clear();
+        doc.add(
+            Element::Qr {
+                data: "SKU-001".into(),
+            },
+            4.,
+            4.,
+            30.,
+            30.,
+        );
+        assert!(check_codes(&doc, 203).is_ok());
+        doc.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 1.,
+                filled: true,
+            },
+            4.,
+            4.,
+            30.,
+            30.,
+        );
+        assert!(format!("{:#}", check_codes(&doc, 203).unwrap_err()).contains("overlaps"));
+    }
+
+    #[test]
+    fn rotated_code_allows_objects_outside_its_clear_space() {
+        let mut doc = LabelDocument::blank(101.6, 152.4);
+        doc.add(
+            Element::Qr {
+                data: "SKU-001".into(),
+            },
+            4.,
+            4.,
+            30.,
+            30.,
+        );
+        doc.objects[0].rotation = 45.;
+        doc.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 1.,
+                filled: true,
+            },
+            4.,
+            4.,
+            2.,
+            2.,
+        );
+        assert!(check_codes(&doc, 203).is_ok());
     }
 }

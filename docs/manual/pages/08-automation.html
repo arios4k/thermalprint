@@ -83,3 +83,10 @@ summary: Let new downloads join the queue automatically, and reopen anything you
   <tr><td>A batch</td><td>Reopens the design you used. Choose the CSV again to repeat the batch.</td></tr>
 </table>
 <p>Opening an entry never prints. History is saved in a small file in your settings folder (see <a href="settings.html#where-your-data-lives">Settings and privacy</a>), and <strong>Clear history</strong> deletes it.</p>
+
+<h2 id="background-printing">Printing with the window closed</h2>
+<p>Under <strong>Watch a folder → Background printing</strong>, enable <strong>Keep running when the window is closed</strong>. ThermalPrint stays in your desktop's status tray. Its menu opens the window, pauses automatic printing, or quits the app. The watched folder, automatic-printing switch, selected printer, review rules, and rate limit still apply. The computer must be awake and the printer available.</p>
+<p><strong>Start at login</strong> is optional. Windows Store installations use a Windows startup task; standalone Windows installations use your account's startup settings. Linux uses desktop autostart, including inside the Snap. On GNOME, enable StatusNotifier/AppIndicator support before turning background mode on. If no tray is available, ThermalPrint keeps its window visible. Choosing <strong>Quit</strong> stops automatic printing and asks about unsaved designer changes.</p>
+
+<h2 id="duplicate-protection">Duplicate protection</h2>
+<p>Automatic printing compares file contents, so downloading the same label under another name does not print a second copy. Reservations survive restarts. If a print is interrupted, the label waits for review because the printer may already have received it. Open the label and press <strong>Print</strong> for an intentional extra copy. <strong>Clear duplicate protection…</strong> resets these records after confirmation. Up to 10,000 content records are retained; when full, automatic printing pauses until you review and clear them.</p>

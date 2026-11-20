@@ -3,6 +3,7 @@ mod navigation;
 mod notices;
 mod screenshots;
 mod window_chrome;
+mod workflows;
 use crate::{
     autoprint, design,
     designer_ui::Designer,
@@ -84,9 +85,18 @@ struct AutoJob {
     page: usize,
     crop: Crop,
     due: Instant,
+    fingerprint: String,
 }
 pub struct ThermalPrint {
     settings: Settings,
+    tray: Option<crate::background::Tray>,
+    background_hidden: bool,
+    last_tray_check: Instant,
+    explicit_quit: bool,
+    setup_step: Option<usize>,
+    stock_name: String,
+    reprint_entry: Option<crate::history::Entry>,
+    duplicate_clear: bool,
     area: Area,
     designer: Designer,
     page: Option<Arc<Page>>,
@@ -112,6 +122,7 @@ pub struct ThermalPrint {
     watcher: Option<crate::watch::Watcher>,
     history: Vec<crate::history::Entry>,
     history_stamp: Option<std::time::SystemTime>,
+    history_query: String,
     last_watch: Instant,
     /// The next watcher started is the one at app start, which also picks up labels saved
     /// while the app was closed.
@@ -244,10 +255,22 @@ impl ThermalPrint {
             zoom: 1.,
             reviewed: false,
             drag: None,
-            startup_file: std::env::args_os().nth(1).map(PathBuf::from),
+            startup_file: std::env::args_os()
+                .skip(1)
+                .find(|a| a != "--background")
+                .map(PathBuf::from),
+            tray: None,
+            background_hidden: false,
+            last_tray_check: Instant::now(),
+            explicit_quit: false,
+            setup_step: None,
+            stock_name: String::new(),
+            reprint_entry: None,
+            duplicate_clear: false,
             watcher: None,
             history: vec![],
             history_stamp: None,
+            history_query: String::new(),
             last_watch: Instant::now(),
             resume_watch: true,
             watch_checked_saved: Instant::now(),
@@ -275,6 +298,22 @@ impl ThermalPrint {
             terms_search: String::new(),
             capture: None,
         };
+        if screenshot_directory.is_none() && app.settings.background_printing {
+            match crate::background::Tray::new() {
+                Ok(tray) => {
+                    app.tray = Some(tray);
+                    if std::env::args().any(|a| a == "--background") {
+                        app.background_hidden = true;
+                        cc.egui_ctx
+                            .send_viewport_cmd(egui::ViewportCommand::Visible(false));
+                    }
+                }
+                Err(e) => {
+                    app.status = format!("Background printing needs a tray icon: {e:#}");
+                    app.error = true;
+                }
+            }
+        }
         app.sync_watcher();
         // Documentation screenshots always use English, whatever the system language.
         if screenshot_directory.is_some() {
@@ -501,6 +540,7 @@ impl ThermalPrint {
         }
     }
     fn watch_controls(&mut self, ui: &mut egui::Ui) {
+        self.background_controls(ui);
         let capturing = self.capture.is_some();
         if self.watcher.is_some() || (self.capture.is_some() && self.settings.watch_enabled) {
             let name = self
@@ -811,12 +851,15 @@ impl ThermalPrint {
                         };
                         let output = layout::render(&page, crop, &settings)?;
                         printing::submit(&output, &settings, &printer)?;
-                        crate::history::record(crate::history::import_entry(
-                            &item.path,
-                            item.page,
-                            &settings.printer,
-                            settings.copies,
-                        ));
+                        crate::history::record(
+                            crate::history::import_entry(
+                                &item.path,
+                                item.page,
+                                &settings.printer,
+                                settings.copies,
+                            )
+                            .with_settings(&settings, Some(crop)),
+                        );
                         Ok(())
                     })();
                     match result {
@@ -1170,18 +1213,26 @@ impl ThermalPrint {
         let source = index
             .and_then(|i| self.queue.get(i))
             .map(|item| (item.path.clone(), item.page));
+        let crop = if settings.mode == Mode::FullPage {
+            Crop::FULL
+        } else {
+            self.crop
+        };
         self.persist();
         self.task(
             printing::platform_message("Submitting to CUPS…", "Submitting to Windows…"),
             move || {
                 let submitted = printing::submit(&output, &settings, &printer)?;
                 if let Some((path, page)) = source {
-                    crate::history::record(crate::history::import_entry(
-                        &path,
-                        page,
-                        &settings.printer,
-                        settings.copies,
-                    ));
+                    crate::history::record(
+                        crate::history::import_entry(
+                            &path,
+                            page,
+                            &settings.printer,
+                            settings.copies,
+                        )
+                        .with_settings(&settings, Some(crop)),
+                    );
                 }
                 Ok(Message::PrintedOne {
                     detail: format!("Submitted · {submitted}. Use Job status to check the queue."),
@@ -1235,6 +1286,13 @@ impl ThermalPrint {
                     // Keep the recent-files list pointing at the file's new location.
                     for recent in self.settings.recent.iter_mut().filter(|r| **r == path) {
                         *recent = new.clone();
+                    }
+                    if let Err(error) = crate::history::relocate(&path, &new) {
+                        self.notices.push(
+                            format!("Cannot update print history: {error:#}"),
+                            true,
+                            None,
+                        );
                     }
                     moves.push((path, new));
                 }
@@ -1324,7 +1382,7 @@ impl ThermalPrint {
             name: &name,
             needs_review,
             pages: page.count,
-            already_printed: self.auto_done.contains(&page.path),
+            already_printed: false,
         };
         if let Err(skip) = autoprint::decide(&arrival, &self.settings.auto_print_pattern) {
             if let Some(message) = skip.message() {
@@ -1351,6 +1409,31 @@ impl ThermalPrint {
         if self.auto_jobs.iter().any(|job| job.path == page.path) {
             return;
         }
+        let fingerprint = match crate::duplicates::fingerprint(&page.path, page.index) {
+            Ok(fingerprint) => fingerprint,
+            Err(e) => {
+                self.pause_auto(format!("Cannot check duplicate labels: {e:#}"));
+                return;
+            }
+        };
+        match crate::duplicates::contains(&fingerprint) {
+            Ok(true) => {
+                self.notices.push(format!("{name} matches a label already submitted or awaiting review. Use Print manually for another copy."), false, None);
+                return;
+            }
+            Err(e) => {
+                self.pause_auto(format!("Cannot check duplicate labels: {e:#}"));
+                return;
+            }
+            Ok(false) => {}
+        }
+        if self
+            .auto_jobs
+            .iter()
+            .any(|job| job.fingerprint == fingerprint)
+        {
+            return;
+        }
         self.auto_next_id += 1;
         self.auto_jobs.push(AutoJob {
             id: self.auto_next_id,
@@ -1358,6 +1441,7 @@ impl ThermalPrint {
             page: page.index,
             crop,
             due: Instant::now() + autoprint::COUNTDOWN,
+            fingerprint,
         });
     }
     /// Start the next automatic print whose countdown has run out, when the app is free and
@@ -1410,13 +1494,24 @@ impl ThermalPrint {
         self.task(&format!("Printing {name} automatically…"), move || {
             let page = document::load(&job.path, job.page)?;
             let output = layout::render(&page, job.crop, &settings)?;
+            if crate::duplicates::fingerprint(&job.path, job.page)? != job.fingerprint {
+                anyhow::bail!("The label changed during its countdown. Review it before printing.");
+            }
+            crate::duplicates::reserve(&job.fingerprint)?;
             let submitted = printing::submit(&output, &settings, &printer)?;
-            crate::history::record(crate::history::import_entry(
-                &job.path,
-                job.page,
-                &settings.printer,
-                settings.copies,
-            ));
+            // Preserve the reservation even when this final bookkeeping write fails.
+            if let Err(error) = crate::duplicates::submitted(&job.fingerprint) {
+                tracing::warn!(%error, "Cannot finalize automatic print reservation");
+            }
+            crate::history::record(
+                crate::history::import_entry(
+                    &job.path,
+                    job.page,
+                    &settings.printer,
+                    settings.copies,
+                )
+                .with_settings(&settings, Some(job.crop)),
+            );
             Ok(Message::AutoPrinted {
                 path: job.path,
                 page: job.page,
@@ -1426,6 +1521,8 @@ impl ThermalPrint {
     }
     /// Stop automatic printing after a problem, so one fault does not repeat on every file.
     fn pause_auto(&mut self, reason: String) {
+        self.status = format!("Automatic printing paused · {reason}");
+        self.error = true;
         self.auto_paused = true;
         self.auto_jobs.clear();
         self.notices.push(
@@ -1522,6 +1619,13 @@ impl ThermalPrint {
                     for recent in self.settings.recent.iter_mut().filter(|r| *r == archived) {
                         *recent = original.clone();
                     }
+                    if let Err(error) = crate::history::relocate(archived, original) {
+                        self.notices.push(
+                            format!("Cannot update print history: {error:#}"),
+                            true,
+                            None,
+                        );
+                    }
                     restored.push(original.clone());
                 }
                 Ok(false) => {}
@@ -1574,7 +1678,8 @@ impl ThermalPrint {
             self.error = true;
             return;
         };
-        let settings = self.settings.clone();
+        let mut settings = self.settings.clone();
+        settings.copies = 1;
         self.persist();
         self.task("Submitting alignment test…", move || {
             let output = crate::calibration::alignment_test(
@@ -2135,6 +2240,8 @@ impl ThermalPrint {
         );
         ui.add_space(14.);
         let old = self.settings.clone();
+        self.stock_setup(ui);
+        ui.add_space(12.);
         if ui.available_width() >= 900. {
             ui.columns(2, |columns| {
                 self.print_settings(&mut columns[0]);
@@ -2194,6 +2301,7 @@ impl ThermalPrint {
         ui.add_space(12.);
         let mut open = None;
         let mut clear = false;
+        let mut reprint = None;
         Self::section_frame(ui).show(ui, |ui| {
             ui.set_width(ui.available_width());
             Self::center_heading(ui, crate::i18n::tr("Recent prints"), "Status");
@@ -2204,7 +2312,30 @@ impl ThermalPrint {
                 .small()
                 .weak(),
             );
-            for (index, entry) in self.history.iter().take(10).enumerate() {
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.history_query)
+                        .hint_text(crate::i18n::tr("Search")),
+                )
+                .accessible_name(crate::i18n::tr("Recent prints"));
+                if !self.history_query.is_empty() && ui.button(crate::i18n::tr("Clear")).clicked() {
+                    self.history_query.clear();
+                }
+            });
+            let query = self.history_query.to_lowercase();
+            let filtered: Vec<_> = self
+                .history
+                .iter()
+                .enumerate()
+                .filter(|(_, entry)| {
+                    entry.title.to_lowercase().contains(&query)
+                        || entry.printer.to_lowercase().contains(&query)
+                })
+                .collect();
+            if filtered.is_empty() {
+                ui.label(crate::i18n::tr("No matches"));
+            }
+            for (index, entry) in filtered {
                 ui.horizontal_wrapped(|ui| {
                     if ui
                         .button(crate::i18n::tr("Open"))
@@ -2213,7 +2344,25 @@ impl ThermalPrint {
                     {
                         open = Some(index);
                     }
+                    if ui
+                        .add_enabled(
+                            !self.busy && entry.settings.is_some(),
+                            egui::Button::new(crate::i18n::tr("Reprint…")),
+                        )
+                        .on_hover_text(crate::i18n::tr(
+                            "Review and reprint with the recorded settings",
+                        ))
+                        .clicked()
+                    {
+                        reprint = Some(index);
+                    }
                     ui.label(RichText::new(&entry.title).strong());
+                    if let Some(settings) = &entry.settings {
+                        ui.label(format!(
+                            "{:.1} × {:.1} mm · {} DPI · {}",
+                            settings.width_mm, settings.height_mm, settings.dpi, settings.media
+                        ));
+                    }
                     ui.label(
                         RichText::new(format!(
                             "{} · {} × {}",
@@ -2228,6 +2377,9 @@ impl ThermalPrint {
                 clear = true;
             }
         });
+        if let Some(index) = reprint {
+            self.reprint_entry = Some(self.history[index].clone());
+        }
         if clear {
             crate::history::clear();
             self.history.clear();
@@ -3366,7 +3518,59 @@ impl ThermalPrint {
 impl eframe::App for ThermalPrint {
     fn logic(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         if self.capture.is_none() {
-            self.designer.protect_window_close(ctx);
+            ctx.request_repaint_after(Duration::from_millis(250));
+            if let Some(path) = crate::background::open_request() {
+                self.show_window(ctx);
+                if let Some(path) = path {
+                    self.startup_file = Some(path);
+                }
+            }
+            if self.background_hidden && self.last_tray_check.elapsed() >= Duration::from_secs(5) {
+                self.last_tray_check = Instant::now();
+                if !crate::background::tray_available() {
+                    self.show_window(ctx);
+                    self.tray = None;
+                }
+            }
+            if self.explicit_quit
+                && !ctx.input(|i| i.viewport().close_requested())
+                && !self.designer.close_is_pending_or_approved()
+            {
+                self.explicit_quit = false;
+            }
+            let action = self.tray.as_ref().and_then(|tray| tray.action());
+            match action {
+                Some(crate::background::Action::Open) => self.show_window(ctx),
+                Some(crate::background::Action::Pause) => {
+                    self.set_auto_paused(!self.auto_paused);
+                }
+                Some(crate::background::Action::Quit) => {
+                    self.explicit_quit = true;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+                None => {}
+            }
+            if let Some(tray) = &self.tray {
+                tray.status(self.auto_paused, self.settings.auto_print);
+            }
+            if ctx.input(|i| i.viewport().close_requested())
+                && !self.explicit_quit
+                && self.settings.background_printing
+                && self.tray.is_some()
+            {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+                self.background_hidden = true;
+            } else {
+                self.designer.protect_window_close(ctx);
+            }
+        }
+        self.poll(ctx);
+        self.watch_tick(ctx);
+        self.auto_print_tick(ctx);
+        self.remember_queue();
+        if self.background_hidden && self.error {
+            self.show_window(ctx);
         }
     }
 
@@ -3378,10 +3582,7 @@ impl eframe::App for ThermalPrint {
     }
     fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
-        self.poll(&ctx);
-        self.watch_tick(&ctx);
-        self.auto_print_tick(&ctx);
-        self.remember_queue();
+        self.reprint_confirmation(&ctx);
         // Errors are also shown as a message that stays until it has been read.
         if self.error && self.status != self.last_error {
             self.last_error = self.status.clone();
@@ -3533,6 +3734,7 @@ impl eframe::App for ThermalPrint {
                         ui.close();
                     }
                     if ui.button(crate::i18n::tr("Quit")).clicked() {
+                        self.explicit_quit = true;
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 });

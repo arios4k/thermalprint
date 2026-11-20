@@ -710,6 +710,30 @@ pub const TEMPLATES: &[Template] = &[
         width_mm: 101.6,
         height_mm: 50.8,
     },
+    Template {
+        name: "Cable flag",
+        description: "Matching cable IDs on both sides of a fold",
+        width_mm: 76.2,
+        height_mm: 25.4,
+    },
+    Template {
+        name: "Price and barcode",
+        description: "Product, price, and scannable stock code",
+        width_mm: 76.2,
+        height_mm: 50.8,
+    },
+    Template {
+        name: "Shelf barcode",
+        description: "Shelf location with a stock barcode",
+        width_mm: 101.6,
+        height_mm: 38.1,
+    },
+    Template {
+        name: "Small product QR",
+        description: "Compact product details and QR code",
+        width_mm: 38.1,
+        height_mm: 25.4,
+    },
 ];
 pub fn from_template(index: usize) -> LabelDocument {
     let t = &TEMPLATES[index.min(TEMPLATES.len() - 1)];
@@ -875,6 +899,79 @@ pub fn from_template(index: usize) -> LabelDocument {
                 9.,
                 width - 8.,
                 20.,
+            );
+        }
+        11 => {
+            d.add(
+                text("CABLE A-01", 12., true, TextAlign::Center),
+                2.,
+                7.,
+                32.,
+                9.,
+            );
+            d.add(
+                text("CABLE A-01", 12., true, TextAlign::Center),
+                42.,
+                7.,
+                32.,
+                9.,
+            );
+            d.add(
+                Element::Shape {
+                    kind: ShapeKind::DividerVertical,
+                    stroke_mm: 0.2,
+                    filled: false,
+                },
+                38.,
+                2.,
+                0.5,
+                21.,
+            );
+        }
+        12 => {
+            d.add(
+                text("PRODUCT NAME", 12., true, TextAlign::Left),
+                3.,
+                3.,
+                70.,
+                8.,
+            );
+            d.add(
+                text("$9.99", 22., true, TextAlign::Right),
+                3.,
+                13.,
+                70.,
+                12.,
+            );
+            d.add(code("SKU-001"), 4., 29., 68., 17.);
+        }
+        13 => {
+            d.add(
+                text("AISLE A · BIN 01", 18., true, TextAlign::Center),
+                3.,
+                2.,
+                95.,
+                10.,
+            );
+            d.add(code("BIN-A-01"), 5., 16., 91., 17.);
+        }
+        14 => {
+            d.add(text("PRODUCT", 8., true, TextAlign::Left), 2., 2., 34., 5.);
+            d.add(
+                Element::Qr {
+                    data: "SKU-001".into(),
+                },
+                2.,
+                8.,
+                15.,
+                15.,
+            );
+            d.add(
+                text("SKU-001", 7., false, TextAlign::Left),
+                19.,
+                10.,
+                17.,
+                8.,
             );
         }
         10 => {

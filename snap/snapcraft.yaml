@@ -70,10 +70,12 @@ plugs:
 apps:
   thermalprint:
     command: bin/thermalprint-launch
+    autostart: thermalprint.desktop
     desktop: usr/share/applications/org.thermalprint.ThermalPrint.desktop
     extensions: [gnome]
     plugs:
       - cups
+      - unity7
       - home
       - network
       - removable-media

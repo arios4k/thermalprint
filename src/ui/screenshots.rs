@@ -28,6 +28,7 @@ const MANUAL_SCREENS: &[&str] = &[
     "designer-text",
     "import-watch",
     "print-center-full",
+    "printer-setup",
     "batch",
     "barcode-types",
     "alignment-test",
@@ -127,7 +128,7 @@ impl Capture {
                 "import" | "import-watch" | "import-autoprint" | "import-autoprint-warning" => {
                     Area::Import
                 }
-                "print-center" | "print-center-full" => Area::PrintCenter,
+                "print-center" | "print-center-full" | "printer-setup" => Area::PrintCenter,
                 _ => Area::Home,
             };
             app.terms_open = scene == "printing-terms";
@@ -229,6 +230,7 @@ impl Capture {
                     app.settings.auto_print_pattern = "label*.pdf".into();
                     app.auto_next_id = 1;
                     app.auto_jobs.push(super::AutoJob {
+                        fingerprint: "demo".into(),
                         id: 1,
                         path: PathBuf::from("/home/demo/Labels/label-1049.pdf"),
                         page: 0,
@@ -346,6 +348,10 @@ impl Capture {
                     app.settings.move_printed = true;
                 }
                 "print-center-full" => app.history = demo_history(),
+                "printer-setup" => {
+                    app.setup_step = Some(1);
+                    app.stock_name = "Shipping 4 × 6".into();
+                }
                 "designer-rotated" => app.designer.demo_document(rotated_demo_design()),
                 "designer-fonts" => {
                     // THERMALPRINT_SCREENSHOTS_FONT gives the text a font before the chooser opens.

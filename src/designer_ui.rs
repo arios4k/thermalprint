@@ -785,6 +785,9 @@ impl Designer {
         self.pending_action = Some(PendingAction::Close);
         false
     }
+    pub(crate) fn close_is_pending_or_approved(&self) -> bool {
+        self.close_approved || matches!(self.pending_action, Some(PendingAction::Close))
+    }
     pub(crate) fn protect_window_close(&mut self, ctx: &egui::Context) {
         if ctx.input(|input| input.viewport().close_requested()) && !self.request_close() {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
@@ -1045,12 +1048,16 @@ impl Designer {
                     let output = design_render::render_for_print(&doc, settings.dpi)?;
                     printing::submit(&output, &settings, &printer)
                 }?;
-                crate::history::record(crate::history::design_entry(
-                    &doc,
-                    path.as_deref(),
-                    &settings.printer,
-                    settings.copies,
-                ));
+                crate::history::record(
+                    crate::history::design_entry(
+                        &doc,
+                        path.as_deref(),
+                        &settings.printer,
+                        settings.copies,
+                    )
+                    .with_settings(&settings, None)
+                    .with_raw_zpl(raw),
+                );
                 Ok(submitted)
             },
         );
@@ -2019,6 +2026,12 @@ impl Designer {
                     ui.checkbox(&mut self.raw_zpl, crate::i18n::tr("Print using raw ZPL"))
                         .on_hover_text(crate::i18n::tr(printing::platform_message("Requires a ZPL-compatible printer and raw CUPS queue.", "Requires a ZPL-compatible printer that accepts RAW jobs.")));
                 });
+                if ui.button(crate::i18n::tr("Check barcodes")).clicked() {
+                    match design_render::check_codes(&self.doc,settings.dpi) {
+                        Ok(message) => { self.status=message;self.error=false; }
+                        Err(error) => { self.status=format!("{error:#}");self.error=true; }
+                    }
+                }
                 if ui
                     .selectable_label(self.focus_canvas, crate::i18n::tr("Focus"))
                     .on_hover_text(crate::i18n::tr("Hide navigation and properties to expand the canvas"))
@@ -3991,6 +4004,10 @@ pub(crate) fn template_icon(name: &str) -> &'static str {
         "Shelf" => "Choose a label template",
         "Price tag" => "Price tag",
         "Fragile" => "Fragile",
+        "Cable flag" => "Cable flag",
+        "Price and barcode" => "Price and barcode",
+        "Shelf barcode" => "Shelf barcode",
+        "Small product QR" => "Small product QR",
         _ => "Add Rectangle",
     }
 }
@@ -5033,6 +5050,41 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
             path(&[(12., 14.), (12., 21.)]);
             path(&[(3., 6.), (12., 3.), (21., 6.)]);
             path(&[(12., 3.), (12., 10.)]);
+        }
+        "Cable flag" => {
+            path(&[(3., 3.), (3., 21.)]);
+            path(&[(3., 6.), (20., 6.), (17., 11.), (20., 16.), (3., 16.)]);
+            path(&[(8., 9.), (8., 13.)]);
+            path(&[(11., 9.), (11., 13.)]);
+        }
+        "Price and barcode" => {
+            path(&[
+                (3., 3.),
+                (15., 3.),
+                (21., 9.),
+                (21., 21.),
+                (3., 21.),
+                (3., 3.),
+            ]);
+            painter.circle_stroke(point(7., 7.), 1.2, stroke);
+            for x in [7., 10., 13., 17.] {
+                path(&[(x, 12.), (x, 17.)]);
+            }
+        }
+        "Shelf barcode" => {
+            outline(4., 4., 16., 13., 1.);
+            path(&[(2., 20.), (22., 20.)]);
+            path(&[(7., 7.), (15., 7.)]);
+            for x in [7., 10., 14., 17.] {
+                path(&[(x, 10.), (x, 14.)]);
+            }
+        }
+        "Small product QR" => {
+            outline(3., 3., 18., 18., 2.);
+            for (x, y) in [(6., 6.), (13., 6.), (6., 13.)] {
+                outline(x, y, 4., 4., 0.);
+            }
+            path(&[(13., 13.), (17., 13.), (17., 17.), (13., 17.), (13., 15.)]);
         }
         "Price tag" => {
             path(&[
