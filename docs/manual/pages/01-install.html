@@ -4,14 +4,15 @@ group: Start here
 summary: Install ThermalPrint, set up your printer, and print your first label.
 -->
 <h2 id="windows-11">Windows 11</h2>
-<p>Install ThermalPrint 0.12.0 for Windows 11 x64 from the <a href="https://apps.microsoft.com/detail/9NXDXRSQW0ZF">Microsoft Store</a>. The US price is $4.99 with a 7-day trial. The package includes PDFium for PDF import.</p>
+<p>Install the latest ThermalPrint for Windows 11 x64 from the <a href="https://apps.microsoft.com/detail/9NXDXRSQW0ZF">Microsoft Store</a>. The US price is $4.99 with a 7-day trial. The package includes PDFium for PDF import. This guide covers <strong>version 0.13.0</strong>; Store updates become available after Microsoft certification. Check your installed version in <strong>About ThermalPrint</strong>.</p>
 <ol>
   <li>Connect your printer and add it in <strong>Settings → Bluetooth &amp; devices → Printers &amp; scanners</strong>. If prompted, install the Windows driver for your printer model.</li>
-  <li>Open <strong>ThermalPrint</strong> from the Start menu. In <strong>Print Center</strong>, choose <strong>Refresh printers</strong> and select your printer.</li>
+  <li>Open <strong>ThermalPrint</strong> from the Start menu. In <strong>Print Center</strong>, choose <strong>Set up printer and label stock</strong>. Select your printer below the assistant; use <strong>Refresh printers</strong> if it is missing.</li>
   <li>Choose the media that matches your stock, such as <strong>4 × 6 in</strong>. If the size is missing, configure it in the printer driver's printing preferences, then refresh the list.</li>
   <li>Print one label and verify its size and barcode readability before starting a batch or enabling automatic printing.</li>
 </ol>
 <p>See <a href="troubleshooting.html#windows-printer-setup">Windows printer troubleshooting</a> if the printer or media is missing.</p>
+<p>To keep watching for labels after closing the window, open <strong>Import &amp; Convert → Background printing</strong> and enable <strong>Keep running when the window is closed</strong>. Then optionally enable <strong>Start at login</strong>. The Store edition uses a Windows startup task; the tray menu lets you reopen, pause, or quit the app. See <a href="automation.html#background-printing">Printing with the window closed</a> for the full setup.</p>
 
 <h2>Linux packages</h2>
 <p>ThermalPrint is free on Linux and available for Debian and Ubuntu (APT), Fedora (Copr), as a Snap, and from source. The packages include the app, a desktop launcher, icons, CUPS client tools, and Poppler PDF utilities.</p>
