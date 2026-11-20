@@ -4,6 +4,7 @@
 - `src/ui/notices.rs` owns persistent errors and action feedback. Controls expose text labels and explanations for disabled actions.
 - `Designer::request_close` owns unsaved-label protection. Explicit Quit uses that protection. Background close keeps the document alive.
 - Background printing is opt-in. A usable tray must exist before hiding the window. Tray Open restores the same document; Pause cancels waiting automatic jobs; Quit stops the process after unsaved changes are resolved.
+- Login startup initializes the tray from the event loop, retries desktop readiness, and applies hiding after the initial frame. A failed Windows icon registration is retried. Explicit Open cancels pending startup hiding; a duplicate background activation does not reveal the owner window. Missing tray support falls back to a visible window after 30 seconds, with retries continuing.
 - A per-user instance lock prevents two folder watchers from submitting the same label. File-content fingerprints reserve automatic jobs before submission. An uncertain submission stays reserved until explicitly cleared, and manual printing remains available for review.
 - History retains bounded recent entries. Reprint uses recorded rendering options and asks for confirmation. Missing or changed source files require review.
 - `src/design_render.rs` owns generated-code preflight. Invalid content or unreadable dimensions fail rendering before printing. Physical scan quality still requires a scanner test.

@@ -20,6 +20,7 @@ const SCREENS: &[&str] = &[
 /// Extra screens for the user manual. They are produced only when named in
 /// `THERMALPRINT_SCREENSHOTS_ONLY` (comma separated), so the README set stays small.
 const MANUAL_SCREENS: &[&str] = &[
+    "main-menu",
     "home-restore",
     "import-autoprint",
     "import-autoprint-warning",
@@ -74,6 +75,10 @@ pub(super) struct Capture {
 }
 
 impl Capture {
+    pub(super) fn showing(&self, scene: &str) -> bool {
+        self.scenes.get(self.index).copied() == Some(scene)
+    }
+
     pub(super) fn new(directory: PathBuf, style: String) -> Self {
         Self {
             directory,
