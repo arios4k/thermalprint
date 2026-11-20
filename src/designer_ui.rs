@@ -785,6 +785,9 @@ impl Designer {
         self.pending_action = Some(PendingAction::Close);
         false
     }
+    pub(crate) fn close_is_pending_or_approved(&self) -> bool {
+        self.close_approved || matches!(self.pending_action, Some(PendingAction::Close))
+    }
     pub(crate) fn protect_window_close(&mut self, ctx: &egui::Context) {
         if ctx.input(|input| input.viewport().close_requested()) && !self.request_close() {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);

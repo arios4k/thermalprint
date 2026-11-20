@@ -35,7 +35,7 @@ fn acquire_in(dir: PathBuf) -> Result<Option<File>> {
             let _ = std::fs::remove_file(dir.join("open-request.json"));
             Ok(Some(lock))
         }
-        Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+        Err(e) if e.raw_os_error() == fs2::lock_contended_error().raw_os_error() => {
             let path = std::env::args_os()
                 .skip(1)
                 .find(|a| a != "--background")

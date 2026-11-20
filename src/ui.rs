@@ -3531,6 +3531,12 @@ impl eframe::App for ThermalPrint {
                     self.tray = None;
                 }
             }
+            if self.explicit_quit
+                && !ctx.input(|i| i.viewport().close_requested())
+                && !self.designer.close_is_pending_or_approved()
+            {
+                self.explicit_quit = false;
+            }
             let action = self.tray.as_ref().and_then(|tray| tray.action());
             match action {
                 Some(crate::background::Action::Open) => self.show_window(ctx),
@@ -3561,6 +3567,7 @@ impl eframe::App for ThermalPrint {
         self.poll(ctx);
         self.watch_tick(ctx);
         self.auto_print_tick(ctx);
+        self.remember_queue();
         if self.background_hidden && self.error {
             self.show_window(ctx);
         }
@@ -3575,7 +3582,6 @@ impl eframe::App for ThermalPrint {
     fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         self.reprint_confirmation(&ctx);
-        self.remember_queue();
         // Errors are also shown as a message that stays until it has been read.
         if self.error && self.status != self.last_error {
             self.last_error = self.status.clone();
