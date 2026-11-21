@@ -1,17 +1,17 @@
 Package: thermalprint
-Version: 0.13.0-1
+Version: 0.13.1-1
 Architecture: amd64
 Homepage: https://github.com/arios4k/thermalprint
 Maintainer: Alexis Rios-Negron <182820807+arios4k@users.noreply.github.com>
-Installed-Size: 34575
+Installed-Size: 34580
 Depends: cups-client, desktop-file-utils, libc6 (>= 2.35), poppler-utils, shared-mime-info
 Priority: optional
 Section: graphics
-Filename: pool/main/t/thermalprint/thermalprint_0.13.0-1_amd64.deb
-Size: 8428704
-SHA256: 2d84cf8da35e4df89d91e1df691d397e39be08f0e3be6295b3b089cf51d77e10
-SHA1: e5b6f608bfb4e8d402e671d1aeeca39d4e39032d
-MD5sum: e26058b5f79963e83de4ab0f21c4ba90
+Filename: pool/main/t/thermalprint/thermalprint_0.13.1-1_amd64.deb
+Size: 8450720
+SHA256: 3af2d46c34f1be11b77e40fbddb1a8e88ae58d157c0892c53e30ff0d0d6afd98
+SHA1: 2d89e977de72802cdb8f79df2ed469c2fb8e71a2
+MD5sum: 52c0591ab0b459e4997eb299cad599be
 Description: Prepare and print shipping labels on Linux thermal printers
  ThermalPrint imports shipping labels, extracts the printable region, and prints
  through CUPS. It also includes a custom thermal label designer with real
