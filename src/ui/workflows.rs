@@ -3,10 +3,91 @@ use super::*;
 
 impl ThermalPrint {
     pub(super) fn show_window(&mut self, ctx: &egui::Context) {
+        self.background_startup.cancel();
         self.background_hidden = false;
         ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
         ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
         ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+    }
+
+    pub(super) fn maintain_tray(&mut self, ctx: &egui::Context) {
+        if !self.settings.background_printing {
+            self.tray = None;
+            self.tray_ready = false;
+            self.background_startup.cancel();
+            return;
+        }
+        if self.last_tray_check.elapsed() >= Duration::from_secs(1) {
+            self.last_tray_check = Instant::now();
+            let was_ready = self.tray_ready;
+            if self.tray.is_some() && !crate::background::tray_available() {
+                self.tray = None;
+            }
+            let result = (|| -> anyhow::Result<()> {
+                if self.tray.is_none() {
+                    self.tray = Some(crate::background::Tray::new()?);
+                }
+                self.tray
+                    .as_ref()
+                    .expect("tray was created")
+                    .status(self.auto_paused, self.settings.auto_print)
+            })();
+            self.tray_ready = result.is_ok();
+            match result {
+                Ok(()) => {
+                    if !was_ready {
+                        tracing::info!("Desktop tray icon is ready");
+                    }
+                    if self.tray_error.take().is_some()
+                        && self
+                            .status
+                            .starts_with("Background printing needs a tray icon:")
+                    {
+                        self.status = crate::i18n::tr("Tray icon restored").into();
+                        self.error = false;
+                    }
+                }
+                Err(error) => {
+                    self.tray = None;
+                    self.tray_error = Some(format!("{error:#}"));
+                    if !self.background_startup.waiting() {
+                        self.status = format!("Background printing needs a tray icon: {error:#}");
+                        self.error = true;
+                    }
+                }
+            }
+            if !self.tray_ready && self.background_hidden {
+                self.show_window(ctx);
+            }
+        }
+        match self
+            .background_startup
+            .poll(self.tray_ready, ctx.cumulative_frame_nr() > 0)
+        {
+            crate::background::StartupAction::Hide => {
+                tracing::info!("Background startup: hiding the window after tray initialization");
+                self.background_hidden = true;
+                ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            }
+            crate::background::StartupAction::Show => {
+                tracing::warn!(
+                    "Background startup: desktop tray did not become ready within 30 seconds"
+                );
+                self.show_window(ctx);
+                self.status = format!(
+                    "Background printing needs a tray icon: {}",
+                    self.tray_error
+                        .as_deref()
+                        .unwrap_or("The desktop status tray is not ready.")
+                );
+                self.error = true;
+            }
+            crate::background::StartupAction::Wait => {}
+        }
+        // Get past eframe's first-show handling before applying the startup hide.
+        if self.background_startup.waiting() && ctx.cumulative_frame_nr() == 0 {
+            ctx.request_repaint();
+        }
     }
 
     pub(super) fn background_controls(&mut self, ui: &mut egui::Ui) {
@@ -17,6 +98,7 @@ impl ThermalPrint {
                 if enabled {
                     match crate::background::Tray::new() {
                         Ok(tray) => {
+                            self.tray_ready = tray.status(self.auto_paused, self.settings.auto_print).is_ok();
                             self.tray = Some(tray);
                             self.settings.background_printing = true;
                             self.persist();
@@ -32,6 +114,7 @@ impl ThermalPrint {
                             self.settings.background_printing = false;
                             self.settings.start_at_login = false;
                             self.tray = None;
+                            self.tray_ready = false;
                             self.persist();
                         }
                         Err(error) => {

@@ -90,6 +90,9 @@ struct AutoJob {
 pub struct ThermalPrint {
     settings: Settings,
     tray: Option<crate::background::Tray>,
+    tray_ready: bool,
+    tray_error: Option<String>,
+    background_startup: crate::background::Startup,
     background_hidden: bool,
     last_tray_check: Instant,
     explicit_quit: bool,
@@ -232,6 +235,10 @@ impl ThermalPrint {
             ),
             egui::TextureOptions::LINEAR,
         );
+        let launch = crate::background::Launch::from_args(std::env::args_os().skip(1));
+        let background_startup = screenshot_directory.is_none()
+            && settings.background_printing
+            && launch.background_only();
         let mut app = Self {
             settings,
             area: Area::Home,
@@ -255,13 +262,13 @@ impl ThermalPrint {
             zoom: 1.,
             reviewed: false,
             drag: None,
-            startup_file: std::env::args_os()
-                .skip(1)
-                .find(|a| a != "--background")
-                .map(PathBuf::from),
+            startup_file: launch.file,
             tray: None,
+            tray_ready: false,
+            tray_error: None,
+            background_startup: crate::background::Startup::new(background_startup),
             background_hidden: false,
-            last_tray_check: Instant::now(),
+            last_tray_check: Instant::now() - Duration::from_secs(1),
             explicit_quit: false,
             setup_step: None,
             stock_name: String::new(),
@@ -298,22 +305,7 @@ impl ThermalPrint {
             terms_search: String::new(),
             capture: None,
         };
-        if screenshot_directory.is_none() && app.settings.background_printing {
-            match crate::background::Tray::new() {
-                Ok(tray) => {
-                    app.tray = Some(tray);
-                    if std::env::args().any(|a| a == "--background") {
-                        app.background_hidden = true;
-                        cc.egui_ctx
-                            .send_viewport_cmd(egui::ViewportCommand::Visible(false));
-                    }
-                }
-                Err(e) => {
-                    app.status = format!("Background printing needs a tray icon: {e:#}");
-                    app.error = true;
-                }
-            }
-        }
+        // Create and verify the tray from the running event loop, not the constructor.
         app.sync_watcher();
         // Documentation screenshots always use English, whatever the system language.
         if screenshot_directory.is_some() {
@@ -3519,19 +3511,24 @@ impl eframe::App for ThermalPrint {
     fn logic(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         if self.capture.is_none() {
             ctx.request_repaint_after(Duration::from_millis(250));
+            if self.background_startup.waiting()
+                && ctx.input(|input| {
+                    input.pointer.any_pressed()
+                        || input
+                            .events
+                            .iter()
+                            .any(|event| matches!(event, egui::Event::Key { pressed: true, .. }))
+                })
+            {
+                self.background_startup.cancel();
+            }
             if let Some(path) = crate::background::open_request() {
                 self.show_window(ctx);
                 if let Some(path) = path {
                     self.startup_file = Some(path);
                 }
             }
-            if self.background_hidden && self.last_tray_check.elapsed() >= Duration::from_secs(5) {
-                self.last_tray_check = Instant::now();
-                if !crate::background::tray_available() {
-                    self.show_window(ctx);
-                    self.tray = None;
-                }
-            }
+            self.maintain_tray(ctx);
             if self.explicit_quit
                 && !ctx.input(|i| i.viewport().close_requested())
                 && !self.designer.close_is_pending_or_approved()
@@ -3550,13 +3547,10 @@ impl eframe::App for ThermalPrint {
                 }
                 None => {}
             }
-            if let Some(tray) = &self.tray {
-                tray.status(self.auto_paused, self.settings.auto_print);
-            }
             if ctx.input(|i| i.viewport().close_requested())
                 && !self.explicit_quit
                 && self.settings.background_printing
-                && self.tray.is_some()
+                && self.tray_ready
             {
                 ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
                 ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
@@ -3719,9 +3713,16 @@ impl eframe::App for ThermalPrint {
                         Stroke::new(1.8, ui.visuals().strong_text_color()),
                     );
                 }
+                if self
+                    .capture
+                    .as_ref()
+                    .is_some_and(|capture| capture.showing("main-menu"))
+                {
+                    egui::Popup::open_id(&ctx, egui::Popup::default_response_id(&menu));
+                }
                 egui::Popup::menu(&menu).show(|ui| {
                     ui.set_min_width(164.);
-                    if ui.button(crate::i18n::tr("User manual")).clicked() {
+                    if ui.button(crate::i18n::tr("Help & Manual")).clicked() {
                         self.open_manual(&ctx);
                         ui.close();
                     }
@@ -3733,6 +3734,7 @@ impl eframe::App for ThermalPrint {
                         self.about_open = true;
                         ui.close();
                     }
+                    ui.separator();
                     if ui.button(crate::i18n::tr("Quit")).clicked() {
                         self.explicit_quit = true;
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);

@@ -983,7 +983,8 @@ const ES: &[(&str, &str)] = &[
     ("Name label", "Etiqueta de nombre"),
     ("Fragile", "Frágil"),
     ("Help", "Ayuda"),
-    ("User manual", "Manual de usuario"),
+    ("Help & Manual", "Ayuda y manual"),
+    ("Tray icon restored", "Icono de la bandeja restaurado"),
     (
         "Open the user manual in your browser (F1)",
         "Abre el manual de usuario en tu navegador (F1)",
@@ -2240,7 +2241,8 @@ const DE: &[(&str, &str)] = &[
     ("Name label", "Namensschild"),
     ("Fragile", "Zerbrechlich"),
     ("Help", "Hilfe"),
-    ("User manual", "Benutzerhandbuch"),
+    ("Help & Manual", "Hilfe & Handbuch"),
+    ("Tray icon restored", "Infobereichsymbol wiederhergestellt"),
     (
         "Open the user manual in your browser (F1)",
         "Benutzerhandbuch im Browser öffnen (F1)",
@@ -3518,7 +3520,8 @@ const FR: &[(&str, &str)] = &[
     ("Name label", "Étiquette de nom"),
     ("Fragile", "Fragile"),
     ("Help", "Aide"),
-    ("User manual", "Manuel d'utilisation"),
+    ("Help & Manual", "Aide et manuel"),
+    ("Tray icon restored", "Icône de notification rétablie"),
     (
         "Open the user manual in your browser (F1)",
         "Ouvre le manuel d'utilisation dans votre navigateur (F1)",
