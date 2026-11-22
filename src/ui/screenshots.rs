@@ -29,6 +29,7 @@ const MANUAL_SCREENS: &[&str] = &[
     "designer-text",
     "import-watch",
     "print-center-full",
+    "label-footer",
     "printer-setup",
     "batch",
     "barcode-types",
@@ -133,7 +134,9 @@ impl Capture {
                 "import" | "import-watch" | "import-autoprint" | "import-autoprint-warning" => {
                     Area::Import
                 }
-                "print-center" | "print-center-full" | "printer-setup" => Area::PrintCenter,
+                "print-center" | "print-center-full" | "label-footer" | "printer-setup" => {
+                    Area::PrintCenter
+                }
                 _ => Area::Home,
             };
             app.terms_open = scene == "printing-terms";
@@ -353,6 +356,10 @@ impl Capture {
                     app.settings.move_printed = true;
                 }
                 "print-center-full" => app.history = demo_history(),
+                "label-footer" => {
+                    app.settings.footer.message_enabled = true;
+                    app.settings.footer.qr_enabled = true;
+                }
                 "printer-setup" => {
                     app.setup_step = Some(1);
                     app.stock_name = "Shipping 4 × 6".into();

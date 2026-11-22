@@ -2600,7 +2600,7 @@ impl ThermalPrint {
         Self::section_frame(ui).show(ui, |ui| {
             ui.set_width(ui.available_width());
             Self::center_heading(ui, crate::i18n::tr("Label footer"), "Small product QR");
-            ui.label(RichText::new(crate::i18n::tr("Add a small message along the bottom of every printed label, imported or designed. It gets its own strip and never covers the label's content. Exports are unchanged.")).small().weak());
+            ui.label(RichText::new(crate::i18n::tr("Add a small message along the bottom of every printed label, imported or designed. Labels are never shrunk or covered for it: it prints only in blank space at the bottom, and the QR code, or the whole footer, is left out when there is not enough room. Exports are unchanged.")).small().weak());
             let footer = &mut self.settings.footer;
             ui.checkbox(&mut footer.message_enabled, crate::i18n::tr("Print a footer message"));
             ui.add_enabled_ui(footer.message_enabled, |ui| {
@@ -2647,6 +2647,14 @@ impl ThermalPrint {
         });
         if self.settings.footer != before {
             self.dirty = self.page.is_some();
+        }
+        // Documentation capture of this card scrolls it into view.
+        if self
+            .capture
+            .as_ref()
+            .is_some_and(|capture| capture.showing("label-footer"))
+        {
+            ui.scroll_to_cursor(Some(egui::Align::BOTTOM));
         }
     }
     fn print_overview(&mut self, ui: &mut egui::Ui) {

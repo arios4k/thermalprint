@@ -131,23 +131,30 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
         // without it, and the footer goes only into blank space below the label's last line.
         // If the label is centered with room to spare, it may move up, whole, to make that
         // space; otherwise the footer is left out.
-        let footer = s.footer.reserved_dots(s.dpi, height, margin);
-        let mut footer_fits = false;
-        if footer > 0 && footer + margin * 2 < height {
+        // If the footer with its QR code does not fit, the message alone may.
+        let mut chosen = None;
+        if s.footer.is_active() {
             // A row is kept back so resampling never puts ink in the footer's gap.
             let blank_below = blank_bottom_rows(&resized).saturating_sub(1) as i64;
             let blank_above = blank_top_rows(&resized) as i64;
             let ink_bottom = top + target_h as i64 - blank_below;
-            let limit = (height - margin - footer) as i64;
-            let shift = (ink_bottom - limit).max(0);
-            if shift <= top + blank_above - margin as i64 {
-                top -= shift;
-                footer_fits = true;
+            for choice in s.footer.choices() {
+                let footer = choice.reserved_dots(s.dpi, height, margin);
+                if footer == 0 || footer + margin * 2 >= height {
+                    continue;
+                }
+                let limit = (height - margin - footer) as i64;
+                let shift = (ink_bottom - limit).max(0);
+                if shift <= top + blank_above - margin as i64 {
+                    top -= shift;
+                    chosen = Some(choice);
+                    break;
+                }
             }
         }
         imageops::overlay(&mut canvas, &resized, ((width - target_w) / 2) as i64, top);
-        if footer_fits {
-            s.footer.draw(
+        if let Some(chosen) = chosen {
+            chosen.draw(
                 &mut canvas,
                 s.dpi,
                 margin,
@@ -155,8 +162,8 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
                 height - margin,
                 margin,
             );
-            if s.footer.qr_left_out(s.dpi, height) {
-                warnings.push(crate::footer::QR_LEFT_OUT.into());
+            if let Some(note) = s.footer.fallback_note(&chosen, s.dpi, height) {
+                warnings.push(note.into());
             }
         } else if s.footer.is_active() {
             warnings.push(crate::footer::FOOTER_NO_BLANK_SPACE.into());

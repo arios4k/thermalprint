@@ -241,3 +241,39 @@ fn a_label_with_room_above_moves_up_whole_to_make_space() {
         "label changed beyond moving up"
     );
 }
+#[test]
+fn without_room_for_the_qr_code_only_the_message_prints() {
+    // Enough blank space for the message, not for the QR code.
+    let mut label = full_bleed();
+    for y in 865..900 {
+        for x in 0..600 {
+            label.image.put_pixel(x, y, Rgb([255; 3]));
+        }
+    }
+    let plain = Settings::default();
+    let before = layout::render(&label, Crop::FULL, &plain).unwrap();
+    let after = layout::render(&label, Crop::FULL, &with_footer(true, &plain)).unwrap();
+    let message_only = layout::render(&label, Crop::FULL, &with_footer(false, &plain)).unwrap();
+    assert!(
+        after
+            .warnings
+            .iter()
+            .any(|w| w.contains("QR code was left out")),
+        "{:?}",
+        after.warnings
+    );
+    // Exactly the message-only footer, and the label itself is untouched.
+    assert!(
+        after.image == message_only.image,
+        "not the message-only footer"
+    );
+    let last = *ink_rows(&before.image).last().unwrap();
+    assert!(
+        without_rows_from(&after.image, last + 1) == without_rows_from(&before.image, last + 1),
+        "label changed"
+    );
+    assert!(
+        ink_rows(&after.image).iter().any(|&y| y > last + 1),
+        "message printed"
+    );
+}

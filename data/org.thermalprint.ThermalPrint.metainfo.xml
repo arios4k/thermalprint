@@ -60,6 +60,17 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.14.0" date="2026-11-21">
+      <description>
+        <p>An optional label footer, more accurate automatic cropping, and Windows on the project page.</p>
+        <ul>
+          <li>Add an optional footer message, with or without a QR code, at the bottom-left of printed labels.</li>
+          <li>Never shrink or cover a label for the footer: it prints only in blank space, and the QR code or the whole footer is left out when there is not enough room.</li>
+          <li>Keep sections that carry their own barcode, such as the USPS half of a FedEx Ground Economy label, when cropping automatically.</li>
+          <li>Show Windows 11 installation on the project page.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.13.1" date="2026-11-20">
       <description>
         <p>More reliable background startup and tray recovery on Linux and Windows.</p>
