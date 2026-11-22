@@ -337,7 +337,12 @@ impl ThermalPrint {
                     )
                 })?;
                 let detail = printing::submit_raw_zpl(
-                    &crate::zpl::encode_design_for_print(doc, &settings)?,
+                    &crate::zpl::encode_design_for_print(
+                        doc,
+                        settings.dpi,
+                        &settings.footer,
+                        settings.safe_margin_mm,
+                    )?,
                     &settings,
                     &printer,
                 )?;

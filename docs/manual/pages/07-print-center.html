@@ -54,23 +54,7 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
 <p><strong>Reset offset</strong> sets both values back to zero. The offset applies to printed labels only; exported PDF, PNG, SVG, and ZPL files are never shifted. It also does not apply to raw ZPL printing.</p>
 <div class="callout tip"><p>If the whole image is too small or the edges are cut off by the same amount all around, the cause is usually the <em>media size</em>, not alignment. Check that the printer media matches your labels first.</p></div>
 
-<h2 id="label-footer">Label footer</h2>
-<p>The <strong>Label footer</strong> card adds a small line of text along the bottom of every label you print, such as <em>Printed with ThermalPrint</em> or your shop's name. You can also add a small QR code just before the message, for example a link to your website. The footer always sits at the bottom-left of the label, away from the carrier's tracking barcode in the middle and the 2D code USPS prints in the bottom-right corner. The footer is off until you turn it on, and when it is off your labels print exactly as before.</p>
-<div class="callout tip"><p><strong>Labels are never shrunk for the footer.</strong> It prints only in blank space at the bottom of a label. When there is room for the message but not the QR code, only the message prints. When there is not even room for the message, the whole footer is left out. Either way, the label and its barcodes print exactly as they would without the footer, and a note says what was left out.</p></div>
-{{figure:label-footer|The Label footer card in version 0.14.0, with Print a footer message, the message, Add a QR code beside the message, the QR code link, and Reset footer|The Label footer card with the message and QR code turned on.}}
-<ol>
-  <li>In <strong>Print Center</strong>, open the <strong>Label footer</strong> card and enable <strong>Print a footer message</strong>.</li>
-  <li>Type your <strong>Message</strong>, up to 80 characters.</li>
-  <li>To add a QR code, enable <strong>Add a QR code beside the message</strong> and enter a link or text, up to 200 characters. It starts with a link to this user manual. The QR code prints only with a message.</li>
-  <li>Print one label and scan the QR code with your phone before printing a batch.</li>
-</ol>
-<p>The footer applies to imported labels, Label Designer prints, batches, number ranges, printed sheets, reprints, and automatic printing. It never covers the label and never changes its size, so every barcode prints exactly as it would without the footer:</p>
-<ul>
-  <li><strong>Imported labels</strong> are never shrunk for the footer. It prints only in blank space under the label's last line; if the label sits in the middle of the stock with room to spare, it may move up, unchanged, to make that space. When the QR code does not fit, only the message prints. A carrier label that fills its stock usually has no blank space at all, so the whole footer is left out. Import &amp; Convert says which. Even a slight reduction can make thin barcode bars harder to scan on a thermal printer.</li>
-  <li><strong>Designs</strong> keep their layout. The footer goes in the empty strip at the bottom of the label, inside the safe margin. If part of the design is in that strip, the QR code, or the whole footer, is left out and the Label Designer says why. Move the design up to make room.</li>
-</ul>
-<p>The footer stays small: the message is about 2 mm tall, and long messages are shortened to fit. The QR code uses modules at least 0.25 mm wide and the full white border scanners need. That border also serves as the space above the footer and overlaps the white margin below it, so the footer needs about 8 mm of blank space at the bottom of a 4 × 6 in label with a QR code, and about 3 to 5 mm for a message alone, which also keeps about 1.5 mm from the label's left and bottom edges. On short labels, where the QR code would take more than about an eighth of the height, it is left out and only the message prints.</p>
-<p>Your footer settings are saved and stay on between sessions. <strong>Reset footer</strong> turns the footer off and restores the default message and link. The footer appears in the preview and on printed labels only. Exported PDF, PNG, SVG, and ZPL files never include it.</p>
+<div class="callout note" id="label-footer"><p><strong>Looking for the label footer?</strong> Since version 0.15.0 it is set in the Label Designer and applies only to labels you design there. Imported shipping labels never get a footer. See <a href="designer.html#label-footer">Label footer</a>.</p></div>
 
 <h2 id="recent-prints">Recent prints</h2>
 <p>Batch runs and number ranges are recorded once, with the count in the title, for example <em>Customer label · batch of 50</em> or <em>Shelf tag · numbers 20</em>; reopening one opens the original design, not a single numbered label.</p>

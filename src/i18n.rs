@@ -1377,20 +1377,8 @@ const ES: &[(&str, &str)] = &[
         "The footer QR code was left out because there is not enough blank space at the bottom of this label for it. The message still prints.",
         "Se omitió el código QR del pie porque no hay suficiente espacio en blanco en la parte inferior de esta etiqueta. El mensaje se imprime igualmente.",
     ),
-    (
-        "The footer was left out: this label has no blank space at the bottom for it, and a label is never shrunk to make room, so its barcodes print exactly as they are.",
-        "Se omitió el pie: esta etiqueta no tiene espacio en blanco en la parte inferior y nunca se reduce una etiqueta para hacerle sitio, así que sus códigos de barras se imprimen tal cual.",
-    ),
-    (
-        "Add a small message along the bottom of every printed label, imported or designed. Labels are never shrunk or covered for it: it prints only in blank space at the bottom, and the QR code, or the whole footer, is left out when there is not enough room. Exports are unchanged.",
-        "Añade un mensaje pequeño en la parte inferior de cada etiqueta impresa, importada o diseñada. Las etiquetas nunca se reducen ni se cubren por él: solo se imprime en el espacio en blanco inferior, y se omite el código QR, o todo el pie, cuando no hay espacio suficiente. Las exportaciones no cambian.",
-    ),
     ("Print a footer message", "Imprimir un mensaje al pie"),
     ("Footer message", "Mensaje al pie"),
-    (
-        "Add a QR code beside the message",
-        "Añadir un código QR junto al mensaje",
-    ),
     ("QR code link or text", "Enlace o texto del código QR"),
     ("Footer QR code content", "Contenido del código QR del pie"),
     (
@@ -1403,25 +1391,79 @@ const ES: &[(&str, &str)] = &[
     ),
     ("Reset footer", "Restablecer pie"),
     (
-        "Turn the footer off and restore the default message and QR code link",
-        "Desactivar el pie y restaurar el mensaje y el enlace del código QR predeterminados",
-    ),
-    (
         "The QR text is too long to encode. Shorten it.",
         "El texto del QR es demasiado largo para codificarlo. Acórtalo.",
-    ),
-    (
-        "The footer was not added: part of the design is in the bottom strip it needs. Move the design up to make room, or turn the footer off.",
-        "No se añadió el pie: parte del diseño ocupa la franja inferior que necesita. Sube el diseño para dejar espacio o desactiva el pie.",
-    ),
-    (
-        "The footer was not added: the label is too small for it.",
-        "No se añadió el pie: la etiqueta es demasiado pequeña.",
     ),
     (
         "The footer QR code was left out because it would be large on this short label. The message still prints.",
         "Se omitió el código QR del pie porque sería grande en esta etiqueta corta. El mensaje se imprime igualmente.",
     ),
+    // 0.15.0: designer footer, overlap warning, symbols
+    (
+        "Add a QR code before the message",
+        "Añadir un código QR antes del mensaje",
+    ),
+    (
+        "Turn the footer off and restore the default message, QR code link, and alignment",
+        "Desactivar el pie y restaurar el mensaje, el enlace del código QR y la alineación predeterminados",
+    ),
+    (
+        "The footer was left out: part of the design is in the blank space it needs at the bottom of the label. Move objects up, choose another alignment, or turn the footer off. The label size is unchanged.",
+        "Se omitió el pie: parte del diseño ocupa el espacio en blanco que necesita en la parte inferior de la etiqueta. Sube los objetos, elige otra alineación o desactiva el pie. El tamaño de la etiqueta no cambia.",
+    ),
+    (
+        "The footer was left out: the label is too small for it inside the printable area.",
+        "Se omitió el pie: la etiqueta es demasiado pequeña para él dentro del área imprimible.",
+    ),
+    (
+        "Adds a small message, and if you like a QR code, along the bottom of labels you design here when you print them. Imported shipping labels never get a footer.",
+        "Añade un mensaje pequeño y, si quieres, un código QR en la parte inferior de las etiquetas que diseñas aquí al imprimirlas. Las etiquetas de envío importadas nunca llevan pie.",
+    ),
+    (
+        "Choose where the whole footer sits along the bottom edge. Pick a side where your design leaves blank space.",
+        "Elige dónde va todo el pie a lo largo del borde inferior. Escoge un lado donde tu diseño deje espacio en blanco.",
+    ),
+    (
+        "The label size and printable area never change. If that spot is not blank or is outside the printable area, the QR code, or the whole footer, is left out and a note says why. Exports do not include the footer.",
+        "El tamaño de la etiqueta y el área imprimible nunca cambian. Si ese lugar no está en blanco o queda fuera del área imprimible, se omite el código QR, o todo el pie, y una nota explica por qué. Las exportaciones no incluyen el pie.",
+    ),
+    (
+        "Put the whole footer, QR code included, at the bottom-left",
+        "Colocar todo el pie, con el código QR, abajo a la izquierda",
+    ),
+    (
+        "Put the whole footer, QR code included, at the bottom center",
+        "Colocar todo el pie, con el código QR, abajo en el centro",
+    ),
+    (
+        "Put the whole footer, QR code included, at the bottom-right",
+        "Colocar todo el pie, con el código QR, abajo a la derecha",
+    ),
+    (
+        "The footer fits: the canvas shows it where it will print.",
+        "El pie cabe: el lienzo lo muestra donde se imprimirá.",
+    ),
+    ("Footer", "Pie"),
+    (
+        "Show the label footer settings in the properties panel",
+        "Mostrar los ajustes del pie de etiqueta en el panel de propiedades",
+    ),
+    (
+        "Print is off while a barcode or QR code overlaps another object. Move or resize them so they no longer touch, and Print turns back on.",
+        "Imprimir está desactivado mientras un código de barras o QR se superpone a otro objeto. Muévelos o cambia su tamaño para que no se toquen, y Imprimir vuelve a activarse.",
+    ),
+    (
+        "Overlap: these codes touch another object, so Print is off until they are apart. Move or resize them:",
+        "Superposición: estos códigos tocan otro objeto, así que Imprimir está desactivado hasta que se separen. Muévelos o cambia su tamaño:",
+    ),
+    ("This side up", "Este lado hacia arriba"),
+    ("Keep dry", "Mantener seco"),
+    ("Recycling", "Reciclaje"),
+    ("Hazard", "Peligro"),
+    ("Do not stack", "No apilar"),
+    ("Keep cool", "Mantener fresco"),
+    ("Keep out of sunlight", "Proteger de la luz solar"),
+    ("Package", "Paquete"),
 ];
 const DE: &[(&str, &str)] = &[
     ("No matches", "Keine Treffer"),
@@ -2677,20 +2719,8 @@ const DE: &[(&str, &str)] = &[
         "The footer QR code was left out because there is not enough blank space at the bottom of this label for it. The message still prints.",
         "Der QR-Code der Fußzeile wurde weggelassen, weil unten auf diesem Etikett nicht genug freier Platz dafür ist. Die Nachricht wird trotzdem gedruckt.",
     ),
-    (
-        "The footer was left out: this label has no blank space at the bottom for it, and a label is never shrunk to make room, so its barcodes print exactly as they are.",
-        "Die Fußzeile wurde weggelassen: Dieses Etikett hat unten keinen freien Platz dafür, und ein Etikett wird nie verkleinert, um Platz zu schaffen. Seine Barcodes werden also unverändert gedruckt.",
-    ),
-    (
-        "Add a small message along the bottom of every printed label, imported or designed. Labels are never shrunk or covered for it: it prints only in blank space at the bottom, and the QR code, or the whole footer, is left out when there is not enough room. Exports are unchanged.",
-        "Fügt unten auf jedem gedruckten Etikett, importiert oder gestaltet, eine kleine Nachricht hinzu. Etiketten werden dafür nie verkleinert oder verdeckt: Sie wird nur in freien Platz unten gedruckt, und der QR-Code oder die ganze Fußzeile wird weggelassen, wenn nicht genug Platz ist. Exporte bleiben unverändert.",
-    ),
     ("Print a footer message", "Fußzeilennachricht drucken"),
     ("Footer message", "Fußzeilennachricht"),
-    (
-        "Add a QR code beside the message",
-        "QR-Code neben der Nachricht hinzufügen",
-    ),
     ("QR code link or text", "Link oder Text des QR-Codes"),
     ("Footer QR code content", "Inhalt des Fußzeilen-QR-Codes"),
     (
@@ -2703,25 +2733,79 @@ const DE: &[(&str, &str)] = &[
     ),
     ("Reset footer", "Fußzeile zurücksetzen"),
     (
-        "Turn the footer off and restore the default message and QR code link",
-        "Fußzeile ausschalten und Standardnachricht und QR-Code-Link wiederherstellen",
-    ),
-    (
         "The QR text is too long to encode. Shorten it.",
         "Der QR-Text ist zu lang zum Kodieren. Kürzen Sie ihn.",
-    ),
-    (
-        "The footer was not added: part of the design is in the bottom strip it needs. Move the design up to make room, or turn the footer off.",
-        "Die Fußzeile wurde nicht hinzugefügt: Ein Teil des Designs liegt im benötigten unteren Streifen. Verschieben Sie das Design nach oben oder schalten Sie die Fußzeile aus.",
-    ),
-    (
-        "The footer was not added: the label is too small for it.",
-        "Die Fußzeile wurde nicht hinzugefügt: Das Etikett ist dafür zu klein.",
     ),
     (
         "The footer QR code was left out because it would be large on this short label. The message still prints.",
         "Der QR-Code der Fußzeile wurde weggelassen, weil er auf diesem kurzen Etikett zu groß wäre. Die Nachricht wird trotzdem gedruckt.",
     ),
+    // 0.15.0: designer footer, overlap warning, symbols
+    (
+        "Add a QR code before the message",
+        "QR-Code vor der Nachricht hinzufügen",
+    ),
+    (
+        "Turn the footer off and restore the default message, QR code link, and alignment",
+        "Fußzeile ausschalten und Standardnachricht, QR-Code-Link und Ausrichtung wiederherstellen",
+    ),
+    (
+        "The footer was left out: part of the design is in the blank space it needs at the bottom of the label. Move objects up, choose another alignment, or turn the footer off. The label size is unchanged.",
+        "Die Fußzeile wurde weggelassen: Ein Teil des Designs liegt im freien Bereich, den sie unten auf dem Etikett braucht. Verschieben Sie Objekte nach oben, wählen Sie eine andere Ausrichtung oder schalten Sie die Fußzeile aus. Die Etikettengröße bleibt gleich.",
+    ),
+    (
+        "The footer was left out: the label is too small for it inside the printable area.",
+        "Die Fußzeile wurde weggelassen: Das Etikett ist im druckbaren Bereich zu klein dafür.",
+    ),
+    (
+        "Adds a small message, and if you like a QR code, along the bottom of labels you design here when you print them. Imported shipping labels never get a footer.",
+        "Fügt beim Drucken eine kleine Nachricht und auf Wunsch einen QR-Code unten auf den hier gestalteten Etiketten hinzu. Importierte Versandetiketten erhalten nie eine Fußzeile.",
+    ),
+    (
+        "Choose where the whole footer sits along the bottom edge. Pick a side where your design leaves blank space.",
+        "Wählen Sie, wo die ganze Fußzeile am unteren Rand sitzt. Nehmen Sie eine Seite, auf der Ihr Design Platz frei lässt.",
+    ),
+    (
+        "The label size and printable area never change. If that spot is not blank or is outside the printable area, the QR code, or the whole footer, is left out and a note says why. Exports do not include the footer.",
+        "Etikettengröße und druckbarer Bereich ändern sich nie. Ist diese Stelle nicht frei oder liegt sie außerhalb des druckbaren Bereichs, wird der QR-Code oder die ganze Fußzeile weggelassen, und ein Hinweis nennt den Grund. Exporte enthalten die Fußzeile nicht.",
+    ),
+    (
+        "Put the whole footer, QR code included, at the bottom-left",
+        "Die ganze Fußzeile samt QR-Code unten links platzieren",
+    ),
+    (
+        "Put the whole footer, QR code included, at the bottom center",
+        "Die ganze Fußzeile samt QR-Code unten mittig platzieren",
+    ),
+    (
+        "Put the whole footer, QR code included, at the bottom-right",
+        "Die ganze Fußzeile samt QR-Code unten rechts platzieren",
+    ),
+    (
+        "The footer fits: the canvas shows it where it will print.",
+        "Die Fußzeile passt: Die Arbeitsfläche zeigt sie dort, wo sie gedruckt wird.",
+    ),
+    ("Footer", "Fußzeile"),
+    (
+        "Show the label footer settings in the properties panel",
+        "Einstellungen der Etikettenfußzeile im Eigenschaftenbereich anzeigen",
+    ),
+    (
+        "Print is off while a barcode or QR code overlaps another object. Move or resize them so they no longer touch, and Print turns back on.",
+        "Drucken ist aus, solange ein Barcode oder QR-Code ein anderes Objekt überlappt. Verschieben Sie sie oder ändern Sie die Größe, bis sie sich nicht mehr berühren, dann ist Drucken wieder verfügbar.",
+    ),
+    (
+        "Overlap: these codes touch another object, so Print is off until they are apart. Move or resize them:",
+        "Überlappung: Diese Codes berühren ein anderes Objekt, daher ist Drucken aus, bis sie getrennt sind. Verschieben oder Größe ändern:",
+    ),
+    ("This side up", "Diese Seite oben"),
+    ("Keep dry", "Vor Nässe schützen"),
+    ("Recycling", "Recycling"),
+    ("Hazard", "Gefahr"),
+    ("Do not stack", "Nicht stapeln"),
+    ("Keep cool", "Kühl lagern"),
+    ("Keep out of sunlight", "Vor Sonnenlicht schützen"),
+    ("Package", "Paket"),
 ];
 const FR: &[(&str, &str)] = &[
     ("No matches", "Aucun résultat"),
@@ -4013,20 +4097,8 @@ const FR: &[(&str, &str)] = &[
         "The footer QR code was left out because there is not enough blank space at the bottom of this label for it. The message still prints.",
         "Le code QR du pied a été omis car il n'y a pas assez d'espace libre en bas de cette étiquette. Le message s'imprime quand même.",
     ),
-    (
-        "The footer was left out: this label has no blank space at the bottom for it, and a label is never shrunk to make room, so its barcodes print exactly as they are.",
-        "Le pied a été omis : cette étiquette n'a pas d'espace libre en bas, et une étiquette n'est jamais réduite pour lui faire de la place, donc ses codes-barres s'impriment tels quels.",
-    ),
-    (
-        "Add a small message along the bottom of every printed label, imported or designed. Labels are never shrunk or covered for it: it prints only in blank space at the bottom, and the QR code, or the whole footer, is left out when there is not enough room. Exports are unchanged.",
-        "Ajoute un petit message en bas de chaque étiquette imprimée, importée ou conçue. Les étiquettes ne sont jamais réduites ni couvertes pour lui : il s'imprime seulement dans l'espace libre en bas, et le code QR, ou tout le pied, est omis quand la place manque. Les exports ne changent pas.",
-    ),
     ("Print a footer message", "Imprimer un message de pied"),
     ("Footer message", "Message de pied"),
-    (
-        "Add a QR code beside the message",
-        "Ajouter un code QR à côté du message",
-    ),
     ("QR code link or text", "Lien ou texte du code QR"),
     ("Footer QR code content", "Contenu du code QR du pied"),
     (
@@ -4039,25 +4111,79 @@ const FR: &[(&str, &str)] = &[
     ),
     ("Reset footer", "Réinitialiser le pied"),
     (
-        "Turn the footer off and restore the default message and QR code link",
-        "Désactiver le pied et rétablir le message et le lien du code QR par défaut",
-    ),
-    (
         "The QR text is too long to encode. Shorten it.",
         "Le texte du QR est trop long pour être encodé. Raccourcissez-le.",
-    ),
-    (
-        "The footer was not added: part of the design is in the bottom strip it needs. Move the design up to make room, or turn the footer off.",
-        "Le pied n'a pas été ajouté : une partie du design se trouve dans la bande inférieure nécessaire. Remontez le design pour faire de la place ou désactivez le pied.",
-    ),
-    (
-        "The footer was not added: the label is too small for it.",
-        "Le pied n'a pas été ajouté : l'étiquette est trop petite.",
     ),
     (
         "The footer QR code was left out because it would be large on this short label. The message still prints.",
         "Le code QR du pied a été omis car il serait grand sur cette étiquette courte. Le message s'imprime quand même.",
     ),
+    // 0.15.0: designer footer, overlap warning, symbols
+    (
+        "Add a QR code before the message",
+        "Ajouter un code QR avant le message",
+    ),
+    (
+        "Turn the footer off and restore the default message, QR code link, and alignment",
+        "Désactiver le pied et rétablir le message, le lien du code QR et l'alignement par défaut",
+    ),
+    (
+        "The footer was left out: part of the design is in the blank space it needs at the bottom of the label. Move objects up, choose another alignment, or turn the footer off. The label size is unchanged.",
+        "Le pied a été omis : une partie du design occupe l'espace vide dont il a besoin en bas de l'étiquette. Remontez des objets, choisissez un autre alignement ou désactivez le pied. La taille de l'étiquette ne change pas.",
+    ),
+    (
+        "The footer was left out: the label is too small for it inside the printable area.",
+        "Le pied a été omis : l'étiquette est trop petite pour lui dans la zone imprimable.",
+    ),
+    (
+        "Adds a small message, and if you like a QR code, along the bottom of labels you design here when you print them. Imported shipping labels never get a footer.",
+        "Ajoute un petit message et, si vous le souhaitez, un code QR en bas des étiquettes conçues ici lorsque vous les imprimez. Les étiquettes d'expédition importées n'ont jamais de pied.",
+    ),
+    (
+        "Choose where the whole footer sits along the bottom edge. Pick a side where your design leaves blank space.",
+        "Choisissez où se place tout le pied le long du bord inférieur. Prenez un côté où votre design laisse de l'espace vide.",
+    ),
+    (
+        "The label size and printable area never change. If that spot is not blank or is outside the printable area, the QR code, or the whole footer, is left out and a note says why. Exports do not include the footer.",
+        "La taille de l'étiquette et la zone imprimable ne changent jamais. Si cet endroit n'est pas vide ou sort de la zone imprimable, le code QR, ou tout le pied, est omis et une note en explique la raison. Les exports n'incluent pas le pied.",
+    ),
+    (
+        "Put the whole footer, QR code included, at the bottom-left",
+        "Placer tout le pied, code QR compris, en bas à gauche",
+    ),
+    (
+        "Put the whole footer, QR code included, at the bottom center",
+        "Placer tout le pied, code QR compris, en bas au centre",
+    ),
+    (
+        "Put the whole footer, QR code included, at the bottom-right",
+        "Placer tout le pied, code QR compris, en bas à droite",
+    ),
+    (
+        "The footer fits: the canvas shows it where it will print.",
+        "Le pied tient : le canevas le montre là où il sera imprimé.",
+    ),
+    ("Footer", "Pied"),
+    (
+        "Show the label footer settings in the properties panel",
+        "Afficher les réglages du pied d'étiquette dans le panneau des propriétés",
+    ),
+    (
+        "Print is off while a barcode or QR code overlaps another object. Move or resize them so they no longer touch, and Print turns back on.",
+        "L'impression est désactivée tant qu'un code-barres ou un code QR chevauche un autre objet. Déplacez-les ou redimensionnez-les pour qu'ils ne se touchent plus, et l'impression se réactive.",
+    ),
+    (
+        "Overlap: these codes touch another object, so Print is off until they are apart. Move or resize them:",
+        "Chevauchement : ces codes touchent un autre objet, l'impression est donc désactivée jusqu'à ce qu'ils soient séparés. Déplacez-les ou redimensionnez-les :",
+    ),
+    ("This side up", "Haut"),
+    ("Keep dry", "Craint l'humidité"),
+    ("Recycling", "Recyclage"),
+    ("Hazard", "Danger"),
+    ("Do not stack", "Ne pas empiler"),
+    ("Keep cool", "Conserver au frais"),
+    ("Keep out of sunlight", "Protéger du soleil"),
+    ("Package", "Colis"),
 ];
 
 #[cfg(test)]
@@ -4156,6 +4282,8 @@ mod tests {
             include_str!("fonts.rs"),
             include_str!("help.rs"),
             include_str!("footer.rs"),
+            include_str!("design_render.rs"),
+            include_str!("symbols.rs"),
         ]
         .concat();
         let missing: Vec<_> = ES

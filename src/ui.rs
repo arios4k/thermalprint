@@ -1690,24 +1690,7 @@ impl ThermalPrint {
             return;
         }
         let output = self.output.clone().unwrap();
-        // The preview includes the optional print footer; exported files never do.
-        let plain = self.settings.footer.is_active().then(|| {
-            let mut settings = self.settings.clone();
-            settings.footer = crate::footer::Footer::default();
-            let crop = if settings.mode == Mode::FullPage {
-                Crop::FULL
-            } else {
-                self.crop
-            };
-            (self.page.clone(), crop, settings)
-        });
         self.task("Exporting label…", move || {
-            let output = match plain {
-                Some((Some(page), crop, settings)) => {
-                    Arc::new(layout::render(&page, crop, &settings)?)
-                }
-                _ => output,
-            };
             let extension = if pdf { "pdf" } else { "png" };
             if let Some(mut path) = rfd::FileDialog::new()
                 .add_filter(extension, &[extension])
@@ -2262,7 +2245,6 @@ impl ThermalPrint {
             self.print_overview(ui);
         }
         ui.add_space(12.);
-        self.footer_settings(ui);
         self.recent_prints(ui);
         if serde_json::to_string(&old).ok() != serde_json::to_string(&self.settings).ok() {
             self.persist();
@@ -2592,70 +2574,6 @@ impl ThermalPrint {
                 }
             });
         });
-    }
-    /// The optional message and QR code printed along the bottom of every label. Off by
-    /// default; saved with the other preferences until reset.
-    fn footer_settings(&mut self, ui: &mut egui::Ui) {
-        let before = self.settings.footer.clone();
-        Self::section_frame(ui).show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            Self::center_heading(ui, crate::i18n::tr("Label footer"), "Small product QR");
-            ui.label(RichText::new(crate::i18n::tr("Add a small message along the bottom of every printed label, imported or designed. Labels are never shrunk or covered for it: it prints only in blank space at the bottom, and the QR code, or the whole footer, is left out when there is not enough room. Exports are unchanged.")).small().weak());
-            let footer = &mut self.settings.footer;
-            ui.checkbox(&mut footer.message_enabled, crate::i18n::tr("Print a footer message"));
-            ui.add_enabled_ui(footer.message_enabled, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(crate::i18n::tr("Message"));
-                    ui.add(
-                        egui::TextEdit::singleline(&mut footer.message)
-                            .char_limit(crate::footer::MAX_MESSAGE_CHARS)
-                            .hint_text(crate::footer::DEFAULT_MESSAGE)
-                            .desired_width(f32::INFINITY),
-                    )
-                    .accessible_name(crate::i18n::tr("Footer message"));
-                });
-                ui.checkbox(&mut footer.qr_enabled, crate::i18n::tr("Add a QR code beside the message"));
-                ui.add_enabled_ui(footer.qr_enabled, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(crate::i18n::tr("QR code link or text"));
-                        ui.add(
-                            egui::TextEdit::singleline(&mut footer.qr_text)
-                                .char_limit(crate::footer::MAX_QR_CHARS)
-                                .hint_text(crate::footer::DEFAULT_QR_TEXT)
-                                .desired_width(f32::INFINITY),
-                        )
-                        .accessible_name(crate::i18n::tr("Footer QR code content"));
-                    });
-                });
-            });
-            if footer.message_enabled && footer.message.trim().is_empty() {
-                ui.label(RichText::new(crate::i18n::tr("Enter a message to print the footer. The QR code prints only with a message.")).small());
-            }
-            if let Some(problem) = footer.qr_problem() {
-                ui.label(RichText::new(crate::i18n::tr(problem)).small().color(ui.visuals().error_fg_color));
-            }
-            if footer.shows_qr() {
-                ui.label(RichText::new(crate::i18n::tr("Scan a test print with your phone before printing a batch.")).small().weak());
-            }
-            if ui
-                .add_enabled(*footer != crate::footer::Footer::default(), egui::Button::new(crate::i18n::tr("Reset footer")))
-                .on_hover_text(crate::i18n::tr("Turn the footer off and restore the default message and QR code link"))
-                .clicked()
-            {
-                *footer = crate::footer::Footer::default();
-            }
-        });
-        if self.settings.footer != before {
-            self.dirty = self.page.is_some();
-        }
-        // Documentation capture of this card scrolls it into view.
-        if self
-            .capture
-            .as_ref()
-            .is_some_and(|capture| capture.showing("label-footer"))
-        {
-            ui.scroll_to_cursor(Some(egui::Align::BOTTOM));
-        }
     }
     fn print_overview(&mut self, ui: &mut egui::Ui) {
         Self::section_frame(ui).show(ui, |ui| {
@@ -4003,6 +3921,10 @@ impl eframe::App for ThermalPrint {
                 self.designer.show(ui, &self.settings, &self.printers);
                 if let Some(font) = self.designer.last_font_request.take() {
                     self.settings.last_font = font;
+                    self.persist();
+                }
+                if let Some(footer) = self.designer.footer_request.take() {
+                    self.settings.footer = footer;
                     self.persist();
                 }
                 if let Some(margin) = self.designer.safe_margin_request.take() {

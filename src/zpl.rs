@@ -33,16 +33,16 @@ pub fn encode_output(output: &Output) -> Result<Vec<u8>> {
     zpl.push_str("\n^FS\n^XZ\n");
     Ok(zpl.into_bytes())
 }
-/// The design as raw ZPL for printing, with the optional print footer from `s`.
+/// The design as raw ZPL for printing, with the optional designer footer kept `edge_mm`
+/// from the label's sides and bottom.
 pub fn encode_design_for_print(
     doc: &LabelDocument,
-    s: &crate::settings::Settings,
+    dpi: u32,
+    footer: &crate::footer::Footer,
+    edge_mm: f32,
 ) -> Result<Vec<u8>> {
     encode_output(&design_render::render_with_footer(
-        doc,
-        s.dpi,
-        &s.footer,
-        s.safe_margin_mm,
+        doc, dpi, footer, edge_mm,
     )?)
 }
 pub fn encode_design(doc: &LabelDocument, dpi: u32) -> Result<Vec<u8>> {

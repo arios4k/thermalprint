@@ -222,7 +222,16 @@ pub struct Designer {
     rendered_footer: Option<(crate::footer::Footer, f32)>,
     /// Why the print footer is left out of this design, when it is.
     footer_note: Option<String>,
-    worker: Option<(u64, mpsc::Receiver<anyhow::Result<Output>>)>,
+    /// The optional footer for designed labels, as the app keeps it in the settings.
+    footer: crate::footer::Footer,
+    /// The footer was just changed here; the app saves it in the settings.
+    pub footer_request: Option<crate::footer::Footer>,
+    /// Open the footer section of the properties panel on the next frame.
+    pub footer_open: bool,
+    /// Barcodes and QR codes that overlap another object in the last preview. Print stays
+    /// off while there are any; the canvas stays editable so they can be moved apart.
+    overlaps: Vec<u64>,
+    worker: Option<(u64, mpsc::Receiver<anyhow::Result<Preview>>)>,
     texture: Option<egui::TextureHandle>,
     output: Option<Arc<Output>>,
     drag: Option<Drag>,
@@ -295,6 +304,10 @@ impl Designer {
             rendered_revision: None,
             rendered_footer: None,
             footer_note: None,
+            footer: crate::footer::Footer::default(),
+            footer_request: None,
+            footer_open: false,
+            overlaps: Vec::new(),
             worker: None,
             texture: None,
             output: None,
@@ -1037,8 +1050,15 @@ impl Designer {
             self.error = true;
             return;
         };
+        if !self.can_print() {
+            self.status = crate::i18n::tr(OVERLAP_PRINT_OFF).into();
+            self.error = true;
+            return;
+        }
         let doc = self.doc.clone();
-        let settings = settings.clone();
+        let edge = self.footer_edge_mm(settings);
+        let mut settings = settings.clone();
+        settings.footer = self.footer.clone();
         let raw = self.raw_zpl;
         let path = self.path.clone();
         self.start_job(
@@ -1048,14 +1068,15 @@ impl Designer {
             ),
             move || {
                 let submitted = if raw {
-                    let bytes = zpl::encode_design_for_print(&doc, &settings)?;
+                    let bytes =
+                        zpl::encode_design_for_print(&doc, settings.dpi, &settings.footer, edge)?;
                     printing::submit_raw_zpl(&bytes, &settings, &printer)
                 } else {
                     let output = design_render::render_with_footer(
                         &doc,
                         settings.dpi,
                         &settings.footer,
-                        settings.safe_margin_mm,
+                        edge,
                     )?;
                     printing::submit(&output, &settings, &printer)
                 }?;
@@ -1422,7 +1443,10 @@ impl Designer {
                     }
                 });
             });
-        if let Some(print) = action {
+        if action == Some(true) && !self.can_print() {
+            self.status = crate::i18n::tr(OVERLAP_PRINT_OFF).into();
+            self.error = true;
+        } else if let Some(print) = action {
             let doc = self.doc.clone();
             let spec = state.spec;
             let (count, dpi) = (state.count as usize, state.dpi);
@@ -1441,7 +1465,7 @@ impl Designer {
                 let first = doc.serial_number;
                 // Printed sheets carry the optional footer on each label; saved PDFs do not.
                 let footer = if print {
-                    settings.footer.clone()
+                    self.footer.clone()
                 } else {
                     crate::footer::Footer::default()
                 };
@@ -1725,7 +1749,14 @@ impl Designer {
         printer: Printer,
         history_word: &'static str,
     ) {
-        let settings = settings.clone();
+        if !self.can_print() {
+            self.status = crate::i18n::tr(OVERLAP_PRINT_OFF).into();
+            self.error = true;
+            return;
+        }
+        let edge = self.footer_edge_mm(settings);
+        let mut settings = settings.clone();
+        settings.footer = self.footer.clone();
         let raw = self.raw_zpl;
         let title = self.doc.title.clone();
         let original = self.doc.clone();
@@ -1737,14 +1768,15 @@ impl Designer {
             for index in 0..total {
                 let label = make(index);
                 if raw {
-                    let bytes = zpl::encode_design_for_print(&label, &settings)?;
+                    let bytes =
+                        zpl::encode_design_for_print(&label, settings.dpi, &settings.footer, edge)?;
                     printing::submit_raw_zpl(&bytes, &settings, &printer)
                 } else {
                     let output = design_render::render_with_footer(
                         &label,
                         settings.dpi,
                         &settings.footer,
-                        settings.safe_margin_mm,
+                        edge,
                     )?;
                     printing::submit(&output, &settings, &printer)
                 }
@@ -1761,8 +1793,110 @@ impl Designer {
             ))
         });
     }
+    /// The optional footer for designed labels: a message and, with it, a QR code, aligned
+    /// along the bottom. Saved with the app's settings until reset.
+    fn footer_section(&mut self, ui: &mut egui::Ui) {
+        let open = std::mem::take(&mut self.footer_open).then_some(true);
+        let mut footer = self.footer.clone();
+        let section = egui::CollapsingHeader::new(crate::i18n::tr("Label footer"))
+            .id_salt("designer-label-footer")
+            .open(open)
+            .show(ui, |ui| {
+                let weak = |ui: &mut egui::Ui, text: &str| {
+                    ui.label(RichText::new(crate::i18n::tr(text)).small().weak());
+                };
+                weak(ui, FOOTER_APPLIES);
+                ui.checkbox(&mut footer.message_enabled, crate::i18n::tr("Print a footer message"));
+                ui.add_enabled_ui(footer.message_enabled, |ui| {
+                    let label = ui.label(crate::i18n::tr("Message"));
+                    ui.add(
+                        egui::TextEdit::singleline(&mut footer.message)
+                            .char_limit(crate::footer::MAX_MESSAGE_CHARS)
+                            .hint_text(crate::footer::DEFAULT_MESSAGE)
+                            .desired_width(f32::INFINITY),
+                    )
+                    .labelled_by(label.id)
+                    .accessible_name(crate::i18n::tr("Footer message"));
+                    ui.checkbox(&mut footer.qr_enabled, crate::i18n::tr("Add a QR code before the message"));
+                    ui.add_enabled_ui(footer.qr_enabled, |ui| {
+                        let label = ui.label(crate::i18n::tr("QR code link or text"));
+                        ui.add(
+                            egui::TextEdit::singleline(&mut footer.qr_text)
+                                .char_limit(crate::footer::MAX_QR_CHARS)
+                                .hint_text(crate::footer::DEFAULT_QR_TEXT)
+                                .desired_width(f32::INFINITY),
+                        )
+                        .labelled_by(label.id)
+                        .accessible_name(crate::i18n::tr("Footer QR code content"));
+                    });
+                    ui.label(crate::i18n::tr("Alignment"));
+                    ui.horizontal(|ui| {
+                        for align in crate::footer::FooterAlign::ALL {
+                            ui.selectable_value(&mut footer.align, align, crate::i18n::tr(align.name()))
+                                .on_hover_text(crate::i18n::tr(match align {
+                                    crate::footer::FooterAlign::Left => "Put the whole footer, QR code included, at the bottom-left",
+                                    crate::footer::FooterAlign::Center => "Put the whole footer, QR code included, at the bottom center",
+                                    crate::footer::FooterAlign::Right => "Put the whole footer, QR code included, at the bottom-right",
+                                }));
+                        }
+                    });
+                    weak(ui, FOOTER_ALIGN_HELP);
+                });
+                if footer.message_enabled && footer.message.trim().is_empty() {
+                    ui.label(RichText::new(crate::i18n::tr("Enter a message to print the footer. The QR code prints only with a message.")).small());
+                }
+                if let Some(problem) = footer.qr_problem() {
+                    ui.label(RichText::new(crate::i18n::tr(problem)).small().color(ui.visuals().error_fg_color));
+                }
+                if footer.is_active() {
+                    match &self.footer_note {
+                        Some(note) => {
+                            ui.label(RichText::new(crate::i18n::tr(note)).small().color(ui.visuals().warn_fg_color));
+                        }
+                        None => weak(ui, "The footer fits: the canvas shows it where it will print."),
+                    }
+                }
+                weak(ui, FOOTER_OMITTED_HELP);
+                if footer.shows_qr() {
+                    weak(ui, "Scan a test print with your phone before printing a batch.");
+                }
+                if ui
+                    .add_enabled(footer != crate::footer::Footer::default(), egui::Button::new(crate::i18n::tr("Reset footer")))
+                    .on_hover_text(crate::i18n::tr("Turn the footer off and restore the default message, QR code link, and alignment"))
+                    .clicked()
+                {
+                    footer = crate::footer::Footer::default();
+                }
+            });
+        // Opened from the toolbar: bring the controls into view.
+        if open.is_some() {
+            section.header_response.scroll_to_me(Some(egui::Align::TOP));
+        }
+        if footer != self.footer {
+            self.footer = footer.clone();
+            self.footer_request = Some(footer);
+        }
+    }
+    /// Whether Print is available: not while a barcode or QR code overlaps another object.
+    /// It turns back on by itself once the next preview shows them apart. Every print path
+    /// still checks the design again when it prints.
+    pub(crate) fn can_print(&self) -> bool {
+        self.overlaps.is_empty()
+    }
+    /// The codes that overlap another object in the current preview.
+    pub fn overlapping(&self) -> &[u64] {
+        &self.overlaps
+    }
+    /// The distance the footer keeps from the label's sides and bottom: the safe margin or
+    /// the printer's unprintable border, whichever is larger, so it stays printable.
+    fn footer_edge_mm(&self, settings: &Settings) -> f32 {
+        let border = self
+            .printable
+            .map_or(0., |(left, _, right, bottom)| left.max(right).max(bottom));
+        settings.safe_margin_mm.max(border)
+    }
     fn start_render(&mut self, settings: &Settings) {
-        let footer = (settings.footer.clone(), settings.safe_margin_mm);
+        let footer = (self.footer.clone(), self.footer_edge_mm(settings));
         if self.worker.is_some()
             || (self.rendered_revision == Some(self.revision)
                 && self.rendered_footer.as_ref() == Some(&footer))
@@ -1776,11 +1910,14 @@ impl Designer {
         self.worker = Some((rev, rx));
         self.rendered_footer = Some(footer.clone());
         std::thread::spawn(move || {
-            // The preview shows the print footer where it will print.
-            let _ = tx.send(design_render::render_label(&doc, dpi).map(|mut output| {
-                let _ = crate::footer::add_to_design(&mut output, &footer.0, footer.1);
-                output
-            }));
+            // The preview shows the print footer where it will print. A code that overlaps
+            // another object is reported, not refused, so the canvas stays editable.
+            let _ = tx.send(design_render::render_preview(&doc, dpi).map(
+                |(mut output, overlaps)| {
+                    let _ = crate::footer::add_to_design(&mut output, &footer.0, footer.1);
+                    (output, overlaps)
+                },
+            ));
         });
     }
     fn poll(&mut self, ctx: &egui::Context) {
@@ -1797,7 +1934,8 @@ impl Designer {
             return;
         }
         match result {
-            Ok(output) => {
+            Ok((output, overlaps)) => {
+                self.overlaps = overlaps;
                 let im = if output.image.width() > 1400 || output.image.height() > 1400 {
                     image::imageops::thumbnail(&output.image, 1400, 1400)
                 } else {
@@ -1822,7 +1960,17 @@ impl Designer {
             Err(e) => {
                 self.status = format!("Design preview: {e:#}");
                 self.error = true;
-                self.texture = None;
+                // The canvas is never wiped: the last preview stays (or blank paper, if
+                // there is none yet) so the objects can still be selected and fixed.
+                if self.texture.is_none() {
+                    let (w, h) = blank_paper_size(&self.doc);
+                    self.texture = Some(ctx.load_texture(
+                        "design-preview",
+                        egui::ColorImage::new([w, h], vec![Color32::WHITE; w * h]),
+                        egui::TextureOptions::LINEAR,
+                    ));
+                }
+                self.overlaps.clear();
                 self.output = None;
                 self.rendered_revision = Some(rev);
             }
@@ -1872,6 +2020,9 @@ impl Designer {
     }
     pub fn show(&mut self, root: &mut egui::Ui, settings: &Settings, printers: &[Printer]) {
         let ctx = root.ctx().clone();
+        if self.footer_request.is_none() {
+            self.footer = settings.footer.clone();
+        }
         self.poll(&ctx);
         self.poll_job(&ctx);
         self.autosave(&ctx);
@@ -2064,6 +2215,15 @@ impl Designer {
                     ui.checkbox(&mut self.raw_zpl, crate::i18n::tr("Print using raw ZPL"))
                         .on_hover_text(crate::i18n::tr(printing::platform_message("Requires a ZPL-compatible printer and raw CUPS queue.", "Requires a ZPL-compatible printer that accepts RAW jobs.")));
                 });
+                if ui
+                    .selectable_label(self.footer.is_active(), crate::i18n::tr("Footer"))
+                    .on_hover_text(crate::i18n::tr("Show the label footer settings in the properties panel"))
+                    .clicked()
+                {
+                    self.show_properties = true;
+                    self.focus_canvas = false;
+                    self.footer_open = true;
+                }
                 if ui.button(crate::i18n::tr("Check barcodes")).clicked() {
                     match design_render::check_codes(&self.doc,settings.dpi) {
                         Ok(message) => { self.status=message;self.error=false; }
@@ -2082,9 +2242,10 @@ impl Designer {
                     "Print device",
                     "Print",
                     "Print label using the selected printer",
-                    true,
+                    self.can_print(),
                     true,
                 )
+                .on_disabled_hover_text(crate::i18n::tr(OVERLAP_PRINT_OFF))
                 .clicked()
                 {
                     self.print(settings, printers);
@@ -2743,6 +2904,7 @@ impl Designer {
                     .accessible_name(crate::i18n::tr("Grid size in millimeters"));
                 });
             });
+        self.footer_section(ui);
         ui.separator();
         if self.selected.len() > 1 {
             ui.label(format!("{} objects selected", self.selected.len()));
@@ -3544,6 +3706,22 @@ impl Designer {
             .small()
             .weak(),
         );
+        if let Some(warning) = design_render::overlap_warning(&self.doc, &self.overlaps) {
+            egui::Frame::new()
+                .fill(ui.visuals().error_fg_color.gamma_multiply(0.15))
+                .stroke(Stroke::new(1., ui.visuals().error_fg_color))
+                .corner_radius(6.)
+                .inner_margin(egui::Margin::symmetric(10, 6))
+                .show(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    ui.label(
+                        RichText::new(warning)
+                            .strong()
+                            .color(ui.visuals().error_fg_color),
+                    );
+                    ui.label(RichText::new(crate::i18n::tr(OVERLAP_PRINT_OFF)).small());
+                });
+        }
         let Some(tex) = self.texture.clone() else {
             ui.spinner();
             return;
@@ -3641,6 +3819,23 @@ impl Designer {
                 };
                 let handles = single.map(|object| self.object_geometry(object, paper));
                 let blue = Color32::from_rgb(70, 130, 240);
+                // Codes that overlap another object are outlined in red until they are apart.
+                for object in self
+                    .doc
+                    .objects
+                    .iter()
+                    .filter(|o| self.overlaps.contains(&o.id))
+                {
+                    let geometry = self.object_geometry(object, paper);
+                    let mut corners = geometry.corners.to_vec();
+                    corners.push(corners[0]);
+                    ui.painter().extend(egui::Shape::dashed_line(
+                        &corners,
+                        Stroke::new(2.5, ui.visuals().error_fg_color),
+                        6.,
+                        4.,
+                    ));
+                }
                 for object in &self.doc.objects {
                     if self.selected.contains(&object.id) {
                         let geometry = self.object_geometry(object, paper);
@@ -4486,6 +4681,28 @@ fn printed_corners(counterclockwise: bool) -> [Pos2; 4] {
 
 /// A strip across the top of the canvas saying that rotated printing is on: the label is
 /// designed on its side and rotated when it prints, so it never surprises anyone.
+/// Which labels get the footer, next to its controls.
+pub(crate) const FOOTER_APPLIES: &str = "Adds a small message, and if you like a QR code, along the bottom of labels you design here when you print them. Imported shipping labels never get a footer.";
+/// How the alignment works.
+pub(crate) const FOOTER_ALIGN_HELP: &str = "Choose where the whole footer sits along the bottom edge. Pick a side where your design leaves blank space.";
+/// Why the footer may be left out.
+pub(crate) const FOOTER_OMITTED_HELP: &str = "The label size and printable area never change. If that spot is not blank or is outside the printable area, the QR code, or the whole footer, is left out and a note says why. Exports do not include the footer.";
+/// A rendered preview and the codes in it that overlap another object.
+type Preview = (Output, Vec<u64>);
+
+/// Why Print is off while codes overlap.
+pub(crate) const OVERLAP_PRINT_OFF: &str = "Print is off while a barcode or QR code overlaps another object. Move or resize them so they no longer touch, and Print turns back on.";
+
+/// The size of the blank paper shown on the canvas before a preview can be rendered.
+fn blank_paper_size(doc: &LabelDocument) -> (usize, usize) {
+    let (w, h) = (doc.width_mm.max(1.), doc.effective_height_mm().max(1.));
+    let scale = (400. / w.max(h)).min(8.);
+    (
+        ((w * scale).round() as usize).max(1),
+        ((h * scale).round() as usize).max(1),
+    )
+}
+
 fn sideways_banner(ui: &mut egui::Ui, doc: &LabelDocument) {
     let (paper_w, paper_h) = doc.paper_size_mm();
     let (fill, text) = if ui.visuals().dark_mode {
@@ -6358,5 +6575,398 @@ mod font_sample_tests {
         assert!(matches!(samples.ready.get("builtin:serif"), Some(Some(_))));
         assert!(samples.unreadable("system:No Such Font 123"));
         assert!(!samples.unreadable("builtin:serif"));
+    }
+}
+
+#[cfg(test)]
+mod overlap_footer_symbol_tests {
+    use super::*;
+    use crate::design::ShapeKind;
+
+    const PRINT: &str = "Print label using the selected printer";
+
+    struct Harness {
+        ctx: egui::Context,
+        settings: Settings,
+    }
+    impl Harness {
+        fn new() -> Self {
+            let ctx = egui::Context::default();
+            ctx.enable_accesskit();
+            Self {
+                ctx,
+                settings: Settings::default(),
+            }
+        }
+        fn frame(&self, designer: &mut Designer, events: Vec<egui::Event>) -> egui::FullOutput {
+            let mut output = self.ctx.run_ui(
+                egui::RawInput {
+                    events,
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1400., 2400.))),
+                    ..Default::default()
+                },
+                |root| designer.show(root, &self.settings, &[]),
+            );
+            output.textures_delta.clear();
+            output
+        }
+        /// Run frames until the preview of the current design is ready.
+        fn settle(&self, designer: &mut Designer) -> egui::FullOutput {
+            for _ in 0..2000 {
+                self.frame(designer, vec![]);
+                if designer.worker.is_none()
+                    && designer.rendered_revision == Some(designer.revision)
+                {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+            self.frame(designer, vec![]);
+            self.frame(designer, vec![])
+        }
+    }
+
+    fn node<'a>(output: &'a egui::FullOutput, label: &str) -> Option<&'a egui::accesskit::Node> {
+        output
+            .platform_output
+            .accesskit_update
+            .as_ref()?
+            .nodes
+            .iter()
+            .map(|(_, node)| node)
+            .find(|node| node.label().is_some_and(|l| l == label))
+    }
+    fn texts(output: &egui::FullOutput) -> Vec<(String, Rect)> {
+        output
+            .shapes
+            .iter()
+            .filter_map(|clipped| match &clipped.shape {
+                egui::Shape::Text(text) => Some((
+                    text.galley.text().to_owned(),
+                    text.galley.rect.translate(text.pos.to_vec2()),
+                )),
+                _ => None,
+            })
+            .collect()
+    }
+    /// Where the label preview is painted on the canvas.
+    fn paper(output: &egui::FullOutput, designer: &Designer) -> Rect {
+        let id = designer.texture.as_ref().expect("preview texture").id();
+        output
+            .shapes
+            .iter()
+            .find(|clipped| clipped.shape.texture_id() == id)
+            .map(|clipped| clipped.shape.visual_bounding_rect())
+            .expect("the canvas shows the label")
+    }
+    fn press(pos: Pos2, pressed: bool) -> egui::Event {
+        egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        }
+    }
+
+    fn overlapping_design() -> (Designer, u64, u64) {
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(100., 60.);
+        let qr = designer.doc.add(
+            Element::Qr {
+                data: "SKU-1".into(),
+            },
+            10.,
+            10.,
+            30.,
+            30.,
+        );
+        let shape = designer.doc.add(
+            Element::Shape {
+                kind: ShapeKind::Rectangle,
+                stroke_mm: 1.,
+                filled: true,
+            },
+            30.,
+            20.,
+            20.,
+            20.,
+        );
+        designer.changed();
+        (designer, qr, shape)
+    }
+
+    #[test]
+    fn an_overlap_warns_and_the_canvas_stays_editable_while_print_follows_it() {
+        let harness = Harness::new();
+        let (mut designer, qr, shape) = overlapping_design();
+        let output = harness.settle(&mut designer);
+        // Warned right away, before any Print click.
+        assert_eq!(designer.overlapping(), &[qr]);
+        assert!(
+            texts(&output)
+                .iter()
+                .any(|(text, _)| text.starts_with("Overlap:") && text.contains("QR code #")),
+            "overlap warning shown"
+        );
+        // Print is off, automatically.
+        assert!(!designer.can_print());
+        assert!(node(&output, PRINT).expect("Print button").is_disabled());
+        // The canvas still shows the label, not a spinner or an empty area.
+        let paper = paper(&output, &designer);
+        let undo_before = designer.undo.len();
+
+        // Select the shape on the canvas and drag it away from the QR code.
+        let object = designer
+            .doc
+            .objects
+            .iter()
+            .find(|o| o.id == shape)
+            .unwrap()
+            .clone();
+        let corners = designer.object_geometry(&object, paper).corners;
+        let start = Pos2::new(
+            (corners[1].x + corners[0].x) / 2. + (corners[1].x - corners[0].x) / 4.,
+            (corners[0].y + corners[3].y) / 2.,
+        );
+        let end = start + Vec2::new(paper.width() * 0.3, 0.);
+        harness.frame(
+            &mut designer,
+            vec![egui::Event::PointerMoved(start), press(start, true)],
+        );
+        for step in 1..=6 {
+            let at = start + (end - start) * (step as f32 / 6.);
+            harness.frame(&mut designer, vec![egui::Event::PointerMoved(at)]);
+        }
+        harness.frame(&mut designer, vec![press(end, false)]);
+        assert_eq!(designer.selected, vec![shape], "selected on the canvas");
+        let moved = designer.doc.objects.iter().find(|o| o.id == shape).unwrap();
+        assert!(moved.x_mm > 50., "dragged on the canvas: {}", moved.x_mm);
+        // Fixed without undo: the drag is the only new step.
+        assert_eq!(designer.undo.len(), undo_before + 1);
+
+        // The overlap clears and Print turns back on by itself.
+        let output = harness.settle(&mut designer);
+        assert!(designer.overlapping().is_empty());
+        assert!(designer.can_print());
+        assert!(!node(&output, PRINT).unwrap().is_disabled());
+        assert!(
+            !texts(&output)
+                .iter()
+                .any(|(t, _)| t.starts_with("Overlap:"))
+        );
+    }
+
+    #[test]
+    fn affected_objects_can_be_resized_and_reordered_during_an_overlap() {
+        let harness = Harness::new();
+        let (mut designer, qr, shape) = overlapping_design();
+        harness.settle(&mut designer);
+        assert!(!designer.can_print());
+        // Reorder: bring the code to the foreground, with the existing layer control.
+        designer.selected = vec![qr];
+        designer.layer(true);
+        assert_eq!(designer.doc.objects.last().unwrap().id, qr);
+        harness.settle(&mut designer);
+        // Reordering works during an overlap, and the canvas keeps its preview.
+        let output = harness.settle(&mut designer);
+        paper(&output, &designer);
+        designer.layer(false);
+        assert_eq!(designer.doc.objects[0].id, qr);
+        let output = harness.settle(&mut designer);
+        assert!(!designer.can_print());
+        paper(&output, &designer);
+        // Resize the shape so it no longer touches the code.
+        designer.selected = vec![shape];
+        designer.checkpoint();
+        let object = designer
+            .doc
+            .objects
+            .iter_mut()
+            .find(|o| o.id == shape)
+            .unwrap();
+        object.x_mm = 45.;
+        object.width_mm = 5.;
+        designer.changed();
+        harness.settle(&mut designer);
+        assert!(designer.can_print());
+        // Layering between other objects is untouched by the check.
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(100., 60.);
+        let box_shape = Element::Shape {
+            kind: ShapeKind::Rectangle,
+            stroke_mm: 1.,
+            filled: true,
+        };
+        designer.doc.add(box_shape.clone(), 10., 10., 30., 30.);
+        designer.doc.add(box_shape, 20., 20., 30., 30.);
+        designer.changed();
+        harness.settle(&mut designer);
+        assert!(designer.can_print(), "shapes may overlap on purpose");
+    }
+
+    #[test]
+    fn printing_is_refused_while_codes_overlap() {
+        let harness = Harness::new();
+        let (mut designer, _, _) = overlapping_design();
+        harness.settle(&mut designer);
+        let printer = Printer {
+            name: "Test".into(),
+            ..Default::default()
+        };
+        let settings = Settings {
+            printer: "Test".into(),
+            ..Settings::default()
+        };
+        designer.print(&settings, &[printer]);
+        assert!(designer.job.is_none(), "nothing sent");
+        assert!(designer.error);
+    }
+
+    #[test]
+    fn the_footer_controls_and_their_explanation_are_in_label_designer() {
+        let mut harness = Harness::new();
+        // The controls under the message are available once the message is on.
+        harness.settings.footer.message_enabled = true;
+        let mut designer = Designer::new();
+        designer.footer_open = true;
+        harness.frame(&mut designer, vec![]);
+        let output = harness.frame(&mut designer, vec![]);
+        let texts = texts(&output);
+        let find = |wanted: &str| {
+            texts
+                .iter()
+                .find(|(text, _)| text == crate::i18n::tr(wanted))
+                .map(|(_, rect)| *rect)
+                .unwrap_or_else(|| panic!("{wanted} not shown"))
+        };
+        let explanation = find(FOOTER_APPLIES);
+        let checkbox = find("Print a footer message");
+        for wanted in [
+            "Label footer",
+            "Message",
+            "Add a QR code before the message",
+            "QR code link or text",
+            "Alignment",
+            "Left",
+            "Center",
+            "Right",
+            FOOTER_ALIGN_HELP,
+            FOOTER_OMITTED_HELP,
+            "Reset footer",
+        ] {
+            find(wanted);
+        }
+        // The explanation sits right beside the controls, in the same column.
+        assert!(checkbox.top() >= explanation.bottom() - 1.);
+        assert!(checkbox.top() - explanation.bottom() < 40.);
+        assert!((checkbox.left() - explanation.left()).abs() < 40.);
+        assert!(explanation.is_positive());
+        // Imported labels are named as unaffected.
+        assert!(FOOTER_APPLIES.contains("Imported shipping labels never get a footer"));
+        // Changing a control asks the app to save it.
+        let pos = node(&output, "Right")
+            .expect("Right alignment")
+            .bounds()
+            .unwrap();
+        let pos = Pos2::new(
+            ((pos.x0 + pos.x1) / 2.) as f32,
+            ((pos.y0 + pos.y1) / 2.) as f32,
+        );
+        harness.frame(
+            &mut designer,
+            vec![egui::Event::PointerMoved(pos), press(pos, true)],
+        );
+        harness.frame(&mut designer, vec![press(pos, false)]);
+        assert_eq!(
+            designer.footer_request.as_ref().map(|f| f.align),
+            Some(crate::footer::FooterAlign::Right)
+        );
+    }
+
+    #[test]
+    fn print_center_no_longer_has_footer_controls() {
+        let print_center = include_str!("ui.rs");
+        for gone in [
+            "Print a footer message",
+            "Reset footer",
+            "footer_settings",
+            "Footer QR code content",
+        ] {
+            assert!(
+                !print_center.contains(gone),
+                "{gone} is still in Print Center"
+            );
+        }
+    }
+
+    #[test]
+    fn the_new_symbols_are_inserted_from_the_existing_picker() {
+        let ctx = egui::Context::default();
+        ctx.enable_accesskit();
+        for name in [
+            "Do not stack",
+            "Keep cool",
+            "Keep out of sunlight",
+            "Package",
+            "Fragile",
+        ] {
+            let mut designer = Designer::new();
+            designer.doc = LabelDocument::blank(100., 100.);
+            let frame = |designer: &mut Designer, events| {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        events,
+                        ..Default::default()
+                    },
+                    |root| {
+                        egui::CentralPanel::default().show(root, |ui| designer.symbols_menu(ui));
+                    },
+                );
+                output.textures_delta.clear();
+                output
+            };
+            frame(&mut designer, vec![]);
+            let output = frame(&mut designer, vec![]);
+            let bounds = node(&output, name)
+                .unwrap_or_else(|| panic!("{name} missing from the picker"))
+                .bounds()
+                .unwrap();
+            let pos = Pos2::new(
+                ((bounds.x0 + bounds.x1) / 2.) as f32,
+                ((bounds.y0 + bounds.y1) / 2.) as f32,
+            );
+            frame(
+                &mut designer,
+                vec![egui::Event::PointerMoved(pos), press(pos, true)],
+            );
+            frame(&mut designer, vec![press(pos, false)]);
+            assert_eq!(designer.doc.objects.len(), 1, "{name}");
+            let symbol = crate::symbols::ALL
+                .into_iter()
+                .find(|s| s.name() == name)
+                .unwrap();
+            // Inserted as an image like the other symbols, so it resizes, saves, prints,
+            // and exports the same way.
+            let object = &designer.doc.objects[0];
+            let Element::Image { data_base64 } = &object.element else {
+                panic!("{name} is not an image");
+            };
+            let expected = crate::symbols::png_bytes(&crate::symbols::render(symbol, 400)).unwrap();
+            assert_eq!(
+                base64::engine::general_purpose::STANDARD
+                    .decode(data_base64)
+                    .unwrap(),
+                expected
+            );
+            let saved = serde_json::to_string(&designer.doc).unwrap();
+            let loaded: LabelDocument = serde_json::from_str(&saved).unwrap();
+            assert_eq!(loaded, designer.doc);
+            let mut resized = designer.doc.clone();
+            resized.objects[0].width_mm *= 2.;
+            resized.objects[0].height_mm *= 2.;
+            let output = design_render::render_for_print(&resized, 203).unwrap();
+            assert!(output.image.pixels().any(|p| p.0[0] < 128), "{name} prints");
+            assert!(!zpl::encode_design(&resized, 203).unwrap().is_empty());
+        }
     }
 }

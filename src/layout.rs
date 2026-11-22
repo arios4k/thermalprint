@@ -126,48 +126,14 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
                     .into(),
             );
         }
-        let mut top = ((height - target_h) / 2) as i64;
-        // The optional footer never changes the label's size: the label is laid out exactly as
-        // without it, and the footer goes only into blank space below the label's last line.
-        // If the label is centered with room to spare, it may move up, whole, to make that
-        // space; otherwise the footer is left out.
-        // If the footer with its QR code does not fit, the message alone may.
-        let mut chosen = None;
-        if s.footer.is_active() {
-            // A row is kept back so resampling never puts ink in the footer's gap.
-            let blank_below = blank_bottom_rows(&resized).saturating_sub(1) as i64;
-            let blank_above = blank_top_rows(&resized) as i64;
-            let ink_bottom = top + target_h as i64 - blank_below;
-            for choice in s.footer.choices() {
-                let footer = choice.reserved_dots(s.dpi, height, margin);
-                if footer == 0 || footer + margin * 2 >= height {
-                    continue;
-                }
-                let limit = (height - margin - footer) as i64;
-                let shift = (ink_bottom - limit).max(0);
-                if shift <= top + blank_above - margin as i64 {
-                    top -= shift;
-                    chosen = Some(choice);
-                    break;
-                }
-            }
-        }
-        imageops::overlay(&mut canvas, &resized, ((width - target_w) / 2) as i64, top);
-        if let Some(chosen) = chosen {
-            chosen.draw(
-                &mut canvas,
-                s.dpi,
-                margin,
-                width - margin,
-                height - margin,
-                margin,
-            );
-            if let Some(note) = s.footer.fallback_note(&chosen, s.dpi, height) {
-                warnings.push(note.into());
-            }
-        } else if s.footer.is_active() {
-            warnings.push(crate::footer::FOOTER_NO_BLANK_SPACE.into());
-        }
+        // Imported labels print exactly as laid out: the designer's optional footer is never
+        // added to them.
+        imageops::overlay(
+            &mut canvas,
+            &resized,
+            ((width - target_w) / 2) as i64,
+            ((height - target_h) / 2) as i64,
+        );
     }
     let _ = mm_h;
     Ok(Output {
@@ -178,25 +144,6 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
         height_mm: s.height_mm,
         dpi: s.dpi,
     })
-}
-
-/// How many rows at the top of an image are blank, with no ink at all.
-fn blank_top_rows(image: &RgbImage) -> u32 {
-    (0..image.height())
-        .take_while(|&y| {
-            (0..image.width()).all(|x| image.get_pixel(x, y).0.iter().all(|&v| v >= 245))
-        })
-        .count() as u32
-}
-
-/// How many rows at the bottom of an image are blank, with no ink at all.
-fn blank_bottom_rows(image: &RgbImage) -> u32 {
-    (0..image.height())
-        .rev()
-        .take_while(|&y| {
-            (0..image.width()).all(|x| image.get_pixel(x, y).0.iter().all(|&v| v >= 245))
-        })
-        .count() as u32
 }
 
 #[cfg(test)]

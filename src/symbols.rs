@@ -11,14 +11,22 @@ pub enum Symbol {
     KeepDry,
     Recycling,
     Hazard,
+    DoNotStack,
+    KeepCool,
+    KeepOutOfSunlight,
+    Package,
 }
 
-pub const ALL: [Symbol; 5] = [
+pub const ALL: [Symbol; 9] = [
     Symbol::Fragile,
     Symbol::ThisSideUp,
     Symbol::KeepDry,
     Symbol::Recycling,
     Symbol::Hazard,
+    Symbol::DoNotStack,
+    Symbol::KeepCool,
+    Symbol::KeepOutOfSunlight,
+    Symbol::Package,
 ];
 
 impl Symbol {
@@ -29,6 +37,10 @@ impl Symbol {
             Symbol::KeepDry => "Keep dry",
             Symbol::Recycling => "Recycling",
             Symbol::Hazard => "Hazard",
+            Symbol::DoNotStack => "Do not stack",
+            Symbol::KeepCool => "Keep cool",
+            Symbol::KeepOutOfSunlight => "Keep out of sunlight",
+            Symbol::Package => "Package",
         }
     }
 }
@@ -124,6 +136,77 @@ fn shapes(symbol: Symbol) -> Vec<Shape> {
             Shape::Line(vec![(50., 8.), (93., 86.), (7., 86.), (50., 8.)], 6.),
             Shape::Line(vec![(50., 36.), (50., 62.)], 8.),
             Shape::Fill(arc((50., 74.), 5., 0., 360., 16)),
+        ],
+        Symbol::DoNotStack => vec![
+            // A box on the bottom, a box above it, and the one above crossed out.
+            Shape::Line(
+                vec![(18., 60.), (82., 60.), (82., 92.), (18., 92.), (18., 60.)],
+                5.,
+            ),
+            Shape::Line(
+                vec![(32., 16.), (68., 16.), (68., 44.), (32., 44.), (32., 16.)],
+                5.,
+            ),
+            Shape::Line(vec![(20., 8.), (80., 52.)], 6.),
+            Shape::Line(vec![(80., 8.), (20., 52.)], 6.),
+        ],
+        Symbol::KeepCool => {
+            // A thermometer with a snowflake beside it.
+            let mut tube = vec![(30., 66.), (30., 20.)];
+            tube.extend(arc((38., 20.), 8., 180., 0., 12));
+            tube.push((46., 66.));
+            let mut out = vec![
+                Shape::Line(tube, 5.),
+                Shape::Fill(arc((38., 78.), 14., 0., 360., 24)),
+                Shape::Line(vec![(38., 42.), (38., 72.)], 6.),
+            ];
+            let center = (72., 34.);
+            for angle in [90f32, 30., -30.] {
+                let (dx, dy) = (
+                    angle.to_radians().cos() * 17.,
+                    angle.to_radians().sin() * 17.,
+                );
+                out.push(Shape::Line(
+                    vec![
+                        (center.0 - dx, center.1 + dy),
+                        (center.0 + dx, center.1 - dy),
+                    ],
+                    4.5,
+                ));
+            }
+            out
+        }
+        Symbol::KeepOutOfSunlight => {
+            // The sun, crossed out by a prohibition sign.
+            let mut out = vec![
+                Shape::Fill(arc((50., 50.), 12., 0., 360., 24)),
+                Shape::Line(arc((50., 50.), 43., 0., 360., 48), 6.),
+                Shape::Line(vec![(20., 20.), (80., 80.)], 6.),
+            ];
+            for i in 0..8 {
+                let a = (i as f32 * 45. + 22.5).to_radians();
+                out.push(Shape::Line(
+                    vec![
+                        (50. + 19. * a.cos(), 50. - 19. * a.sin()),
+                        (50. + 30. * a.cos(), 50. - 30. * a.sin()),
+                    ],
+                    4.5,
+                ));
+            }
+            out
+        }
+        Symbol::Package => vec![
+            // A closed box with tape across its lid and down its side.
+            Shape::Line(
+                vec![(50., 12.), (88., 30.), (50., 48.), (12., 30.), (50., 12.)],
+                5.,
+            ),
+            Shape::Line(
+                vec![(12., 30.), (12., 72.), (50., 90.), (88., 72.), (88., 30.)],
+                5.,
+            ),
+            Shape::Line(vec![(50., 48.), (50., 90.)], 5.),
+            Shape::Line(vec![(31., 21.), (69., 39.), (69., 81.)], 6.),
         ],
     }
 }
@@ -307,6 +390,33 @@ mod tests {
                     "{symbol:?} touches the top edge"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn every_symbol_is_distinct_and_the_new_ones_are_offered() {
+        let images: Vec<_> = ALL.iter().map(|&s| render(s, 64)).collect();
+        for i in 0..images.len() {
+            for j in i + 1..images.len() {
+                assert_ne!(
+                    images[i].as_raw(),
+                    images[j].as_raw(),
+                    "{:?}",
+                    (ALL[i], ALL[j])
+                );
+            }
+        }
+        for name in [
+            "Do not stack",
+            "Keep cool",
+            "Keep out of sunlight",
+            "Package",
+        ] {
+            assert!(ALL.iter().any(|s| s.name() == name), "{name}");
+        }
+        // The originals are all still there.
+        for name in ["Fragile", "This side up", "Keep dry", "Recycling", "Hazard"] {
+            assert!(ALL.iter().any(|s| s.name() == name), "{name}");
         }
     }
 

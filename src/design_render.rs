@@ -885,8 +885,41 @@ pub fn check_codes(doc: &LabelDocument, dpi: u32) -> Result<String> {
         "{count} code(s) passed content, size, and clear-space checks at {dpi} DPI. Check a physical print with your scanner."
     ))
 }
-/// The label as designed, the same way up as the canvas.
+/// The label as designed, the same way up as the canvas. Fails when a barcode or QR code
+/// overlaps another object, so no print or export path can send a damaged code.
 pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
+    let (output, overlaps) = render_preview(doc, dpi)?;
+    if let Some(id) = overlaps.first()
+        && let Some(object) = doc.objects.iter().find(|o| o.id == *id)
+    {
+        bail!(
+            "{} #{} overlaps another object. Move the objects apart to preserve the code and its clear space.",
+            object.label(),
+            object.id
+        );
+    }
+    Ok(output)
+}
+/// The warning shown while barcodes or QR codes overlap other objects.
+pub fn overlap_warning(doc: &LabelDocument, overlaps: &[u64]) -> Option<String> {
+    let names: Vec<String> = doc
+        .objects
+        .iter()
+        .filter(|o| overlaps.contains(&o.id))
+        .map(|o| format!("{} #{}", o.label(), o.id))
+        .collect();
+    (!names.is_empty()).then(|| {
+        format!(
+            "{} {}",
+            crate::i18n::tr("Overlap: these codes touch another object, so Print is off until they are apart. Move or resize them:"),
+            names.join(", ")
+        )
+    })
+}
+/// The label as designed, for the canvas: like [`render_label`], but a barcode or QR code
+/// that overlaps another object does not stop it. The ids of those codes come back with
+/// the image, so the designer can warn about them while the canvas stays editable.
+pub fn render_preview(doc: &LabelDocument, dpi: u32) -> Result<(Output, Vec<u64>)> {
     doc.validate()?;
     if ![203, 300, 600].contains(&dpi) {
         bail!("Choose 203, 300, or 600 DPI");
@@ -926,6 +959,7 @@ pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
             }
         }
     }
+    let mut overlaps = vec![];
     for object in doc
         .objects
         .iter()
@@ -958,21 +992,20 @@ pub fn render_label(doc: &LabelDocument, dpi: u32) -> Result<Output> {
             image.get_pixel(x as u32, y as u32) != &expected
         });
         if changed {
-            bail!(
-                "{} #{} overlaps another object. Move the objects apart to preserve the code and its clear space.",
-                object.label(),
-                object.id
-            );
+            overlaps.push(object.id);
         }
     }
-    Ok(Output {
-        image,
-        warnings,
-        clipped,
-        width_mm: doc.width_mm,
-        height_mm: doc.effective_height_mm(),
-        dpi,
-    })
+    Ok((
+        Output {
+            image,
+            warnings,
+            clipped,
+            width_mm: doc.width_mm,
+            height_mm: doc.effective_height_mm(),
+            dpi,
+        },
+        overlaps,
+    ))
 }
 #[cfg(test)]
 mod font_option_tests {

@@ -29,7 +29,9 @@ const MANUAL_SCREENS: &[&str] = &[
     "designer-text",
     "import-watch",
     "print-center-full",
-    "label-footer",
+    "designer-footer",
+    "designer-overlap",
+    "designer-code-check",
     "printer-setup",
     "batch",
     "barcode-types",
@@ -130,13 +132,14 @@ impl Capture {
                 | "designer-qr-logo"
                 | "designer-safe-margin"
                 | "designer-rotated"
-                | "designer-fonts" => Area::Designer,
+                | "designer-fonts"
+                | "designer-footer"
+                | "designer-overlap"
+                | "designer-code-check" => Area::Designer,
                 "import" | "import-watch" | "import-autoprint" | "import-autoprint-warning" => {
                     Area::Import
                 }
-                "print-center" | "print-center-full" | "label-footer" | "printer-setup" => {
-                    Area::PrintCenter
-                }
+                "print-center" | "print-center-full" | "printer-setup" => Area::PrintCenter,
                 _ => Area::Home,
             };
             app.terms_open = scene == "printing-terms";
@@ -356,9 +359,48 @@ impl Capture {
                     app.settings.move_printed = true;
                 }
                 "print-center-full" => app.history = demo_history(),
-                "label-footer" => {
+                "designer-footer" => {
                     app.settings.footer.message_enabled = true;
                     app.settings.footer.qr_enabled = true;
+                    app.settings.footer.align = crate::footer::FooterAlign::Right;
+                    let doc = app.designer.doc.clone();
+                    app.designer.demo_document(doc);
+                    app.designer.footer_open = true;
+                }
+                "designer-code-check" => {
+                    let index = crate::design::TEMPLATES
+                        .iter()
+                        .position(|t| t.name == "Small product QR")
+                        .unwrap_or(0);
+                    let doc = crate::design::from_template(index);
+                    app.designer.status = crate::design_render::check_codes(&doc, app.settings.dpi)
+                        .unwrap_or_else(|e| format!("{e:#}"));
+                    app.designer.demo_document(doc);
+                }
+                "designer-overlap" => {
+                    app.settings.footer = crate::footer::Footer::default();
+                    // A box dropped over the barcode: the canvas stays editable and warns.
+                    let mut doc = app.designer.doc.clone();
+                    if let Some(code) = doc
+                        .objects
+                        .iter()
+                        .find(|o| matches!(o.element, Element::Barcode { .. } | Element::Qr { .. }))
+                        .cloned()
+                    {
+                        let id = doc.add(
+                            Element::Shape {
+                                kind: ShapeKind::Rectangle,
+                                stroke_mm: 0.6,
+                                filled: false,
+                            },
+                            code.x_mm + code.width_mm * 0.55,
+                            code.y_mm + code.height_mm * 0.3,
+                            code.width_mm * 0.6,
+                            code.height_mm * 0.6,
+                        );
+                        app.designer.demo_document(doc);
+                        app.designer.select_object(id);
+                    }
                 }
                 "printer-setup" => {
                     app.setup_step = Some(1);
