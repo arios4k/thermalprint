@@ -144,10 +144,25 @@ pub fn detect(image: &RgbImage) -> Detection {
     // Only select automatically when one plausible label region dominates;
     // two similarly sized labels or ambiguous groups remain full-page.
     let likely_label = choose_label(image, &candidates);
+    // A section with its own barcode is part of the label, never separate instructions:
+    // for example the USPS "Deliver to" half of a FedEx Ground Economy label.
+    let label = likely_label.map(|index| keep_barcode_sections(image, &candidates, index));
+    if let Some(crop) = label
+        && candidates.iter().all(|c| contains(crop, *c))
+    {
+        // Every section belongs to the label: nothing is excluded, so this is the same as a
+        // plain whitespace trim.
+        return Detection {
+            proposed: whole,
+            candidates,
+            message: "Whitespace trimmed with a safety buffer. Check all edges and barcode quiet zones before printing.".into(),
+            needs_review: false,
+        };
+    }
     let needs_review = !candidates.is_empty();
     Detection {
-        proposed: if let Some(index) = likely_label {
-            candidates[index]
+        proposed: if let Some(crop) = label {
+            crop
         } else if needs_review {
             Crop::FULL
         } else {
@@ -163,6 +178,68 @@ pub fn detect(image: &RgbImage) -> Detection {
         },
         needs_review,
     }
+}
+
+/// The chosen label, extended to take in every other section that carries a barcode.
+fn keep_barcode_sections(image: &RgbImage, candidates: &[Crop], label: usize) -> Crop {
+    candidates
+        .iter()
+        .enumerate()
+        .filter(|&(i, c)| i != label && has_stable_bars(image, *c))
+        .fold(candidates[label], |crop, (_, c)| union(crop, *c))
+}
+fn union(a: Crop, b: Crop) -> Crop {
+    let (x, y) = (a.x.min(b.x), a.y.min(b.y));
+    Crop {
+        x,
+        y,
+        w: (a.x + a.w).max(b.x + b.w) - x,
+        h: (a.y + a.h).max(b.y + b.h) - y,
+    }
+}
+fn contains(outer: Crop, inner: Crop) -> bool {
+    const SLACK: f32 = 1e-4;
+    inner.x >= outer.x - SLACK
+        && inner.y >= outer.y - SLACK
+        && inner.x + inner.w <= outer.x + outer.w + SLACK
+        && inner.y + inner.h <= outer.y + outer.h + SLACK
+}
+/// Whether a region holds a linear barcode: many rows in a row cross the same bars, with
+/// every bar edge at the same place. Text lines are too short and their letter edges move
+/// from row to row, so instructions do not qualify.
+fn has_stable_bars(image: &RgbImage, crop: Crop) -> bool {
+    let (x, y, w, h) = crop.pixels(image.width(), image.height());
+    // Bars must stand at least this tall: taller than a line of text.
+    let tall = (image.height() / 80).max(12);
+    let edges = |row: u32| -> Vec<u32> {
+        let mut previous = false;
+        let mut found = vec![];
+        for xx in x..x + w {
+            let black = ink(image.get_pixel(xx, row));
+            if xx > x && black != previous {
+                found.push(xx);
+            }
+            previous = black;
+        }
+        found
+    };
+    let same = |a: &[u32], b: &[u32]| {
+        a.len() == b.len() && a.iter().zip(b).all(|(p, q)| p.abs_diff(*q) <= 1)
+    };
+    let mut run_start = y;
+    let mut previous: Vec<u32> = vec![];
+    for row in y..y + h {
+        let current = edges(row);
+        if current.len() >= 24 && same(&current, &previous) {
+            if row - run_start >= tall {
+                return true;
+            }
+        } else {
+            run_start = row;
+        }
+        previous = current;
+    }
+    false
 }
 
 fn choose_label(image: &RgbImage, candidates: &[Crop]) -> Option<usize> {
@@ -273,6 +350,78 @@ mod tests {
         let (x, y, w, h) = d.proposed.pixels(800, 1000);
         assert!(x < 120 && y < 55 && x + w > 640 && y + h > 675);
         assert!(y + h < 820, "instruction block entered processed crop");
+    }
+    fn bars(im: &mut RgbImage, x: u32, y: u32, w: u32, h: u32) {
+        for xx in (x..x + w).filter(|xx| (xx * 7 / 5) % 3 == 0) {
+            for yy in y..y + h {
+                im.put_pixel(xx, yy, image::Rgb([0; 3]));
+            }
+        }
+    }
+    /// Lines of letter-like marks whose edges move from row to row, like printed text.
+    fn text(im: &mut RgbImage, x: u32, y: u32, w: u32, lines: u32) {
+        for line in 0..lines {
+            let top = y + line * 26;
+            for row in 0..18 {
+                let mut xx = x;
+                let mut glyph = 0u32;
+                while xx + 12 < x + w {
+                    // Each glyph's stroke shifts with the row, as curves do.
+                    let shift = (row * (glyph % 5 + 1) / 4) % 6;
+                    for dx in 0..3 {
+                        im.put_pixel(xx + shift + dx, top + row, image::Rgb([0; 3]));
+                    }
+                    xx += 9 + glyph % 4;
+                    glyph += 1;
+                }
+            }
+        }
+    }
+    #[test]
+    fn a_lower_section_with_its_own_barcode_stays_with_the_label() {
+        // A FedEx Ground Economy label: the FedEx half on top and, after a gap, a smaller
+        // USPS section with its own barcode. Nothing is separate instructions.
+        let mut im = RgbImage::from_pixel(1200, 1800, image::Rgb([255; 3]));
+        block(&mut im, 20, 10, 1160, 60);
+        bars(&mut im, 60, 90, 1000, 300);
+        text(&mut im, 40, 410, 1100, 4);
+        bars(&mut im, 120, 540, 960, 220);
+        block(&mut im, 20, 780, 1160, 8);
+        // The USPS section, after a wide gap.
+        text(&mut im, 40, 1300, 700, 4);
+        bars(&mut im, 100, 1420, 1000, 280);
+        let d = detect(&im);
+        assert_eq!(d.candidates.len(), 2, "{:?}", d.candidates);
+        let (_, y, _, h) = d.proposed.pixels(1200, 1800);
+        assert!(
+            y <= 10 && y + h >= 1700,
+            "lower barcode cut off: {:?}",
+            (y, h)
+        );
+        assert!(!d.needs_review);
+    }
+    #[test]
+    fn instructions_with_text_are_still_removed_next_to_a_barcode_label() {
+        let mut im = RgbImage::from_pixel(1200, 1800, image::Rgb([255; 3]));
+        block(&mut im, 100, 60, 1000, 40);
+        bars(&mut im, 150, 120, 900, 400);
+        text(&mut im, 120, 540, 960, 8);
+        bars(&mut im, 150, 770, 900, 200);
+        // Printed instructions below the label: text only, no barcode.
+        text(&mut im, 100, 1450, 1000, 10);
+        let d = detect(&im);
+        assert!(d.needs_review);
+        let (_, y, _, h) = d.proposed.pixels(1200, 1800);
+        assert!(y + h < 1450, "instructions entered the crop");
+        assert!(y + h >= 970, "label barcode cut off");
+    }
+    #[test]
+    fn text_is_not_mistaken_for_a_barcode() {
+        let mut im = RgbImage::from_pixel(1200, 1800, image::Rgb([255; 3]));
+        text(&mut im, 50, 50, 1100, 20);
+        assert!(!has_stable_bars(&im, Crop::FULL));
+        bars(&mut im, 100, 900, 900, 150);
+        assert!(has_stable_bars(&im, Crop::FULL));
     }
     #[test]
     fn blank_is_not_discarded() {
