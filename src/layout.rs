@@ -75,8 +75,14 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
         }
         _ => source,
     };
+    // The optional footer gets its own strip at the bottom, so it never covers the label.
+    // When it is off nothing is reserved and the layout is unchanged.
+    let mut footer = s.footer.reserved_dots(s.dpi, height, margin);
+    if footer > 0 && footer + margin * 2 + 1 >= height {
+        footer = 0;
+    }
     let available_w = width - margin * 2;
-    let available_h = height - margin * 2;
+    let available_h = height - margin * 2 - footer;
     let fit = (available_w as f32 / source.width() as f32)
         .min(available_h as f32 / source.height() as f32);
     let factor = match s.scale {
@@ -90,6 +96,14 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
     let target_h = (source.height() as f32 * factor).round().max(1.) as u32;
     let clipped = target_w > available_w || target_h > available_h;
     let mut warnings = vec![];
+    if s.footer.is_active() && footer == 0 {
+        warnings.push(crate::footer::FOOTER_NO_ROOM.into());
+    } else if s.footer.qr_left_out(s.dpi, height) {
+        warnings.push(crate::footer::QR_LEFT_OUT.into());
+    }
+    if clipped && footer > 0 {
+        warnings.push("The footer takes space at the bottom of the label. Use Fit, reduce scale, or turn the footer off.".into());
+    }
     if clipped {
         warnings.push("Content exceeds the printable area. Printing is blocked. Use Fit, rotate, reduce scale, or choose larger paper.".into());
     }
@@ -130,8 +144,18 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
             &mut canvas,
             &resized,
             ((width - target_w) / 2) as i64,
-            ((height - target_h) / 2) as i64,
+            ((height - footer - target_h) / 2) as i64,
         );
+        if footer > 0 {
+            s.footer.draw(
+                &mut canvas,
+                s.dpi,
+                margin,
+                width - margin,
+                height - margin,
+                margin,
+            );
+        }
     }
     let _ = mm_h;
     Ok(Output {

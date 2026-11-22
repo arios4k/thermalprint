@@ -26,5 +26,6 @@ pub mod watch;
 pub mod zpl;
 
 pub mod fonts;
+pub mod footer;
 pub mod gs1;
 pub mod help;

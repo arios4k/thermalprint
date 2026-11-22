@@ -844,7 +844,19 @@ fn rotate_layer(im: RgbaImage, degrees: f32) -> Result<RgbaImage> {
 /// The label as it goes to the printer: like [`render_label`], but with rotated printing
 /// the label is rotated 90°, so it prints on the label stock the way it is loaded.
 pub fn render_for_print(doc: &LabelDocument, dpi: u32) -> Result<Output> {
+    render_with_footer(doc, dpi, &crate::footer::Footer::default(), 0.)
+}
+/// Like [`render_for_print`], with the optional print footer added in the label's blank
+/// bottom strip (see [`crate::footer::add_to_design`]). The footer is placed before rotated
+/// printing turns the label, so it stays along the bottom of the label as designed.
+pub fn render_with_footer(
+    doc: &LabelDocument,
+    dpi: u32,
+    footer: &crate::footer::Footer,
+    safe_margin_mm: f32,
+) -> Result<Output> {
     let mut output = render_label(doc, dpi)?;
+    crate::footer::add_to_design(&mut output, footer, safe_margin_mm)?;
     if doc.rotated_printing {
         output.image = if doc.rotate_counterclockwise {
             imageops::rotate270(&output.image)

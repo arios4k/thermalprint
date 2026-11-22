@@ -1371,6 +1371,50 @@ const ES: &[(&str, &str)] = &[
     ),
     ("Rounded (Varela Round)", "Redondeada (Varela Round)"),
     ("Choose a font", "Elegir una fuente"),
+    // Label footer
+    ("Label footer", "Pie de etiqueta"),
+    ("Footer position", "Posición del pie"),
+    (
+        "Add a small message along the bottom of every printed label, imported or designed. It gets its own strip and never covers the label's content. Exports are unchanged.",
+        "Añade un mensaje pequeño en la parte inferior de cada etiqueta impresa, importada o diseñada. Tiene su propia franja y nunca cubre el contenido de la etiqueta. Las exportaciones no cambian.",
+    ),
+    ("Print a footer message", "Imprimir un mensaje al pie"),
+    ("Footer message", "Mensaje al pie"),
+    (
+        "Add a QR code beside the message",
+        "Añadir un código QR junto al mensaje",
+    ),
+    ("QR code link or text", "Enlace o texto del código QR"),
+    ("Footer QR code content", "Contenido del código QR del pie"),
+    (
+        "Enter a message to print the footer. The QR code prints only with a message.",
+        "Escribe un mensaje para imprimir el pie. El código QR solo se imprime junto con un mensaje.",
+    ),
+    (
+        "Scan a test print with your phone before printing a batch.",
+        "Escanea una impresión de prueba con tu teléfono antes de imprimir un lote.",
+    ),
+    ("Reset footer", "Restablecer pie"),
+    (
+        "Turn the footer off and restore the default message and QR code link",
+        "Desactivar el pie y restaurar el mensaje y el enlace del código QR predeterminados",
+    ),
+    (
+        "The QR text is too long to encode. Shorten it.",
+        "El texto del QR es demasiado largo para codificarlo. Acórtalo.",
+    ),
+    (
+        "The footer was not added: part of the design is in the bottom strip it needs. Move the design up to make room, or turn the footer off.",
+        "No se añadió el pie: parte del diseño ocupa la franja inferior que necesita. Sube el diseño para dejar espacio o desactiva el pie.",
+    ),
+    (
+        "The footer was not added: the label is too small for it.",
+        "No se añadió el pie: la etiqueta es demasiado pequeña.",
+    ),
+    (
+        "The footer QR code was left out because it would be large on this short label. The message still prints.",
+        "Se omitió el código QR del pie porque sería grande en esta etiqueta corta. El mensaje se imprime igualmente.",
+    ),
 ];
 const DE: &[(&str, &str)] = &[
     ("No matches", "Keine Treffer"),
@@ -2620,6 +2664,50 @@ const DE: &[(&str, &str)] = &[
     ),
     ("Rounded (Varela Round)", "Abgerundet (Varela Round)"),
     ("Choose a font", "Schrift wählen"),
+    // Label footer
+    ("Label footer", "Etikettenfußzeile"),
+    ("Footer position", "Position der Fußzeile"),
+    (
+        "Add a small message along the bottom of every printed label, imported or designed. It gets its own strip and never covers the label's content. Exports are unchanged.",
+        "Fügt unten auf jedem gedruckten Etikett, importiert oder gestaltet, eine kleine Nachricht hinzu. Sie erhält einen eigenen Streifen und verdeckt nie den Etiketteninhalt. Exporte bleiben unverändert.",
+    ),
+    ("Print a footer message", "Fußzeilennachricht drucken"),
+    ("Footer message", "Fußzeilennachricht"),
+    (
+        "Add a QR code beside the message",
+        "QR-Code neben der Nachricht hinzufügen",
+    ),
+    ("QR code link or text", "Link oder Text des QR-Codes"),
+    ("Footer QR code content", "Inhalt des Fußzeilen-QR-Codes"),
+    (
+        "Enter a message to print the footer. The QR code prints only with a message.",
+        "Geben Sie eine Nachricht ein, um die Fußzeile zu drucken. Der QR-Code wird nur mit einer Nachricht gedruckt.",
+    ),
+    (
+        "Scan a test print with your phone before printing a batch.",
+        "Scannen Sie einen Testdruck mit Ihrem Telefon, bevor Sie einen Stapel drucken.",
+    ),
+    ("Reset footer", "Fußzeile zurücksetzen"),
+    (
+        "Turn the footer off and restore the default message and QR code link",
+        "Fußzeile ausschalten und Standardnachricht und QR-Code-Link wiederherstellen",
+    ),
+    (
+        "The QR text is too long to encode. Shorten it.",
+        "Der QR-Text ist zu lang zum Kodieren. Kürzen Sie ihn.",
+    ),
+    (
+        "The footer was not added: part of the design is in the bottom strip it needs. Move the design up to make room, or turn the footer off.",
+        "Die Fußzeile wurde nicht hinzugefügt: Ein Teil des Designs liegt im benötigten unteren Streifen. Verschieben Sie das Design nach oben oder schalten Sie die Fußzeile aus.",
+    ),
+    (
+        "The footer was not added: the label is too small for it.",
+        "Die Fußzeile wurde nicht hinzugefügt: Das Etikett ist dafür zu klein.",
+    ),
+    (
+        "The footer QR code was left out because it would be large on this short label. The message still prints.",
+        "Der QR-Code der Fußzeile wurde weggelassen, weil er auf diesem kurzen Etikett zu groß wäre. Die Nachricht wird trotzdem gedruckt.",
+    ),
 ];
 const FR: &[(&str, &str)] = &[
     ("No matches", "Aucun résultat"),
@@ -3905,6 +3993,50 @@ const FR: &[(&str, &str)] = &[
     ),
     ("Rounded (Varela Round)", "Arrondie (Varela Round)"),
     ("Choose a font", "Choisir une police"),
+    // Label footer
+    ("Label footer", "Pied d'étiquette"),
+    ("Footer position", "Position du pied"),
+    (
+        "Add a small message along the bottom of every printed label, imported or designed. It gets its own strip and never covers the label's content. Exports are unchanged.",
+        "Ajoute un petit message en bas de chaque étiquette imprimée, importée ou conçue. Il dispose de sa propre bande et ne couvre jamais le contenu de l'étiquette. Les exports ne changent pas.",
+    ),
+    ("Print a footer message", "Imprimer un message de pied"),
+    ("Footer message", "Message de pied"),
+    (
+        "Add a QR code beside the message",
+        "Ajouter un code QR à côté du message",
+    ),
+    ("QR code link or text", "Lien ou texte du code QR"),
+    ("Footer QR code content", "Contenu du code QR du pied"),
+    (
+        "Enter a message to print the footer. The QR code prints only with a message.",
+        "Saisissez un message pour imprimer le pied. Le code QR ne s'imprime qu'avec un message.",
+    ),
+    (
+        "Scan a test print with your phone before printing a batch.",
+        "Scannez une impression d'essai avec votre téléphone avant d'imprimer un lot.",
+    ),
+    ("Reset footer", "Réinitialiser le pied"),
+    (
+        "Turn the footer off and restore the default message and QR code link",
+        "Désactiver le pied et rétablir le message et le lien du code QR par défaut",
+    ),
+    (
+        "The QR text is too long to encode. Shorten it.",
+        "Le texte du QR est trop long pour être encodé. Raccourcissez-le.",
+    ),
+    (
+        "The footer was not added: part of the design is in the bottom strip it needs. Move the design up to make room, or turn the footer off.",
+        "Le pied n'a pas été ajouté : une partie du design se trouve dans la bande inférieure nécessaire. Remontez le design pour faire de la place ou désactivez le pied.",
+    ),
+    (
+        "The footer was not added: the label is too small for it.",
+        "Le pied n'a pas été ajouté : l'étiquette est trop petite.",
+    ),
+    (
+        "The footer QR code was left out because it would be large on this short label. The message still prints.",
+        "Le code QR du pied a été omis car il serait grand sur cette étiquette courte. Le message s'imprime quand même.",
+    ),
 ];
 
 #[cfg(test)]
@@ -4002,6 +4134,7 @@ mod tests {
             include_str!("design.rs"),
             include_str!("fonts.rs"),
             include_str!("help.rs"),
+            include_str!("footer.rs"),
         ]
         .concat();
         let missing: Vec<_> = ES
