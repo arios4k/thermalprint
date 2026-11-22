@@ -6,6 +6,8 @@ on:
   workflow_dispatch:
 
 permissions:
+  # actions: write lets scripts/pages-artifact.sh list and remove the run's site artifacts.
+  actions: write
   contents: write
   pages: write
   id-token: write
@@ -106,9 +108,17 @@ jobs:
           cp -r apt-site/dists apt-site/pool apt-site/key.asc apt-site/index.html apt-site/.nojekyll apt-public/
       - name: Build the user manual into the site
         run: python3 source/scripts/build-manual.py --output apt-public/manual
+      - name: Remove site artifacts left by earlier attempts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sh source/scripts/pages-artifact.sh clean
       - uses: actions/upload-pages-artifact@v4
         with:
           path: apt-public
+      - name: Wait until GitHub lists the site artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sh source/scripts/pages-artifact.sh wait
       - uses: actions/deploy-pages@v4
         id: deployment
       - name: Attach package to GitHub release
