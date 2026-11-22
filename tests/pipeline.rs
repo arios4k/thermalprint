@@ -1,10 +1,12 @@
 use image::{Rgb, RgbImage};
 use std::path::PathBuf;
 use thermalprint::{
+    design::{Element, LabelDocument, ShapeKind},
+    design_render,
     detection::Crop,
     document::Page,
     export,
-    footer::Footer,
+    footer::{Footer, FooterAlign},
     layout,
     settings::{Scale, Settings},
 };
@@ -87,32 +89,12 @@ fn actual_size_clipping_is_blocked() {
     assert!(export::pdf_bytes(&output).is_err());
 }
 
-fn ink_rows(image: &RgbImage) -> Vec<u32> {
-    (0..image.height())
-        .filter(|&y| (0..image.width()).any(|x| image.get_pixel(x, y)[0] < 128))
-        .collect()
-}
-#[test]
-fn the_footer_changes_nothing_while_it_is_off() {
-    let plain = layout::render(&page(), Crop::FULL, &Settings::default()).unwrap();
-    // A QR code alone, or a message switched off, prints nothing and reserves nothing.
-    let s = Settings {
-        footer: Footer {
-            qr_enabled: true,
-            message: "Shop at example.com".into(),
-            ..Footer::default()
-        },
-        ..Settings::default()
-    };
-    let off = layout::render(&page(), Crop::FULL, &s).unwrap();
-    assert_eq!(off.image, plain.image);
-    assert_eq!(off.warnings, plain.warnings);
-}
-fn with_footer(qr: bool, base: &Settings) -> Settings {
+fn with_footer(qr: bool, align: FooterAlign, base: &Settings) -> Settings {
     Settings {
         footer: Footer {
             message_enabled: true,
             qr_enabled: qr,
+            align,
             ..Footer::default()
         },
         ..base.clone()
@@ -128,152 +110,133 @@ fn with_blank_bottom(rows: u32) -> Page {
     }
     p
 }
-/// Ink from the page edge to edge, as on a carrier label that fills its stock.
-fn full_bleed() -> Page {
-    let mut p = page();
-    for y in 0..900 {
-        for x in 0..600 {
-            if (x / 3) % 2 == 0 {
-                p.image.put_pixel(x, y, Rgb([0; 3]));
-            }
-        }
-    }
-    p
-}
-/// Rows `from..` painted white, to compare a label without its footer.
-fn without_rows_from(image: &RgbImage, from: u32) -> RgbImage {
-    let mut copy = image.clone();
-    for y in from..copy.height() {
-        for x in 0..copy.width() {
-            copy.put_pixel(x, y, Rgb([255; 3]));
-        }
-    }
-    copy
-}
 #[test]
-fn the_footer_goes_in_blank_space_and_the_label_prints_exactly_as_before() {
-    let label = with_blank_bottom(250);
-    for qr in [false, true] {
-        let plain = Settings::default();
-        let before = layout::render(&label, Crop::FULL, &plain).unwrap();
-        let after = layout::render(&label, Crop::FULL, &with_footer(qr, &plain)).unwrap();
-        assert!(!after.clipped);
-        assert!(!after.warnings.iter().any(|w| w.contains("footer")), "{qr}");
-        // Pixel for pixel the same label above its last line: same size, same place.
-        let last = *ink_rows(&before.image).last().unwrap();
-        assert!(
-            without_rows_from(&after.image, last + 1) == without_rows_from(&before.image, last + 1),
-            "{qr}: label changed"
-        );
-        // The footer printed below, with white space between.
-        let footer_rows: Vec<u32> = ink_rows(&after.image)
-            .into_iter()
-            .filter(|&y| y > last)
-            .collect();
-        assert!(!footer_rows.is_empty(), "{qr}");
-        assert!(footer_rows[0] > last + 5, "{qr}");
-    }
-}
-#[test]
-fn labels_without_blank_space_are_never_shrunk_for_the_footer() {
-    // Fit on 4 × 6 stock, and actual size on stock the label's own size.
-    for (scale, width_mm, height_mm) in [(Scale::Fit, 101.6, 152.4), (Scale::Actual, 50.8, 76.2)] {
-        let plain = Settings {
-            scale,
-            width_mm,
-            height_mm,
-            margin_mm: 0.,
-            ..Settings::default()
-        };
-        let before = layout::render(&full_bleed(), Crop::FULL, &plain).unwrap();
-        let after = layout::render(&full_bleed(), Crop::FULL, &with_footer(true, &plain)).unwrap();
-        assert_eq!(after.clipped, before.clipped, "{scale:?}");
-        assert!(after.image == before.image, "{scale:?} label changed");
-        assert!(
-            after
-                .warnings
-                .iter()
-                .any(|w| w.contains("footer was left out")),
-            "{scale:?}"
-        );
-    }
-}
-#[test]
-fn a_label_with_room_above_moves_up_whole_to_make_space() {
-    // A wide label on slightly taller stock: centered, the spare rows below it are too few
-    // for the footer, but together with those above they are enough.
-    let s = Settings {
-        width_mm: 101.6,
-        height_mm: 84.,
-        ..Settings::default()
-    };
-    let wide = Page {
-        image: {
-            let mut image = RgbImage::from_pixel(900, 600, Rgb([255; 3]));
-            for y in 0..600 {
-                for x in 0..900 {
-                    if (x / 3) % 2 == 0 {
-                        image.put_pixel(x, y, Rgb([0; 3]));
-                    }
+fn imported_labels_are_identical_with_the_designer_footer_on_or_off() {
+    // Lots of blank space at the bottom, where a footer could have gone, and none at all;
+    // fit and actual size; with and without a margin.
+    for label in [with_blank_bottom(250), page()] {
+        for (scale, margin_mm) in [(Scale::Fit, 2.), (Scale::Actual, 0.)] {
+            let plain = Settings {
+                scale,
+                margin_mm,
+                ..Settings::default()
+            };
+            let before = layout::render(&label, Crop::FULL, &plain).unwrap();
+            // Every alignment, with and without the QR code.
+            for (qr, align) in [
+                (false, FooterAlign::Left),
+                (true, FooterAlign::Center),
+                (true, FooterAlign::Right),
+            ] {
+                let s = with_footer(qr, align, &plain);
+                let after = layout::render(&label, Crop::FULL, &s).unwrap();
+                assert!(after.image == before.image, "{scale:?} {qr} {align:?}");
+                assert_eq!(after.warnings, before.warnings);
+                assert_eq!(after.clipped, before.clipped);
+                assert_eq!(
+                    (after.width_mm, after.height_mm, after.dpi),
+                    (before.width_mm, before.height_mm, before.dpi)
+                );
+                if !(qr && align == FooterAlign::Center) {
+                    continue;
                 }
+                // The file sent to the printer is the same too.
+                let dir = tempfile::tempdir().unwrap();
+                let (a, b) = (dir.path().join("a.png"), dir.path().join("b.png"));
+                export::save(&before, &a).unwrap();
+                export::save(&after, &b).unwrap();
+                assert_eq!(std::fs::read(&a).unwrap(), std::fs::read(&b).unwrap());
             }
-            image
-        },
-        width_mm: 76.2,
-        height_mm: 50.8,
-        ..page()
-    };
-    let before = layout::render(&wide, Crop::FULL, &s).unwrap();
-    let after = layout::render(&wide, Crop::FULL, &with_footer(true, &s)).unwrap();
-    assert!(!after.warnings.iter().any(|w| w.contains("footer")));
-    // Same size: the label's ink spans the same number of rows and columns.
-    let (b, a) = (ink_rows(&before.image), ink_rows(&after.image));
-    let label_rows = b.last().unwrap() - b[0];
-    assert_eq!(a[0] + label_rows, a[a.len() - 1].min(a[0] + label_rows));
-    assert!(a[0] < b[0], "label moved up");
-    let moved_up = b[0] - a[0];
-    let (w, h) = before.image.dimensions();
-    let mut shifted = RgbImage::from_pixel(w, h, Rgb([255; 3]));
-    image::imageops::overlay(&mut shifted, &before.image, 0, -(moved_up as i64));
-    let cut = a[0] + label_rows + 1;
-    assert!(
-        without_rows_from(&after.image, cut) == without_rows_from(&shifted, cut),
-        "label changed beyond moving up"
-    );
-}
-#[test]
-fn without_room_for_the_qr_code_only_the_message_prints() {
-    // Enough blank space for the message, not for the QR code.
-    let mut label = full_bleed();
-    for y in 865..900 {
-        for x in 0..600 {
-            label.image.put_pixel(x, y, Rgb([255; 3]));
         }
     }
-    let plain = Settings::default();
-    let before = layout::render(&label, Crop::FULL, &plain).unwrap();
-    let after = layout::render(&label, Crop::FULL, &with_footer(true, &plain)).unwrap();
-    let message_only = layout::render(&label, Crop::FULL, &with_footer(false, &plain)).unwrap();
-    assert!(
-        after
-            .warnings
-            .iter()
-            .any(|w| w.contains("QR code was left out")),
-        "{:?}",
-        after.warnings
+}
+fn footer_design() -> LabelDocument {
+    let mut doc = LabelDocument::blank(101.6, 152.4);
+    doc.add(
+        Element::Qr {
+            data: "SKU-001".into(),
+        },
+        10.,
+        10.,
+        30.,
+        30.,
     );
-    // Exactly the message-only footer, and the label itself is untouched.
+    doc
+}
+#[test]
+fn the_designer_footer_keeps_the_label_size_at_every_alignment() {
+    let plain = design_render::render_for_print(&footer_design(), 203).unwrap();
+    let mut spans = vec![];
+    for align in FooterAlign::ALL {
+        let footer = Footer {
+            message_enabled: true,
+            qr_enabled: true,
+            align,
+            ..Footer::default()
+        };
+        let with = design_render::render_with_footer(&footer_design(), 203, &footer, 2.).unwrap();
+        assert_eq!(
+            with.image.dimensions(),
+            plain.image.dimensions(),
+            "{align:?}"
+        );
+        assert_eq!(
+            (with.width_mm, with.height_mm),
+            (plain.width_mm, plain.height_mm)
+        );
+        assert!(with.warnings.is_empty(), "{align:?}: {:?}", with.warnings);
+        // Only the bottom strip changed.
+        let (w, h) = with.image.dimensions();
+        let changed: Vec<(u32, u32)> = (0..h)
+            .flat_map(|y| (0..w).map(move |x| (x, y)))
+            .filter(|&(x, y)| with.image.get_pixel(x, y) != plain.image.get_pixel(x, y))
+            .collect();
+        assert!(!changed.is_empty());
+        assert!(changed.iter().all(|&(_, y)| y > h * 9 / 10), "{align:?}");
+        let left = changed.iter().map(|p| p.0).min().unwrap();
+        let right = changed.iter().map(|p| p.0).max().unwrap();
+        // Inside the printable area: at least 2 mm from the sides.
+        assert!(left >= 16 && right < w - 16, "{align:?} {left}..{right}");
+        spans.push((left, right));
+    }
+    let w = plain.image.width();
+    assert!(spans[0].1 < w / 2, "left {spans:?}");
     assert!(
-        after.image == message_only.image,
-        "not the message-only footer"
+        ((spans[1].0 + spans[1].1) / 2).abs_diff(w / 2) < 12,
+        "center {spans:?}"
     );
-    let last = *ink_rows(&before.image).last().unwrap();
-    assert!(
-        without_rows_from(&after.image, last + 1) == without_rows_from(&before.image, last + 1),
-        "label changed"
+    assert!(spans[2].0 > w / 2, "right {spans:?}");
+}
+#[test]
+fn an_overlap_keeps_the_preview_but_blocks_printing() {
+    let mut doc = footer_design();
+    let shape = doc.add(
+        Element::Shape {
+            kind: ShapeKind::Rectangle,
+            stroke_mm: 1.,
+            filled: false,
+        },
+        30.,
+        30.,
+        30.,
+        30.,
     );
-    assert!(
-        ink_rows(&after.image).iter().any(|&y| y > last + 1),
-        "message printed"
-    );
+    // The preview still renders, naming the code that overlaps.
+    let (preview, overlaps) = design_render::render_preview(&doc, 203).unwrap();
+    let code = doc.objects[0].id;
+    assert_eq!(overlaps, vec![code]);
+    assert_eq!(preview.image.dimensions(), (812, 1218));
+    assert!(design_render::overlap_warning(&doc, &overlaps).is_some());
+    // Every print path refuses it.
+    let footer = Footer::default();
+    assert!(design_render::render_label(&doc, 203).is_err());
+    assert!(design_render::render_for_print(&doc, 203).is_err());
+    assert!(design_render::render_with_footer(&doc, 203, &footer, 0.).is_err());
+    assert!(thermalprint::zpl::encode_design_for_print(&doc, 203, &footer, 0.).is_err());
+    // Moving the shape away clears it.
+    doc.objects.iter_mut().find(|o| o.id == shape).unwrap().x_mm = 60.;
+    doc.objects.iter_mut().find(|o| o.id == shape).unwrap().y_mm = 60.;
+    let (_, overlaps) = design_render::render_preview(&doc, 203).unwrap();
+    assert!(overlaps.is_empty());
+    assert!(design_render::render_with_footer(&doc, 203, &footer, 0.).is_ok());
 }

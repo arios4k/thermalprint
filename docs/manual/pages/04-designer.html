@@ -158,14 +158,44 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <p>Use <strong>View → Safe margin</strong> to keep content a set distance from the edge, whatever the driver says. Set it in millimeters, from 0 to 10. The canvas shades that border in amber, and the status area names any object that reaches into it. Where the driver also reports a border, each side uses whichever is larger. The safe margin is remembered <strong>for each printer</strong>, so a small price-tag printer and a 4 × 6 printer can each have their own. You can also set it in <a href="print-center.html#alignment-and-printer-profiles">Print Center, under Alignment</a>. Leave it at 0 to turn it off. A good starting point for a printer that clips its edges is 2 mm; print a test label and adjust.</p>
 {{figure:designer-printable|The Label Designer with the printer's unprintable border shaded and a warning under the canvas about an object that reaches into it|The shaded border is the part the printer cannot print. The warning lists the object that reaches into it.}}
 
+<h2 id="label-footer">Label footer</h2>
+<p>The optional <strong>Label footer</strong> adds a small line of text, such as <em>Printed with ThermalPrint</em> or your shop's name, along the bottom of labels you design here when you print them. You can add a small QR code before the message, for example a link to your website. It is off until you turn it on.</p>
+<div class="callout important"><p><strong>Only for labels you design.</strong> The footer is added to Label Designer prints, batches, number ranges, printed sheets, and reprints of designs. Imported shipping labels never get a footer, text, or QR code from ThermalPrint, whether you print them directly, reprint them, or print them automatically. The footer setting has no effect on their layout, scale, or output.</p></div>
+{{figure:designer-footer|The Label footer section of the Label Designer properties panel, with the explanation, Print a footer message, the message, Add a QR code before the message, the QR code link, the Left, Center, and Right alignment buttons, and Reset footer|The Label footer controls, with the QR code turned on and aligned right. The canvas shows the footer where it will print.}}
+<ol>
+  <li>Press <strong>Footer</strong> in the Designer toolbar, or open the <strong>Label footer</strong> section of the properties panel.</li>
+  <li>Turn on <strong>Print a footer message</strong> and type your <strong>Message</strong>, up to 80 characters.</li>
+  <li>To add a QR code, turn on <strong>Add a QR code before the message</strong> and enter a link or text, up to 200 characters. It starts with a link to this user manual. The QR code prints only with a message.</li>
+  <li>Under <strong>Alignment</strong>, choose <strong>Left</strong>, <strong>Center</strong>, or <strong>Right</strong>. The whole footer, QR code included, moves to that part of the bottom edge. Pick a side where your design leaves blank space.</li>
+  <li>Check the canvas: it shows the footer exactly where it will print. Print one label and scan the QR code with your phone before printing a batch.</li>
+</ol>
+<div class="callout tip"><p><strong>Your label never changes size for the footer.</strong> The footer goes only into blank space at the bottom of the label, inside the printable area: at least 1.5 mm from the edges, or more when your safe margin or the printer's unprintable border is larger. Turning it on or off leaves the label dimensions and printable area unchanged.</p></div>
+<p>If the footer does not fit, it is left out rather than covering your design, and a note in the Label footer section and below the canvas says what was left out and why:</p>
+<ul>
+  <li><strong>The QR code is left out</strong> and the message still prints when there is room for the message but not the QR code, or when the QR code would take more than about an eighth of a short label's height.</li>
+  <li><strong>The whole footer is left out</strong> when part of your design is in the space it needs at the chosen alignment. Move objects up, choose another alignment, or turn the footer off.</li>
+  <li><strong>The whole footer is left out</strong> when the label is too small for it inside the printable area.</li>
+</ul>
+<p>The footer stays small: the message is about 2 mm tall, and long messages are shortened to fit. The QR code uses modules at least 0.25 mm wide and the full white border scanners need. Your footer settings are saved and stay on between sessions. <strong>Reset footer</strong> turns the footer off and restores the default message, link, and alignment. Exported PDF, PNG, SVG, and ZPL files never include the footer.</p>
+
 <h2>Printing from the Designer</h2>
 <p>Choose your printer and media in <a href="print-center.html">Print Center</a>, then press <strong>Print</strong> in the toolbar. The design is drawn at the printer's resolution (203, 300, or 600 DPI) and sent as a one-page PDF. If a label contains something that cannot be drawn, such as a barcode value that is not valid, printing stops with a message that names the problem. Designs you print are listed under <em>Recent prints</em> in Print Center so you can reopen them later.</p>
 <div class="callout note"><p>For many different labels from one design, use <strong>File → Batch print from CSV…</strong>. For direct ZPL printing, see <a href="export.html#printing-raw-zpl">Exporting</a>.</p></div>
 
 {{figure:designer-de|The Label Designer shown in German|The Label Designer follows your system language. This is the same screen in German.}}
 
+<h2 id="overlap-warning">When a code overlaps another object</h2>
+<p>A barcode or QR code needs its bars and the white space around it intact to scan. As soon as a barcode or QR code overlaps another object, the Label Designer warns you, before you press Print:</p>
+<ul>
+  <li>A red <strong>Overlap</strong> banner above the canvas names the affected codes, and each one is outlined in red on the canvas.</li>
+  <li><strong>Print</strong> is turned off while the overlap remains, along with printing a batch, a number range, or a sheet. It turns back on by itself as soon as the codes are apart. You do not need to press Ctrl+Z.</li>
+  <li>The canvas stays visible and editable. Select, move, resize, or reorder the objects as usual until the warning clears.</li>
+</ul>
+{{figure:designer-overlap|A rectangle dropped over a barcode in the Label Designer, with the red Overlap banner above the canvas, the barcode outlined in red, and Print turned off|An overlapping code is outlined in red and Print is off until the objects are apart.}}
+<p>A code needs its own space even when it is in front, so move or resize the objects until they no longer touch. <strong>Foreground</strong>, <strong>Forward</strong>, <strong>Backward</strong>, and <strong>Background</strong> keep working while the warning shows, and objects that are not codes can overlap freely, so intentional layering is kept. Every print path checks the design again when it prints, so a damaged code is never sent to the printer.</p>
+
 <h2 id="code-preflight">Checking barcodes and QR codes</h2>
-<p><strong>Check barcodes</strong> checks generated code content, dimensions at the selected DPI, clear space, overlap with other objects, and paper-edge clipping. Invalid or obscured codes also block rendering before printing. Test the physical print with your scanner to check the printer, stock, and scan conditions.</p>
+<p><strong>Check barcodes</strong> checks generated code content, dimensions at the selected DPI, clear space, overlap with other objects, and paper-edge clipping. Invalid or obscured codes also block printing; see <a href="#overlap-warning">When a code overlaps another object</a>. Test the physical print with your scanner to check the printer, stock, and scan conditions.</p>
 {{figure:designer-code-check|Small product QR template in the Label Designer with the Check barcodes toolbar action and a successful preflight report below the canvas|Check barcodes reports content, size and clear-space results at the selected DPI. It does not replace testing a physical print.}}
 <ol>
   <li>Select the intended printer DPI in Print Center and enter the final barcode or QR data.</li>

@@ -60,6 +60,17 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.15.0" date="2026-11-22">
+      <description>
+        <p>The label footer moves to the Label Designer, an overlap warning for codes, and more shipping symbols.</p>
+        <ul>
+          <li>Set the optional footer in the Label Designer and align it, QR code included, to the left, center, or right.</li>
+          <li>Never add the footer to imported shipping labels, in direct prints, reprints, or automatic printing.</li>
+          <li>Warn as soon as a barcode or QR code overlaps another object, turn Print off until it is fixed, and keep the canvas editable.</li>
+          <li>Add Do not stack, Keep cool, Keep out of sunlight, and Package symbols.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.14.0" date="2026-11-21">
       <description>
         <p>An optional label footer, more accurate automatic cropping, and Windows on the project page.</p>

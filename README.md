@@ -34,7 +34,8 @@ Design custom labels, prepare downloaded PDFs, and print on thermal stock—all 
 - **Prepare existing labels.** Import PDFs or images from carriers and marketplaces, crop away instructions and whitespace while keeping every part of the label that has a barcode, and review the result before printing.
 - **Get the size right.** Start at **4 × 6 inches** or any size you need; ThermalPrint explains printer media and matches the output to it. Wide labels can be designed on their side and rotated 90° when they print.
 - **Print or export.** Print to a configured system printer, or save a PDF, PNG, SVG or raster ZPL.
-- **Sign your labels.** Optionally add a small footer message, with or without a QR code, at the bottom-left of printed labels. Labels are never shrunk or covered for it: it uses only blank space, so carrier barcodes print exactly as they are.
+- **Sign your designs.** In the Label Designer, optionally add a small footer message, with or without a QR code, aligned left, center, or right along the bottom of labels you design. It uses only blank space inside the printable area and never changes the label size. Imported shipping labels never get a footer.
+- **Safe barcodes.** The Label Designer warns as soon as a barcode or QR code overlaps another object and turns Print off until it is fixed, while the canvas stays editable.
 - **Print many at once.** Numbered runs, several labels on an A4 or Letter sheet, and one label per row of a spreadsheet.
 - **Save clicks.** Watch a folder such as Downloads so new labels join the queue, even ones saved while the app was closed, and optionally print them by themselves.
 - **Stay comfortable.** Light and dark themes; English, Spanish, German and French; keyboard shortcuts; and a guide to printing terms.

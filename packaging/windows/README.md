@@ -27,14 +27,14 @@ Set the following GitHub Actions repository variables using the values shown und
 
 ### Build a Windows-only Store update
 
-Commit the updated `Cargo.toml` version and `Cargo.lock`, then tag that commit with `windows-vMAJOR.MINOR.PATCH`. Use a version higher than the current Store package. For example, for version `0.14.0`:
+Commit the updated `Cargo.toml` version and `Cargo.lock`, then tag that commit with `windows-vMAJOR.MINOR.PATCH`. Use a version higher than the current Store package. For example, for version `0.15.0`:
 
 ```sh
-git tag windows-v0.14.0
-git push origin windows-v0.14.0
+git tag windows-v0.15.0
+git push origin windows-v0.15.0
 ```
 
-The **Windows 11** workflow requires the tag to match the Cargo version and all three Store identity variables to be set. The MSIX version for this example is `0.14.0.0`. A `windows-v*` tag starts the Windows build without releasing Linux packages. Use the regular `v*` tag when releasing both platforms.
+The **Windows 11** workflow requires the tag to match the Cargo version and all three Store identity variables to be set. The MSIX version for this example is `0.15.0.0`. A `windows-v*` tag starts the Windows build without releasing Linux packages. Use the regular `v*` tag when releasing both platforms.
 
 Download the **ThermalPrint-Windows-x64-store** artifact, extract the MSIX, and upload it through **Partner Center → ThermalPrint → Start update → Packages**. Submit the update for certification. Local installation requires a signature trusted by the test machine. Microsoft signs the published Store package during certification.
 
