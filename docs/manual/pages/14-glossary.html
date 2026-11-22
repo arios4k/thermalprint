@@ -24,6 +24,7 @@ summary: Plain-language explanations of the printing and barcode terms, and comm
   <tr><td><strong>FNC1</strong></td><td>A control character in GS1 barcodes. It marks the start of GS1 data and ends a variable-length field.</td></tr>
   <tr><td><strong>GS1, application identifier (AI)</strong></td><td>The global standard for supply-chain barcodes. An AI is the number in brackets, such as <code>(01)</code> for a product number, that says what the value after it means.</td></tr>
   <tr><td><strong>GTIN</strong></td><td>Global Trade Item Number: the number behind a product barcode such as EAN-13 or UPC-A.</td></tr>
+  <tr><td><strong>Label footer</strong></td><td>An optional small message, with an optional QR code, that the Label Designer adds along the bottom of labels you design when they print. Imported labels never get one. See <a href="designer.html#label-footer">Label footer</a>.</td></tr>
   <tr><td><strong>Media</strong></td><td>The paper (here, label) size the printer driver offers, such as 4 × 6 in.</td></tr>
   <tr><td><strong>Object</strong></td><td>One item on a label: a text box, barcode, QR code, shape, or image.</td></tr>
   <tr><td><strong>Placeholder</strong></td><td>A <code>${name}</code> marker in a design that is replaced with a value when the label is drawn.</td></tr>
@@ -52,7 +53,7 @@ summary: Plain-language explanations of the printing and barcode terms, and comm
 <h3>Why does the preview differ from my printed label?</h3>
 <p>The preview shows exactly what is sent. Differences come from the printer: its calibration, darkness, margins, or the loaded roll. Use the <a href="print-center.html#alignment-and-printer-profiles">alignment test</a> and print one label before a roll.</p>
 <h3>Is it free?</h3>
-<p>Yes. ThermalPrint is open source under the MIT license, created by Alexis Rios-Negron. If it is useful to you, you can <a href="https://paypal.me/AlexisRios">support its development</a>, star it on <a href="https://github.com/arios4k/thermalprint">GitHub</a>, or report a bug.</p>
+<p>On Linux, yes: Linux downloads are free. The Windows edition in the Microsoft Store is a one-time purchase (US $4.99) with a free 7-day trial. ThermalPrint's source code is open under the MIT license on both platforms, created by Alexis Rios-Negron. If it is useful to you, you can <a href="https://paypal.me/AlexisRios">support its development</a>, star it on <a href="https://github.com/arios4k/thermalprint">GitHub</a>, or report a bug.</p>
 <h3>Can I make a label as long as its content?</h3>
 <p>Yes: tick <strong>Auto-length (continuous roll)</strong> in Label setup. See <a href="designer.html#labels-with-no-fixed-length">Labels with no fixed length</a>.</p>
 <h3>How do I print 100 numbered labels?</h3>

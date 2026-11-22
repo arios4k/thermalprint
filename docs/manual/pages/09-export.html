@@ -23,7 +23,7 @@ summary: Save a finished label as PDF, PNG, SVG, or ZPL, and print raw ZPL to a 
   <tr><td><strong>ZPL</strong> (designs)</td><td>A text file of ZPL II commands that draws the label as a bitmap.</td><td>Zebra-compatible printers that you feed ZPL directly.</td></tr>
 </table>
 <div class="callout note"><p>With <a href="designer.html#rotated-printing">rotated printing</a> on, ZPL is rotated 90° like a print, so it fits the label stock. PDF, PNG, and SVG keep the design the way it looks on the canvas.</p></div>
-<div class="callout note"><p>Because exports are bitmaps, text in a PDF or SVG cannot be selected or searched. Keep the <code>.thermalprint</code> file if you want to edit the label later.</p></div>
+<div class="callout note"><p>Because exports are bitmaps, text in a PDF or SVG cannot be selected or searched. Keep the <code>.thermalprint</code> file if you want to edit the label later. Exports never include the <a href="designer.html#label-footer">label footer</a>; it is added only when a design prints.</p></div>
 
 <h2 id="printing-raw-zpl">Printing raw ZPL</h2>
 <p>Most printers are used through their normal driver, and ThermalPrint sends them a PDF. Some Zebra-compatible printers accept ZPL directly through a <strong>raw queue</strong>, which skips the driver.</p>
@@ -44,4 +44,5 @@ summary: Save a finished label as PDF, PNG, SVG, or ZPL, and print raw ZPL to a 
 <ul>
   <li>Output larger than 36 megapixels is refused. Lower the DPI or the label size.</li>
   <li>A label that would be clipped cannot be exported until you fix the layout.</li>
+  <li>A design where a barcode or QR code overlaps another object cannot be exported either. Move the objects apart; see <a href="designer.html#overlap-warning">When a code overlaps another object</a>.</li>
 </ul>

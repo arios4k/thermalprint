@@ -5,7 +5,7 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
 -->
 <p><strong>Print Center</strong> is where you tell ThermalPrint about your printer. You usually set it up once. The same printer, media, and options are then used by both Import &amp; Convert and the Label Designer.</p>
 
-{{figure:print-center-annotated|Print Center in version 0.13.0, with its setup assistant, saved label stock, printer and media, output settings, alignment and diagnostics|The current Print Center. Recent prints appears below these settings. Screenshots show Linux; Windows uses its native print spooler.}}
+{{figure:print-center-annotated|Print Center, with its setup assistant, saved label stock, printer and media, output settings, alignment and diagnostics|The current Print Center. Recent prints appears below these settings. Screenshots show Linux; Windows uses its native print spooler.}}
 
 <h2 id="printer-and-media">Printer and media</h2>
 <p>ThermalPrint prints through <strong>CUPS</strong> on Linux and the <strong>Windows print spooler</strong> on Windows 11. Add the printer in your system's printer settings first. On Windows, configure the label stock in the printer driver so ThermalPrint can list its dimensions. See <a href="install.html#windows-11">Windows setup</a>.</p>
@@ -59,7 +59,7 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
 <h2 id="recent-prints">Recent prints</h2>
 <p>Batch runs and number ranges are recorded once, with the count in the title, for example <em>Customer label · batch of 50</em> or <em>Shelf tag · numbers 20</em>; reopening one opens the original design, not a single numbered label.</p>
 <p>Each label you print is added to <strong>Recent prints</strong> at the bottom of Print Center, with the date and time, printer, and copies. The app keeps up to 50 entries. Search by label name or printer; <strong>Clear</strong> beside the search field clears the search, while <strong>Clear history</strong> removes the entries.</p>
-{{figure:print-history|Recent prints in version 0.13.0, with a search field, Open and Reprint buttons, and recorded media, dimensions, DPI and copies|Search recent jobs and choose Open for review or Reprint for a confirmed repeat job.}}
+{{figure:print-history|Recent prints, with a search field, Open and Reprint buttons, and recorded media, dimensions, DPI and copies|Search recent jobs and choose Open for review or Reprint for a confirmed repeat job.}}
 <ul>
   <li>Press <strong>Open</strong> to bring the label back. A <strong>design</strong> reopens in the Label Designer as an unsaved copy exactly as it was printed; an <strong>imported label</strong> returns to the queue in Import &amp; Convert.</li>
   <li><strong>Nothing prints when you press Open.</strong> You review the label, then press Print yourself.</li>
@@ -77,7 +77,7 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
   <li>Print one alignment test, compare the 1 mm border to the stock edges, and adjust the offsets below.</li>
   <li>Enter a <strong>Stock profile name</strong> and choose <strong>Save stock profile</strong>.</li>
 </ol>
-{{figure:printer-setup|Printer setup assistant in version 0.13.0, above the printer, media, size and alignment controls|The assistant guides the existing controls below it. This example shows a fictional 4 × 6 printer.}}
+{{figure:printer-setup|Printer setup assistant, above the printer, media, size and alignment controls|The assistant guides the existing controls below it. This example shows a fictional 4 × 6 printer.}}
 <p>Named profiles let the same printer use several kinds of stock. Find the profile under <strong>Saved label stock</strong> and choose its <strong>Load profile</strong> button to restore its size, media, driver resolution, DPI, offsets, copies, and safe margin. A profile belongs to its printer; switch to that printer before loading it. Up to 50 named profiles are retained. <strong>Close assistant</strong> closes the guide; your current printer settings remain in use.</p>
 
 <h2 id="reprint">Reprinting from history</h2>

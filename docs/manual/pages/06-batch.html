@@ -71,6 +71,8 @@ Alan Turing,Manchester,SKU-1003</code></pre>
   <li>The labels are then sent in order to the printer chosen in Print Center, using its media, resolution, and copies. Alignment offsets apply too.</li>
   <li>If something goes wrong partway through, the batch stops and tells you which row it stopped at.</li>
   <li>With <em>Print using raw ZPL</em> turned on (Export menu), labels are sent as ZPL instead of PDF.</li>
+  <li>If the <a href="designer.html#label-footer">label footer</a> is on, it is added to each label where the design leaves room for it, exactly as for a single print.</li>
+  <li>While a barcode or QR code overlaps another object in the design, the batch does not print. Move the objects apart first; see <a href="designer.html#overlap-warning">When a code overlaps another object</a>.</li>
   <li>The finished batch appears in <a href="print-center.html#recent-prints">Recent prints</a> as one entry, such as <em>Customer label · batch of 3</em>.</li>
 </ul>
 <p>Values are inserted exactly as written. A value that itself looks like a placeholder, such as <code>${City}</code>, is printed literally and not replaced again.</p>
@@ -83,5 +85,5 @@ Alan Turing,Manchester,SKU-1003</code></pre>
   <tr><td>More than 500 rows</td><td>Split the file into smaller ones.</td></tr>
   <tr><td>The file has a header but no data rows</td><td>Add at least one row under the header.</td></tr>
   <tr><td>Row N: … invalid barcode</td><td>The value in that row does not suit the barcode type. See the <a href="barcodes.html">rules for each type</a>. A common case is an EAN-13 with the wrong number of digits.</td></tr>
-  <tr><td>Characters look wrong</td><td>Save the file as UTF-8 CSV. Characters that the built-in label font does not have, such as Chinese, Japanese, and Korean, cannot be drawn.</td></tr>
+  <tr><td>Characters look wrong</td><td>Save the file as UTF-8 CSV. Characters that the text's font does not have cannot be drawn; the built-in fonts do not include Chinese, Japanese, or Korean, for example.</td></tr>
 </table>
