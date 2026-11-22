@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Install ThermalPrint on Debian, Ubuntu and Fedora. Official signed APT repository and Fedora Copr installation instructions.">
-<title>ThermalPrint APT Repository</title>
+<meta name="description" content="Install ThermalPrint on Windows 11 from the Microsoft Store, or on Debian, Ubuntu and Fedora from the official signed APT repository and Fedora Copr.">
+<title>ThermalPrint: Install on Windows and Linux</title>
 <style>
   :root { --bg: #fafafa; --fg: #1f2328; --muted: #59636e; --card: #fff; --border: #d1d9e0; --accent: #5b3fd6; }
   @media (prefers-color-scheme: dark) {
@@ -62,12 +62,19 @@
   </g>
   <circle cx="181" cy="87" r="14" fill="#ff6b6b"/>
 </svg><span>ThermalPrint</span></h1>
-  <p class="lead">Design, prepare and print thermal labels on Linux. Import shipping labels,
+  <p class="lead">Design, prepare and print thermal labels on Linux and Windows 11. Import shipping labels,
   crop and arrange pages, or create custom labels with real barcodes and QR codes.</p>
 
   <p><a href="manual/"><strong>Read the user manual</strong></a>: a step-by-step guide to every feature, with screenshots.</p>
 
-  <h2>Install</h2>
+  <h2>Install on Windows 11</h2>
+  <p>ThermalPrint for Windows 11 (64-bit Intel/AMD) is available in the
+  <a href="https://apps.microsoft.com/detail/9NXDXRSQW0ZF"><strong>Microsoft Store</strong></a>.
+  The US price is $4.99 with a 7-day trial, so you can test it with your printer and labels first.
+  The Store keeps it up to date. The Linux version is free.</p>
+  <p>See the <a href="manual/install.html#windows-11">Windows setup guide</a> to add your printer and print your first label.</p>
+
+  <h2>Install on Debian and Ubuntu</h2>
   <p>For Debian, Ubuntu and derivatives on 64-bit Intel/AMD (amd64), add the signed APT repository:</p>
   <pre><code>sudo apt update
 sudo apt install curl
@@ -91,12 +98,14 @@ sudo dnf install thermalprint</code></pre>
   <p class="muted">Copr is separate from Fedora’s official package repositories.</p>
 
   <h2>Set up</h2>
-  <p>Configure your thermal printer in your desktop’s printer settings, then open
-  <strong>ThermalPrint</strong> from your applications menu. Choose a template, create a custom
+  <p>Configure your thermal printer in your system’s printer settings, then open
+  <strong>ThermalPrint</strong> from your applications menu, or the Start menu on Windows. Choose a template, create a custom
   label, or import an existing shipping label. Check the paper size and print preview before printing.</p>
-  <p>Packages include CUPS client tools and Poppler PDF utilities. Documents are processed locally on your computer.</p>
+  <p>Linux packages include CUPS client tools and Poppler PDF utilities. Documents are processed locally on your computer.</p>
 
   <h2>Uninstall</h2>
+  <p>Windows 11: open <strong>Settings → Apps → Installed apps</strong>, then choose
+  <strong>ThermalPrint → Uninstall</strong>.</p>
   <p>Debian / Ubuntu:</p>
   <pre><code>sudo apt remove thermalprint
 sudo rm /etc/apt/sources.list.d/thermalprint.list /etc/apt/keyrings/thermalprint.asc</code></pre>
