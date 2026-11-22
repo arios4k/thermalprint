@@ -14,8 +14,8 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
   <li><strong>From a saved design:</strong> press <strong>Open</strong>, drop a <code>.thermalprint</code> file on the window, or double-click one in your file manager.</li>
 </ul>
 
-<h2>Label setup</h2>
-<p>Select nothing (click an empty part of the canvas) and open <strong>Label setup</strong> in the properties panel:</p>
+<h2 id="label-tab">Label settings</h2>
+<p>Open the <strong>Label</strong> tab of the properties panel. It is the tab in view when nothing is selected; click an empty part of the canvas to deselect everything.</p>
 <table>
   <tr><th>Field</th><th>Meaning</th></tr>
   <tr><td><strong>Label name</strong></td><td>The title of the design. It is used when you save and in your recent prints.</td></tr>
@@ -25,13 +25,13 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
   <tr><td><strong>Auto-length (continuous roll)</strong></td><td>Print only as long as the content needs. See <a href="designer.html#labels-with-no-fixed-length">Labels with no fixed length</a>. When it is on, <strong>Bottom margin</strong> and a <strong>Printed length</strong> readout appear. It is not available with rotated printing.</td></tr>
   <tr><td><strong>Grid size</strong></td><td>The spacing of the guide grid in millimeters (0.5 to 50; 5 to start).</td></tr>
 </table>
-<p>If the label size does not match the media of the selected printer, the status area under the canvas says so and offers <strong>Match label to printer media</strong>. That button resizes the canvas to the printer's stock without moving or resizing your objects, and <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it. If a smaller label is intentional, choose matching media in <a href="print-center.html">Print Center</a> instead.</p>
+<p>If the label size does not match the media of the selected printer, the note line under the canvas says so and offers <strong>Match label to printer media</strong>. That button resizes the canvas to the printer's stock without moving or resizing your objects, and <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it. If a smaller label is intentional, choose matching media in <a href="print-center.html">Print Center</a> instead.</p>
 
 <h2 id="toolbar">The toolbar</h2>
-<p>The toolbar runs along the top of the Label Designer, from left to right:</p>
+<p>Every toolbar button has an icon and a name. The buttons are grouped from left to right, and <strong>Print</strong> stands on its own at the right end, so the main action is always in the same place.</p>
 <table>
-  <tr><th>Control</th><th>What it does</th></tr>
-  <tr><td><strong>File</strong></td><td>A menu with:
+  <tr><th>Group</th><th>Control</th><th>What it does</th></tr>
+  <tr><td rowspan="3">Document</td><td><strong>File</strong></td><td>A menu with:
     <ul>
       <li><em>New label</em>: start an empty label. If the current design has unsaved changes, you are asked first.</li>
       <li><em>Save as…</em>: save the design under a new file name.</li>
@@ -43,24 +43,28 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
     </ul></td></tr>
   <tr><td><strong>Open</strong></td><td>Open a saved label design.</td></tr>
   <tr><td><strong>Save</strong></td><td>Save the design (<kbd>Ctrl</kbd>+<kbd>S</kbd>). A design that was never saved asks for a file name.</td></tr>
-  <tr><td>Undo / Redo</td><td>Undo (<kbd>Ctrl</kbd>+<kbd>Z</kbd>) or redo (<kbd>Ctrl</kbd>+<kbd>Y</kbd>) the last change. Each button is greyed out when there is nothing to undo or redo.</td></tr>
-  <tr><td>Zoom out / Zoom in</td><td>Zoom from 25 % to 500 %. Drag with the <strong>middle mouse button</strong> to pan.</td></tr>
+  <tr><td>Edit</td><td>Undo / Redo</td><td>Undo (<kbd>Ctrl</kbd>+<kbd>Z</kbd>) or redo (<kbd>Ctrl</kbd>+<kbd>Y</kbd>) the last change. Each button is greyed out when there is nothing to undo or redo.</td></tr>
+  <tr><td rowspan="3">Zoom</td><td>Zoom out / Zoom in</td><td>Zoom from 25 % to 500 %. Drag with the <strong>middle mouse button</strong> to pan.</td></tr>
+  <tr><td>The zoom percentage</td><td>Shows the current zoom; click it to go back to 100 %.</td></tr>
   <tr><td>Fit preview</td><td>Fit the label to the canvas at 100 % and reset panning.</td></tr>
-  <tr><td><strong>View</strong></td><td>A menu with:
+  <tr><td rowspan="3">Menus</td><td><strong>View</strong></td><td>A menu with:
     <ul>
-      <li><em>Show grid</em>: draw the guide grid. Set its spacing with <em>Grid size</em> in Label setup.</li>
+      <li><em>Show grid</em>: draw the guide grid. Set its spacing with <em>Grid size</em> on the <a href="#label-tab">Label tab</a>.</li>
       <li><em>Snap to grid</em>: move and resize in steps of a fifth of the grid size.</li>
       <li><em>Smart guides</em>: snap to other objects' edges and centers while dragging.</li>
       <li><em>Show printable area</em>: shade the border your printer cannot print on, plus your safe margin. See <a href="#the-printable-area">The printable area</a>.</li>
       <li><em>Safe margin</em>: keep content this far from the label's edge, in millimeters. It is shaded on the canvas, and objects inside it are flagged, even when the printer's driver reports no unprintable border. It is remembered for each printer.</li>
       <li><em>Properties panel</em>: show or hide the properties panel at the right.</li>
-      <li><em>Focus canvas</em>: the same as the <strong>Focus</strong> button.</li>
+      <li><em>Focus canvas</em>: hide the navigation and properties panel to give the canvas more room.</li>
     </ul></td></tr>
   <tr><td><strong>Export</strong></td><td>Save the design as a <em>PDF document</em>, <em>PNG image</em>, <em>SVG vector</em>, or <em>ZPL label</em>. The menu also has the <em>Print using raw ZPL</em> switch, for ZPL-compatible printers. See <a href="export.html">Exporting</a>. Exports never include the label footer.</td></tr>
-  <tr><td><strong>Footer</strong></td><td>Open the <strong>Label footer</strong> section of the properties panel, showing the panel if it is hidden. The button is highlighted while the footer is on. See <a href="#label-footer">Label footer</a>.</td></tr>
-  <tr><td><strong>Check barcodes</strong></td><td>Check every barcode and QR code for valid content, size at the selected DPI, clear space, overlap, and clipping, and report the result below the canvas. See <a href="#code-preflight">Checking barcodes and QR codes</a>.</td></tr>
-  <tr><td><strong>Focus</strong></td><td>Hide the navigation and properties panel to give the canvas more room. Press it again to bring them back.</td></tr>
-  <tr><td><strong>Print</strong></td><td>Print the label on the printer and media chosen in <a href="print-center.html">Print Center</a>, or send raw ZPL when <em>Print using raw ZPL</em> is on. Print is greyed out while a barcode or QR code overlaps another object, and turns back on by itself once they are apart. See <a href="#overlap-warning">When a code overlaps another object</a>.</td></tr>
+  <tr><td><strong>Label</strong></td><td>A menu with:
+    <ul>
+      <li><em>Label footer…</em>: open the <strong>Footer</strong> tab of the properties panel, showing the panel if it is hidden. The item reads <em>Label footer (on)…</em> while the footer is on. See <a href="#label-footer">Label footer</a>.</li>
+      <li><em>Check barcodes</em>: check every barcode and QR code for valid content, size at the selected DPI, clear space, overlap, and clipping, and report the result below the canvas. See <a href="#code-preflight">Checking barcodes and QR codes</a>.</li>
+      <li><em>Focus canvas</em>: the same switch as in the View menu.</li>
+    </ul></td></tr>
+  <tr><td>Main action</td><td><strong>Print</strong></td><td>Print the label on the printer and media chosen in <a href="print-center.html">Print Center</a>, or send raw ZPL when <em>Print using raw ZPL</em> is on. Print is greyed out while a barcode or QR code overlaps another object, and turns back on by itself once they are apart. See <a href="#overlap-warning">When a code overlaps another object</a>.</td></tr>
 </table>
 
 <h2>The element palette</h2>
@@ -86,7 +90,7 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
   <li><strong>Move:</strong> drag the object.</li>
   <li><strong>Resize:</strong> drag the <strong>square handle</strong> at the bottom-right corner. It resizes along the object's own direction, even when it is rotated.</li>
   <li><strong>Rotate:</strong> drag the <strong>round handle</strong> above the object. Hold <kbd>Shift</kbd> to snap to 15° steps. For an exact angle, type it into <strong>Rotation</strong>; fractional degrees such as 23.5° work.</li>
-  <li><strong>Grid and snapping:</strong> turn on <em>Show grid</em> to see a guide grid, and <em>Snap to grid</em> to make movement land on it. <strong>Label setup → Grid size</strong> sets the spacing in millimeters (5 mm to start); snapping moves in steps of a fifth of it.</li>
+  <li><strong>Grid and snapping:</strong> turn on <em>Show grid</em> to see a guide grid, and <em>Snap to grid</em> to make movement land on it. <strong>Label</strong> tab → <strong>Grid size</strong> sets the spacing in millimeters (5 mm to start); snapping moves in steps of a fifth of it.</li>
   <li><strong>Smart guides:</strong> with <em>View → Smart guides</em> on, a dragged object snaps to the edges and centers of the other objects and to the label's center, and magenta lines show what it lined up with.</li>
   <li><strong>Nudge with the keyboard:</strong> the arrow keys move the selection by 0.1 mm, and <kbd>Shift</kbd>+arrow by 1 mm.</li>
   <li><strong>Lock:</strong> tick <strong>Lock position and size</strong> to protect an object. A locked object cannot be dragged, resized, rotated, nudged, or deleted from the canvas until you unlock it.</li>
@@ -94,8 +98,15 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <p>The line above the canvas reminds you: <em>Drag to move · square to resize · circle to rotate · Shift: 15°</em>.</p>
 {{figure:rotation|A QR code rotated to 23.5 degrees on the label canvas, with its rotation handle|Rotating an object freely. The Rotation field accepts exact and fractional angles.}}
 
-<h2>The properties panel</h2>
-<p>With one object selected, the panel on the right shows:</p>
+<h2 id="the-properties-panel">The properties panel</h2>
+<p>The panel on the right has three tabs, so you see only the settings for what you are working on:</p>
+<table>
+  <tr><th>Tab</th><th>What it holds</th></tr>
+  <tr><td><strong>Object</strong></td><td>The selected object's settings. It opens by itself when you select something.</td></tr>
+  <tr><td><strong>Label</strong></td><td>The label's name, size, rotated printing, serial number, auto-length, and grid. See <a href="#label-tab">Label settings</a>.</td></tr>
+  <tr><td><strong>Footer</strong></td><td>The optional label footer. See <a href="#label-footer">Label footer</a>.</td></tr>
+</table>
+<p>With one object selected, the <strong>Object</strong> tab shows:</p>
 <ul>
   <li>An <strong>Object</strong> list to jump to any object, including ones hidden behind others.</li>
   <li><strong>X</strong>, <strong>Y</strong>, <strong>W</strong>, <strong>H</strong> and <strong>Rotation</strong>: exact position and size in millimeters.</li>
@@ -113,6 +124,9 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
   <tr><td><strong>Delete selected</strong></td><td>Deletes the unlocked objects in the selection.</td></tr>
 </table>
 <p>These tools are icon buttons: hover over one to see its name, and screen readers announce the same name. Locked objects are skipped by every one of them. A single object also has <strong>Rotate 90°</strong> (a quarter turn clockwise) and <strong>Flip horizontally</strong> / <strong>Flip vertically</strong>, which mirror it before it is rotated.</p>
+
+<h2 id="notes-under-the-canvas">Notes under the canvas</h2>
+<p>The bar under the canvas shows the label's name, size, zoom and object count, then the latest status message. Below that, one line shows the most important note about the design, such as an object in the printer's unprintable border, a label size that does not match the printer media, or a footer that was left out. Warnings come first, in amber with a warning sign; information follows in grey with an <em>i</em>. When there are more notes, <strong>More notes (N)</strong> lists them all, and <strong>Hide other notes</strong> folds them away again. Buttons that fix a note, such as <strong>Match label to printer media</strong>, appear right under it.</p>
 
 <h2>Saving and the unsaved-changes prompt</h2>
 <p>Designs are saved as <code>.thermalprint</code> files. They are editable, versioned, and include embedded images, so a design is a single file you can copy or email. The status bar shows <em>Unsaved</em> when there are changes.</p>
@@ -140,19 +154,19 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <h2 id="rotated-printing">Rotated printing</h2>
 <p>Labels are usually designed the way they come out of the printer: a 4 × 6 inch label is designed tall, 101.6 mm wide and 152.4 mm long. Some labels are meant to be read sideways, with wide content such as a long address, a big barcode, or a product name across the long side. <strong>Rotated printing</strong> lets you design such a label on its side, so the text reads straight while you work, and rotates it 90° when it prints so it still fits the label stock the way it is loaded. It is optional and off to start; labels without it print exactly as designed.</p>
 <ol>
-  <li>Select nothing (click an empty part of the canvas) and open <strong>Label setup</strong>.</li>
+  <li>Select nothing (click an empty part of the canvas) and open the <strong>Label</strong> tab of the properties panel.</li>
   <li>Tick <strong>Rotate 90° when printing</strong>. The canvas turns on its side: a 4 × 6 label becomes 152.4 mm wide and 101.6 mm tall. The label stock does not change, and objects keep their positions, so you may want to move them. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the change.</li>
   <li>Design the label. A blue <strong>Rotated printing</strong> banner across the top of the canvas reminds you that the label is rotated when it prints, and names the size it prints on.</li>
   <li>Check the <strong>As printed</strong> card in the canvas's bottom-right corner. It shows the label the way it comes out of the printer. The label is rotated clockwise to start; if it faces the wrong way for you, tick <strong>Rotate the other way</strong>.</li>
   <li>Print as usual. A note above the print controls says that Print rotates the label 90° to fit.</li>
 </ol>
-{{figure:designer-rotated|The Label Designer with rotated printing on: a wide label on the canvas, the Rotated printing banner above it, Rotate 90° when printing ticked in Label setup, and the As printed card showing the label turned upright|Rotated printing: the label is designed on its side, the banner says it is rotated when it prints, and the As printed card in the corner shows how it comes out of the printer.}}
+{{figure:designer-rotated|The Label Designer with rotated printing on: a wide label on the canvas, the Rotated printing banner above it, Rotate 90° when printing ticked on the Label tab, and the As printed card showing the label turned upright|Rotated printing: the label is designed on its side, the banner says it is rotated when it prints, and the As printed card in the corner shows how it comes out of the printer.}}
 <p>Rotation applies everywhere the label goes to the printer: <strong>Print</strong>, numbered runs, spreadsheet batches, <strong>Print on a sheet</strong>, and ZPL. The size check against the printer media, the printer's unprintable border, and the alignment offset all use the printed label, so the shaded border on the canvas appears on the edges that are actually affected. <strong>PDF</strong>, <strong>PNG</strong>, and <strong>SVG</strong> exports stay the way you designed them. The setting is saved in the <code>.thermalprint</code> file. <strong>Auto-length</strong> is not available with rotated printing.</p>
 <div class="callout tip"><p>If you made a label the size of your stock turned on its side, for example 152.4 × 101.6 mm while the printer has 4 × 6 inch media, the size warning under the canvas offers <strong>Use rotated printing</strong>. It keeps your design as it is and rotates it when it prints.</p></div>
 <p>Rotated printing is only in the Label Designer. To turn a downloaded PDF or image, use <strong>Rotation</strong> in <a href="import.html">Import &amp; Convert</a>.</p>
 
 <h2 id="labels-with-no-fixed-length">Labels with no fixed length</h2>
-<p>On a continuous roll the label should be as long as its content. In <strong>Label setup</strong> tick <strong>Auto-length (continuous roll)</strong>: the printed length becomes the lowest edge of any object plus the <strong>Bottom margin</strong> (2 mm to start), and the status bar and <em>Printed length</em> show the result. Use it with <em>Custom</em> media in <a href="print-center.html">Print Center</a>. The canvas keeps the height you set for editing.</p>
+<p>On a continuous roll the label should be as long as its content. On the <strong>Label</strong> tab tick <strong>Auto-length (continuous roll)</strong>: the printed length becomes the lowest edge of any object plus the <strong>Bottom margin</strong> (2 mm to start), and the status bar and <em>Printed length</em> show the result. Use it with <em>Custom</em> media in <a href="print-center.html">Print Center</a>. The canvas keeps the height you set for editing.</p>
 
 <h2>Numbered runs and sheets</h2>
 <ul>
@@ -166,7 +180,7 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <p>While a design has unsaved changes, ThermalPrint keeps a recovery copy a few seconds after each edit. If the app ends unexpectedly, the next start shows <em>Unsaved changes from your last session were found</em> above the toolbar: <strong>Restore</strong> reopens it as an unsaved copy and <strong>Discard</strong> deletes it. Saving, or discarding a change on purpose, removes the copy.</p>
 
 <h2>The printable area</h2>
-<p>Most printers cannot print right to the edge of the media. ThermalPrint reads each paper size's <em>imageable area</em> from the printer's driver description (its PPD file) and works out the margin on every side. When the label size matches the media of the selected printer and the driver reports a margin, the canvas shades that border in amber, and the status area names any object that reaches into it, because that part may be cut off. Turn the shading off with <em>View → Show printable area</em>.</p>
+<p>Most printers cannot print right to the edge of the media. ThermalPrint reads each paper size's <em>imageable area</em> from the printer's driver description (its PPD file) and works out the margin on every side. When the label size matches the media of the selected printer and the driver reports a margin, the canvas shades that border in amber, and the note line under the canvas names any object that reaches into it, because that part may be cut off. Turn the shading off with <em>View → Show printable area</em>.</p>
 <h3 id="when-nothing-is-shaded">When nothing is shaded</h3>
 <p>Many thermal printers tell the driver that the <em>whole</em> label is printable, so there is no border to shade. That is normal, and the app says so: while <em>Show printable area</em> is on and a printer is selected, a short grey line under the canvas gives the reason. Pointing at the <em>Show printable area</em> menu entry shows the same reason. The possible reasons are:</p>
 <table>
@@ -178,22 +192,22 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 </table>
 <h3 id="safe-margin">Safe margin</h3>
 {{figure:designer-safe-margin|The Label Designer with a two millimeter safe margin shaded around the label and a warning that one object reaches into it|A 2 mm safe margin shaded around the label. The warning names the object that reaches into it.}}
-<p>Use <strong>View → Safe margin</strong> to keep content a set distance from the edge, whatever the driver says. Set it in millimeters, from 0 to 10. The canvas shades that border in amber, and the status area names any object that reaches into it. Where the driver also reports a border, each side uses whichever is larger. The safe margin is remembered <strong>for each printer</strong>, so a small price-tag printer and a 4 × 6 printer can each have their own. You can also set it in <a href="print-center.html#alignment-and-printer-profiles">Print Center, under Alignment</a>. Leave it at 0 to turn it off. A good starting point for a printer that clips its edges is 2 mm; print a test label and adjust.</p>
+<p>Use <strong>View → Safe margin</strong> to keep content a set distance from the edge, whatever the driver says. Set it in millimeters, from 0 to 10. The canvas shades that border in amber, and the note line under the canvas names any object that reaches into it. Where the driver also reports a border, each side uses whichever is larger. The safe margin is remembered <strong>for each printer</strong>, so a small price-tag printer and a 4 × 6 printer can each have their own. You can also set it in <a href="print-center.html#alignment-and-printer-profiles">Print Center, under Alignment</a>. Leave it at 0 to turn it off. A good starting point for a printer that clips its edges is 2 mm; print a test label and adjust.</p>
 {{figure:designer-printable|The Label Designer with the printer's unprintable border shaded and a warning under the canvas about an object that reaches into it|The shaded border is the part the printer cannot print. The warning lists the object that reaches into it.}}
 
 <h2 id="label-footer">Label footer</h2>
 <p>The optional <strong>Label footer</strong> adds a small line of text, such as <em>Printed with ThermalPrint</em> or your shop's name, along the bottom of labels you design here when you print them. You can add a small QR code before the message, for example a link to your website. It is off until you turn it on.</p>
 <div class="callout important"><p><strong>Only for labels you design.</strong> The footer is added to Label Designer prints, batches, number ranges, printed sheets, and reprints of designs. Imported shipping labels never get a footer, text, or QR code from ThermalPrint, whether you print them directly, reprint them, or print them automatically. The footer setting has no effect on their layout, scale, or output.</p></div>
-{{figure:designer-footer|The Label footer section of the Label Designer properties panel, with the explanation, Print a footer message, the message, Add a QR code before the message, the QR code link, the Left, Center, and Right alignment buttons, and Reset footer|The Label footer controls, with the QR code turned on and aligned right. The canvas shows the footer where it will print.}}
+{{figure:designer-footer|The Footer tab of the Label Designer properties panel, with the explanation, Print a footer message, the message, Add a QR code before the message, the QR code link, the Left, Center, and Right alignment buttons, and Reset footer|The Label footer controls, with the QR code turned on and aligned right. The canvas shows the footer where it will print.}}
 <ol>
-  <li>Press <strong>Footer</strong> in the Designer toolbar, or open the <strong>Label footer</strong> section of the properties panel.</li>
+  <li>Choose <strong>Label → Label footer…</strong> in the toolbar, or open the <strong>Footer</strong> tab of the properties panel.</li>
   <li>Turn on <strong>Print a footer message</strong> and type your <strong>Message</strong>, up to 80 characters.</li>
   <li>To add a QR code, turn on <strong>Add a QR code before the message</strong> and enter a link or text, up to 200 characters. It starts with a link to this user manual. The QR code prints only with a message.</li>
   <li>Under <strong>Alignment</strong>, choose <strong>Left</strong>, <strong>Center</strong>, or <strong>Right</strong>. The whole footer, QR code included, moves to that part of the bottom edge. Pick a side where your design leaves blank space.</li>
   <li>Check the canvas: it shows the footer exactly where it will print. Print one label and scan the QR code with your phone before printing a batch.</li>
 </ol>
 <div class="callout tip"><p><strong>Your label never changes size for the footer.</strong> The footer goes only into blank space at the bottom of the label, inside the printable area: at least 1.5 mm from the edges, or more when your safe margin or the printer's unprintable border is larger. Turning it on or off leaves the label dimensions and printable area unchanged.</p></div>
-<p>If the footer does not fit, it is left out rather than covering your design, and a note in the Label footer section and below the canvas says what was left out and why:</p>
+<p>If the footer does not fit, it is left out rather than covering your design, and a note on the Footer tab and under the canvas says what was left out and why:</p>
 <ul>
   <li><strong>The QR code is left out</strong> and the message still prints when there is room for the message but not the QR code, or when the QR code would take more than about an eighth of a short label's height.</li>
   <li><strong>The whole footer is left out</strong> when part of your design is in the space it needs at the chosen alignment. Move objects up, choose another alignment, or turn the footer off.</li>

@@ -23,6 +23,11 @@ const MANUAL_SCREENS: &[&str] = &[
     "main-menu",
     "home-restore",
     "import-autoprint",
+    "import-background",
+    "print-history",
+    "history-reprint",
+    "designer-templates",
+    "print-center-stock",
     "import-autoprint-warning",
     "designer-safe-margin",
     "designer-qr-logo",
@@ -135,11 +140,15 @@ impl Capture {
                 | "designer-fonts"
                 | "designer-footer"
                 | "designer-overlap"
-                | "designer-code-check" => Area::Designer,
-                "import" | "import-watch" | "import-autoprint" | "import-autoprint-warning" => {
-                    Area::Import
-                }
-                "print-center" | "print-center-full" | "printer-setup" => Area::PrintCenter,
+                | "designer-code-check"
+                | "designer-templates" => Area::Designer,
+                "import"
+                | "import-watch"
+                | "import-autoprint"
+                | "import-autoprint-warning"
+                | "import-background" => Area::Import,
+                "print-center" | "print-center-full" | "printer-setup" | "print-history"
+                | "print-center-stock" | "history-reprint" => Area::PrintCenter,
                 _ => Area::Home,
             };
             app.terms_open = scene == "printing-terms";
@@ -228,11 +237,13 @@ impl Capture {
                     );
                 }
                 "import-autoprint-warning" => {
+                    app.import_tab = ImportTab::Automation;
                     app.settings.watch_folder = Some(PathBuf::from("/home/demo/Downloads"));
                     app.settings.watch_enabled = true;
                     app.auto_confirm = true;
                 }
                 "import-autoprint" => {
+                    app.import_tab = ImportTab::Automation;
                     app.settings.watch_folder = Some(PathBuf::from("/home/demo/Labels"));
                     app.settings.watch_enabled = true;
                     app.settings.move_printed = true;
@@ -354,11 +365,37 @@ impl Capture {
                     ];
                 }
                 "import-watch" => {
+                    app.import_tab = ImportTab::Automation;
                     app.settings.watch_folder = Some(PathBuf::from("/home/demo/Downloads"));
                     app.settings.watch_enabled = true;
                     app.settings.move_printed = true;
                 }
                 "print-center-full" => app.history = demo_history(),
+                "print-history" => {
+                    app.history = demo_history();
+                    app.print_tab = PrintTab::History;
+                }
+                "history-reprint" => {
+                    app.history = demo_history();
+                    app.print_tab = PrintTab::History;
+                    let mut entry = app.history[2].clone();
+                    entry.settings = Some(Settings {
+                        printer: "Demo thermal printer".into(),
+                        media: "4 × 6 in".into(),
+                        ..Settings::default()
+                    });
+                    app.reprint_entry = Some(entry);
+                }
+                "designer-templates" => app.designer.demo_templates = true,
+                "print-center-stock" => {
+                    app.print_tab = PrintTab::Stock;
+                    app.stock_name = "Shipping 4 × 6".into();
+                }
+                "import-background" => {
+                    app.import_tab = ImportTab::Automation;
+                    app.settings.watch_folder = Some(PathBuf::from("/home/demo/Labels"));
+                    app.settings.watch_enabled = true;
+                }
                 "designer-footer" => {
                     app.settings.footer.message_enabled = true;
                     app.settings.footer.qr_enabled = true;

@@ -268,6 +268,45 @@ pub fn system_fonts() -> &'static [SystemFont] {
     })
 }
 
+/// A neutral interface font from this computer, if it has one: Segoe UI on Windows, and
+/// Inter or Noto Sans on Linux. It is read once, when the app starts.
+pub fn interface_font() -> Option<Vec<u8>> {
+    let candidates: Vec<PathBuf> = if cfg!(windows) {
+        let root =
+            std::env::var_os("WINDIR").map_or_else(|| PathBuf::from(r"C:\Windows"), PathBuf::from);
+        vec![root.join("Fonts").join("segoeui.ttf")]
+    } else {
+        ["Inter", "Noto Sans"]
+            .iter()
+            .filter_map(|family| {
+                let output = std::process::Command::new("fc-match")
+                    .args([
+                        "--format",
+                        "%{family[0]}\t%{file}",
+                        &format!("{family}:style=Regular"),
+                    ])
+                    .output()
+                    .ok()?;
+                let text = String::from_utf8_lossy(&output.stdout).into_owned();
+                let (found, file) = text.split_once('\t')?;
+                // fc-match always answers; use it only when it found the family asked for.
+                (output.status.success() && found.eq_ignore_ascii_case(family))
+                    .then(|| PathBuf::from(file))
+            })
+            .collect()
+    };
+    candidates.into_iter().find_map(|path| {
+        let metadata = std::fs::metadata(&path).ok()?;
+        if !metadata.is_file() || metadata.len() > MAX_BYTES {
+            return None;
+        }
+        let bytes = std::fs::read(&path).ok()?;
+        // Only a font the interface can actually draw with.
+        Font::from_bytes(bytes.as_slice(), FontSettings::default()).ok()?;
+        Some(bytes)
+    })
+}
+
 fn load_path(path: &Path) -> Option<&'static Font> {
     static CACHE: OnceLock<Mutex<HashMap<PathBuf, &'static Font>>> = OnceLock::new();
     let cache = CACHE.get_or_init(Default::default);

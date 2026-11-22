@@ -74,7 +74,9 @@ pub(super) fn show(
             ui.horizontal(|ui| {
                 ui.label(RichText::new(crate::i18n::tr("About ThermalPrint")).strong());
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button(crate::i18n::tr("Close")).clicked() {
+                    if crate::designer_ui::icon_button(ui, "Close", crate::i18n::tr("Close"))
+                        .clicked()
+                    {
                         ui.close();
                     }
                 });

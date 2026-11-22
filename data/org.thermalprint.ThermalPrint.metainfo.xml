@@ -60,6 +60,19 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.16.0" date="2026-11-23">
+      <description>
+        <p>A redesigned, better organized interface with its own look, and accessibility throughout.</p>
+        <ul>
+          <li>Give the app its own look: a teal accent, a clean interface font, flatter cards, and window controls that match Windows or Linux.</li>
+          <li>Put an icon and a name on every button.</li>
+          <li>Group the Label Designer toolbar, add Object, Label, and Footer tabs to its properties panel, and show one note line under the canvas.</li>
+          <li>Split Print Center into Printer, Label stock, and Recent prints tabs, and Import and Convert into Label and Automation tabs.</li>
+          <li>Add an optional compact layout.</li>
+          <li>Show a focus ring on every control, announce tabs correctly to screen readers, and meet WCAG AA text contrast in light and dark mode.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.15.0" date="2026-11-22">
       <description>
         <p>The label footer moves to the Label Designer, an overlap warning for codes, and more shipping symbols.</p>

@@ -585,7 +585,6 @@ const ES: &[(&str, &str)] = &[
         "Ajustar la etiqueta al área de vista previa",
     ),
     ("Fit within paper", "Ajustar al papel"),
-    ("Focus", "Enfocar"),
     ("Focus canvas", "Enfocar el lienzo"),
     ("Font size in points", "Tamaño de fuente en puntos"),
     ("Forward", "Hacia delante"),
@@ -665,7 +664,6 @@ const ES: &[(&str, &str)] = &[
         "No printer selected. Export is available without a printer.",
         "No hay impresora seleccionada. Puedes exportar sin impresora.",
     ),
-    ("OPEN  /  CHECK  /  PRINT", "ABRIR  /  REVISAR  /  IMPRIMIR"),
     ("Object", "Objeto"),
     (
         "Object height in millimeters",
@@ -1464,6 +1462,31 @@ const ES: &[(&str, &str)] = &[
     ("Keep cool", "Mantener fresco"),
     ("Keep out of sunlight", "Proteger de la luz solar"),
     ("Package", "Paquete"),
+    // Interface reorganization
+    (
+        "Check every barcode and QR code for content, size, clear space, overlap, and clipping",
+        "Comprobar el contenido, el tamaño, el margen libre, las superposiciones y los recortes de cada código de barras y QR",
+    ),
+    (
+        "Choose a printer on the Printer tab first. Stock profiles belong to a printer.",
+        "Elige primero una impresora en la pestaña Impresora. Los perfiles de etiquetas pertenecen a una impresora.",
+    ),
+    ("Compact layout", "Diseño compacto"),
+    ("Hide other notes", "Ocultar las demás notas"),
+    ("Label footer…", "Pie de etiqueta…"),
+    ("Label footer (on)…", "Pie de etiqueta (activado)…"),
+    (
+        "Labels you print are listed here, so you can open or reprint them.",
+        "Las etiquetas que imprimes aparecen aquí para que puedas abrirlas o reimprimirlas.",
+    ),
+    ("More notes", "Más notas"),
+    (
+        "Tighter spacing, so more fits on a small screen",
+        "Espaciado más ajustado para que quepa más en una pantalla pequeña",
+    ),
+    ("Zoom to 100%", "Zoom al 100%"),
+    ("Printer", "Impresora"),
+    ("Automation", "Automatización"),
 ];
 const DE: &[(&str, &str)] = &[
     ("No matches", "Keine Treffer"),
@@ -1945,7 +1968,6 @@ const DE: &[(&str, &str)] = &[
         "Etikett an den Vorschaubereich anpassen",
     ),
     ("Fit within paper", "In Papier einpassen"),
-    ("Focus", "Fokus"),
     ("Focus canvas", "Zeichenfläche fokussieren"),
     ("Font size in points", "Schriftgröße in Punkt"),
     ("Forward", "Nach vorn"),
@@ -2022,7 +2044,6 @@ const DE: &[(&str, &str)] = &[
         "No printer selected. Export is available without a printer.",
         "Kein Drucker gewählt. Der Export funktioniert auch ohne Drucker.",
     ),
-    ("OPEN  /  CHECK  /  PRINT", "ÖFFNEN  /  PRÜFEN  /  DRUCKEN"),
     ("Object", "Objekt"),
     ("Object height in millimeters", "Objekthöhe in Millimetern"),
     (
@@ -2806,6 +2827,31 @@ const DE: &[(&str, &str)] = &[
     ("Keep cool", "Kühl lagern"),
     ("Keep out of sunlight", "Vor Sonnenlicht schützen"),
     ("Package", "Paket"),
+    // Interface reorganization
+    (
+        "Check every barcode and QR code for content, size, clear space, overlap, and clipping",
+        "Jeden Barcode und QR-Code auf Inhalt, Größe, Ruhezone, Überlappung und Abschneiden prüfen",
+    ),
+    (
+        "Choose a printer on the Printer tab first. Stock profiles belong to a printer.",
+        "Wählen Sie zuerst auf dem Tab Drucker einen Drucker. Etikettenprofile gehören zu einem Drucker.",
+    ),
+    ("Compact layout", "Kompaktes Layout"),
+    ("Hide other notes", "Weitere Hinweise ausblenden"),
+    ("Label footer…", "Etikettenfußzeile…"),
+    ("Label footer (on)…", "Etikettenfußzeile (an)…"),
+    (
+        "Labels you print are listed here, so you can open or reprint them.",
+        "Gedruckte Etiketten erscheinen hier, damit Sie sie öffnen oder erneut drucken können.",
+    ),
+    ("More notes", "Weitere Hinweise"),
+    (
+        "Tighter spacing, so more fits on a small screen",
+        "Engere Abstände, damit auf kleinen Bildschirmen mehr Platz ist",
+    ),
+    ("Zoom to 100%", "Auf 100 % zoomen"),
+    ("Printer", "Drucker"),
+    ("Automation", "Automatisierung"),
 ];
 const FR: &[(&str, &str)] = &[
     ("No matches", "Aucun résultat"),
@@ -3293,7 +3339,6 @@ const FR: &[(&str, &str)] = &[
         "Ajuster l'étiquette à la zone d'aperçu",
     ),
     ("Fit within paper", "Adapter au papier"),
-    ("Focus", "Focus"),
     ("Focus canvas", "Focus sur le canevas"),
     ("Font size in points", "Taille de police en points"),
     ("Forward", "Vers l'avant"),
@@ -3369,10 +3414,6 @@ const FR: &[(&str, &str)] = &[
     (
         "No printer selected. Export is available without a printer.",
         "Aucune imprimante sélectionnée. L'export reste possible sans imprimante.",
-    ),
-    (
-        "OPEN  /  CHECK  /  PRINT",
-        "OUVRIR  /  VÉRIFIER  /  IMPRIMER",
     ),
     ("Object", "Objet"),
     (
@@ -4184,6 +4225,31 @@ const FR: &[(&str, &str)] = &[
     ("Keep cool", "Conserver au frais"),
     ("Keep out of sunlight", "Protéger du soleil"),
     ("Package", "Colis"),
+    // Interface reorganization
+    (
+        "Check every barcode and QR code for content, size, clear space, overlap, and clipping",
+        "Vérifier le contenu, la taille, la zone de silence, les chevauchements et les coupures de chaque code-barres et code QR",
+    ),
+    (
+        "Choose a printer on the Printer tab first. Stock profiles belong to a printer.",
+        "Choisissez d'abord une imprimante dans l'onglet Imprimante. Les profils d'étiquettes appartiennent à une imprimante.",
+    ),
+    ("Compact layout", "Affichage compact"),
+    ("Hide other notes", "Masquer les autres notes"),
+    ("Label footer…", "Pied d'étiquette…"),
+    ("Label footer (on)…", "Pied d'étiquette (activé)…"),
+    (
+        "Labels you print are listed here, so you can open or reprint them.",
+        "Les étiquettes imprimées apparaissent ici pour que vous puissiez les ouvrir ou les réimprimer.",
+    ),
+    ("More notes", "Plus de notes"),
+    (
+        "Tighter spacing, so more fits on a small screen",
+        "Espacement réduit pour en afficher davantage sur un petit écran",
+    ),
+    ("Zoom to 100%", "Zoom à 100 %"),
+    ("Printer", "Imprimante"),
+    ("Automation", "Automatisation"),
 ];
 
 #[cfg(test)]

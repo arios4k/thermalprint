@@ -108,7 +108,13 @@ impl Notices {
                                     )
                                 };
                                 ui.label(text);
-                                if ui.button(crate::i18n::tr("Cancel")).clicked() {
+                                if crate::designer_ui::icon_button(
+                                    ui,
+                                    "Close",
+                                    crate::i18n::tr("Cancel"),
+                                )
+                                .clicked()
+                                {
                                     action = Some(Action::CancelPrint(countdown.id));
                                 }
                             });
@@ -138,17 +144,24 @@ impl Notices {
                             });
                             ui.horizontal(|ui| {
                                 if let Some(moves) = &toast.undo
-                                    && ui
-                                        .add_enabled(
-                                            can_act,
-                                            egui::Button::new(crate::i18n::tr("Undo")),
-                                        )
-                                        .clicked()
+                                    && crate::designer_ui::icon_button_enabled(
+                                        ui,
+                                        can_act,
+                                        "Undo",
+                                        crate::i18n::tr("Undo"),
+                                    )
+                                    .clicked()
                                 {
                                     action = Some(Action::Undo(moves.clone()));
                                     dismiss = true;
                                 }
-                                if ui.small_button(crate::i18n::tr("Dismiss")).clicked() {
+                                if crate::designer_ui::icon_button(
+                                    ui,
+                                    "Close",
+                                    crate::i18n::tr("Dismiss"),
+                                )
+                                .clicked()
+                                {
                                     dismiss = true;
                                 }
                             });

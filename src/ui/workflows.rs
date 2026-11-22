@@ -91,7 +91,7 @@ impl ThermalPrint {
     }
 
     pub(super) fn background_controls(&mut self, ui: &mut egui::Ui) {
-        ui.collapsing(crate::i18n::tr("Background printing"), |ui| {
+        egui::CollapsingHeader::new(crate::i18n::tr("Background printing")).default_open(true).show(ui, |ui| {
             let mut enabled = self.settings.background_printing;
             let label = crate::i18n::tr("Keep running when the window is closed");
             if ui.checkbox(&mut enabled, label).changed() {
@@ -143,8 +143,7 @@ impl ThermalPrint {
                 }
             }
             ui.label(crate::i18n::tr("Automatic printing checks file contents to prevent repeat prints, even after a file is renamed."));
-            let clear = egui::Button::new(crate::i18n::tr("Clear duplicate protection…"));
-            if ui.add_enabled(!self.busy, clear).clicked() {
+            if crate::designer_ui::icon_button_enabled(ui, !self.busy, "Delete", crate::i18n::tr("Clear duplicate protection…")).clicked() {
                 self.duplicate_clear = true;
             }
         });
@@ -157,10 +156,10 @@ impl ThermalPrint {
                 ui.heading(crate::i18n::tr("Clear duplicate protection?"));
                 ui.label(crate::i18n::tr("Previously printed files can print automatically again if they arrive in the watch folder."));
                 ui.horizontal(|ui| {
-                    if ui.button(crate::i18n::tr("Cancel")).clicked() {
+                    if crate::designer_ui::icon_button(ui, "Close", crate::i18n::tr("Cancel")).clicked() {
                         self.duplicate_clear = false;
                     }
-                    if ui.button(crate::i18n::tr("Clear duplicate protection")).clicked() {
+                    if crate::designer_ui::icon_button(ui, "Delete", crate::i18n::tr("Clear duplicate protection")).clicked() {
                         match crate::duplicates::clear() {
                             Ok(()) => {
                                 self.duplicate_clear = false;
@@ -181,9 +180,10 @@ impl ThermalPrint {
 
     pub(super) fn stock_setup(&mut self, ui: &mut egui::Ui) {
         Self::section_frame(ui).show(ui, |ui| {
+            ui.set_width(ui.available_width());
             Self::center_heading(ui, crate::i18n::tr("Printer setup assistant"), "Status");
             if self.setup_step.is_none()
-                && ui.button(crate::i18n::tr("Set up printer and label stock")).clicked()
+                && crate::designer_ui::icon_button(ui, "Settings", crate::i18n::tr("Set up printer and label stock")).clicked()
             {
                 self.setup_step = Some(0);
             }
@@ -196,18 +196,16 @@ impl ThermalPrint {
                 ];
                 ui.label(crate::i18n::tr(instructions[step]));
                 ui.horizontal_wrapped(|ui| {
-                    if step > 0 && ui.button(crate::i18n::tr("Back")).clicked() {
+                    if step > 0 && crate::designer_ui::icon_button(ui, "Back", crate::i18n::tr("Back")).clicked() {
                         self.setup_step = Some(step - 1);
                     }
-                    let next = egui::Button::new(crate::i18n::tr("Next"));
-                    if step < 3 && ui.add_enabled(!self.settings.printer.is_empty(), next).clicked() {
+                    if step < 3 && crate::designer_ui::icon_button_enabled(ui, !self.settings.printer.is_empty(), "Next", crate::i18n::tr("Next")).clicked() {
                         self.setup_step = Some(step + 1);
                     }
-                    let test = egui::Button::new(crate::i18n::tr("Print one test label"));
-                    if step == 2 && ui.add_enabled(!self.busy, test).clicked() {
+                    if step == 2 && crate::designer_ui::icon_button_enabled(ui, !self.busy, "Print device", crate::i18n::tr("Print one test label")).clicked() {
                         self.print_alignment_test();
                     }
-                    if ui.button(crate::i18n::tr("Close assistant")).clicked() {
+                    if crate::designer_ui::icon_button(ui, "Close", crate::i18n::tr("Close assistant")).clicked() {
                         self.setup_step = None;
                     }
                 });
@@ -220,7 +218,7 @@ impl ThermalPrint {
                     self.settings.height_mm,
                 );
                 if let Some(media) = matching {
-                    if ui.button(crate::i18n::tr("Match media to label size")).clicked() {
+                    if crate::designer_ui::icon_button(ui, "Ruler", crate::i18n::tr("Match media to label size")).clicked() {
                         self.settings.media = media;
                         self.dirty = true;
                         self.persist();
@@ -236,15 +234,25 @@ impl ThermalPrint {
                     ui.colored_label(ui.visuals().warn_fg_color, reason);
                 }
             }
-            ui.separator();
-            ui.label(crate::i18n::tr("Saved label stock"));
+        });
+    }
+
+    /// Named label stock profiles for the selected printer: load one, or save the current
+    /// settings under a name.
+    pub(super) fn stock_profiles(&mut self, ui: &mut egui::Ui) {
+        Self::section_frame(ui).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            Self::center_heading(ui, crate::i18n::tr("Saved label stock"), "Profile");
+            if self.settings.printer.is_empty() {
+                ui.label(crate::i18n::tr("Choose a printer on the Printer tab first. Stock profiles belong to a printer."));
+            }
             let stocks: Vec<_> = self.settings.stock_profiles.iter()
                 .filter(|(_, stock)| stock.printer == self.settings.printer)
                 .map(|(name, stock)| (name.clone(), stock.settings.clone())).collect();
             for (name, profile) in stocks {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(&name);
-                    if ui.button(crate::i18n::tr("Load profile")).clicked() {
+                    if crate::designer_ui::icon_button(ui, "Profile", crate::i18n::tr("Load profile")).clicked() {
                         self.settings.apply_profile(&profile);
                         self.stock_name = name.split_once(" · ")
                             .map(|(_, name)| name).unwrap_or(&name).to_owned();
@@ -262,8 +270,7 @@ impl ThermalPrint {
                     && !self.stock_name.trim().is_empty()
                     && (self.settings.stock_profiles.len() < 50
                         || self.settings.stock_profiles.contains_key(&key));
-                let save = egui::Button::new(crate::i18n::tr("Save stock profile"));
-                if ui.add_enabled(can_save, save).clicked() {
+                if crate::designer_ui::icon_button_enabled(ui, can_save, "Save document", crate::i18n::tr("Save stock profile")).clicked() {
                     let profile = crate::settings::StockProfile {
                         printer: self.settings.printer.clone(),
                         settings: self.settings.current_profile(),
@@ -302,10 +309,15 @@ impl ThermalPrint {
                 "This sends another print job using the recorded settings.",
             ));
             ui.horizontal(|ui| {
-                cancel = ui.button(crate::i18n::tr("Cancel")).clicked();
-                print = ui
-                    .add_enabled(!self.busy, egui::Button::new(crate::i18n::tr("Reprint")))
+                cancel = crate::designer_ui::icon_button(ui, "Close", crate::i18n::tr("Cancel"))
                     .clicked();
+                print = crate::designer_ui::icon_button_enabled(
+                    ui,
+                    !self.busy,
+                    "Print device",
+                    crate::i18n::tr("Reprint"),
+                )
+                .clicked();
             });
         });
         if cancel || response.should_close() {

@@ -4,8 +4,15 @@ group: The app
 summary: Set up a printer, save label stock profiles, fix alignment, and review or reprint recent jobs.
 -->
 <p><strong>Print Center</strong> is where you tell ThermalPrint about your printer. You usually set it up once. The same printer, media, and options are then used by both Import &amp; Convert and the Label Designer.</p>
+<p>Print Center has three tabs:</p>
+<table>
+  <tr><th>Tab</th><th>What it holds</th></tr>
+  <tr><td><strong>Printer</strong></td><td>The printer setup assistant, the printer and media, output settings, alignment, the label stock preview, and the queue and diagnostics. This is where you start.</td></tr>
+  <tr><td><strong>Label stock</strong></td><td>Your saved label stock profiles for the selected printer: load one, or save the current settings under a name. See <a href="#guided-setup">Printer setup assistant and label stock</a>.</td></tr>
+  <tr><td><strong>Recent prints</strong></td><td>Your last 50 prints, to open again or reprint. See <a href="#recent-prints">Recent prints</a>.</td></tr>
+</table>
 
-{{figure:print-center-annotated|Print Center, with its setup assistant, saved label stock, printer and media, output settings, alignment and diagnostics|The current Print Center. Recent prints appears below these settings. Screenshots show Linux; Windows uses its native print spooler.}}
+{{figure:print-center-annotated|Print Center on its Printer tab, with the Printer, Label stock, and Recent prints tabs, the setup assistant, printer and media, output settings, label stock preview, and diagnostics|The Printer tab of Print Center. Screenshots show Linux; Windows uses its native print spooler.}}
 
 <h2 id="printer-and-media">Printer and media</h2>
 <p>ThermalPrint prints through <strong>CUPS</strong> on Linux and the <strong>Windows print spooler</strong> on Windows 11. Add the printer in your system's printer settings first. On Windows, configure the label stock in the printer driver so ThermalPrint can list its dimensions. See <a href="install.html#windows-11">Windows setup</a>.</p>
@@ -58,7 +65,7 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
 
 <h2 id="recent-prints">Recent prints</h2>
 <p>Batch runs and number ranges are recorded once, with the count in the title, for example <em>Customer label · batch of 50</em> or <em>Shelf tag · numbers 20</em>; reopening one opens the original design, not a single numbered label.</p>
-<p>Each label you print is added to <strong>Recent prints</strong> at the bottom of Print Center, with the date and time, printer, and copies. The app keeps up to 50 entries. Search by label name or printer; <strong>Clear</strong> beside the search field clears the search, while <strong>Clear history</strong> removes the entries.</p>
+<p>Each label you print is added to the <strong>Recent prints</strong> tab of Print Center, with the date and time, printer, and copies. The app keeps up to 50 entries. Search by label name or printer; <strong>Clear</strong> beside the search field clears the search, while <strong>Clear history</strong> removes the entries.</p>
 {{figure:print-history|Recent prints, with a search field, Open and Reprint buttons, and recorded media, dimensions, DPI and copies|Search recent jobs and choose Open for review or Reprint for a confirmed repeat job.}}
 <ul>
   <li>Press <strong>Open</strong> to bring the label back. A <strong>design</strong> reopens in the Label Designer as an unsaved copy exactly as it was printed; an <strong>imported label</strong> returns to the queue in Import &amp; Convert.</li>
@@ -70,17 +77,17 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
 
 
 <h2 id="guided-setup">Printer setup assistant and label stock</h2>
-<p>The <strong>Printer setup assistant</strong> card is at the top of Print Center. Choose <strong>Set up printer and label stock</strong>:</p>
+<p>The <strong>Printer setup assistant</strong> card is at the top of the <strong>Printer</strong> tab. Choose <strong>Set up printer and label stock</strong>:</p>
 <ol>
   <li>Choose the installed printer below the assistant. Use <strong>Refresh printers</strong> if it is missing.</li>
   <li>Measure the loaded label and set its width, height, orientation, driver media, and DPI. <strong>Match media to label size</strong> selects a matching media size when the driver offers one.</li>
   <li>Print one alignment test, compare the 1 mm border to the stock edges, and adjust the offsets below.</li>
-  <li>Enter a <strong>Stock profile name</strong> and choose <strong>Save stock profile</strong>.</li>
+  <li>The last step shows the <strong>Saved label stock</strong> card right under the assistant. Enter a <strong>Stock profile name</strong> and choose <strong>Save stock profile</strong>.</li>
 </ol>
 {{figure:printer-setup|Printer setup assistant, above the printer, media, size and alignment controls|The assistant guides the existing controls below it. This example shows a fictional 4 × 6 printer.}}
-<p>Named profiles let the same printer use several kinds of stock. Find the profile under <strong>Saved label stock</strong> and choose its <strong>Load profile</strong> button to restore its size, media, driver resolution, DPI, offsets, copies, and safe margin. A profile belongs to its printer; switch to that printer before loading it. Up to 50 named profiles are retained. <strong>Close assistant</strong> closes the guide; your current printer settings remain in use.</p>
+<p>Named profiles let the same printer use several kinds of stock. Find the profile on the <strong>Label stock</strong> tab, under <strong>Saved label stock</strong>, and choose its <strong>Load profile</strong> button to restore its size, media, driver resolution, DPI, offsets, copies, and safe margin. A profile belongs to its printer; switch to that printer before loading it. Up to 50 named profiles are retained. <strong>Close assistant</strong> closes the guide; your current printer settings remain in use.</p>
 
 <h2 id="reprint">Reprinting from history</h2>
-<p>Search <strong>Recent prints</strong> by label name or printer. New entries record their crop, page, print settings, and editable design when small enough to retain. <strong>Reprint…</strong> shows the recorded settings and asks before sending another job. A changed or missing source file requires you to open it for review. Labels moved to <strong>Processed</strong> keep their history link. Older entries can still be opened for review.</p>
+<p>On the <strong>Recent prints</strong> tab, search by label name or printer. New entries record their crop, page, print settings, and editable design when small enough to retain. <strong>Reprint…</strong> shows the recorded settings and asks before sending another job. A changed or missing source file requires you to open it for review. Labels moved to <strong>Processed</strong> keep their history link. Older entries can still be opened for review.</p>
 {{figure:history-reprint|Reprint label confirmation showing the recorded printer, copies, dimensions, DPI and media, with Cancel and Reprint actions|Reprint sends a new job only after confirmation. Cancel sends nothing.}}
 <p>The recorded printer must still be available. A saved design snapshot can be reprinted even if its original file is gone; imported labels need the unchanged source file. <strong>Reprint…</strong> is disabled for entries without a complete recipe, including older entries and batch or numbered runs. Use <strong>Open</strong> and review those jobs instead. Confirmed reprints are added to history. Clearing history does not reset automatic-print duplicate protection.</p>
