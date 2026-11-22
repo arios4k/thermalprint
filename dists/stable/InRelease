@@ -5,7 +5,7 @@ Origin: ThermalPrint
 Label: ThermalPrint
 Suite: stable
 Codename: stable
-Date: Sun, 22 Nov 2026 04:04:33 UTC
+Date: Sun, 22 Nov 2026 04:14:45 UTC
 Architectures: amd64
 Components: main
 Description: ThermalPrint APT repository
@@ -23,8 +23,8 @@ SHA256:
  57b90879fd1d7762a531e013981642892fba51f3007598e75f29cfd09bfeb169 134 main/binary-amd64/Release
 -----BEGIN PGP SIGNATURE-----
 
-iHUEARYIAB0WIQRql6BHZiHLWF0Dx8myfzX8fyp7lAUCawJp0QAKCRCyfzX8fyp7
-lEUOAQC7jEXHGzlmT4q9tMcvAJ+ALOaj3zhBaS3QJhvwJvJAHwD9G5hCpzR/9lpK
-x5Nz1iBtRGTD53FbSPj4up2HIzqyWAE=
-=MDDB
+iHUEARYIAB0WIQRql6BHZiHLWF0Dx8myfzX8fyp7lAUCawJsNQAKCRCyfzX8fyp7
+lCZTAP97M/KDfsE7frz2YK6+/pDdpE/uOanaft/4Rdr9Q5X5iwEAmlvKCnfCM1eN
++57gSExWvmkUPAL8YS2+9qT7s2T3gQw=
+=3z2I
 -----END PGP SIGNATURE-----
