@@ -337,7 +337,7 @@ impl ThermalPrint {
                     )
                 })?;
                 let detail = printing::submit_raw_zpl(
-                    &crate::zpl::encode_design(doc, settings.dpi)?,
+                    &crate::zpl::encode_design_for_print(doc, &settings)?,
                     &settings,
                     &printer,
                 )?;
@@ -364,7 +364,12 @@ impl ThermalPrint {
                         }
                         crate::design::LabelDocument::load(path)?
                     };
-                    crate::design_render::render_for_print(&doc, settings.dpi)?
+                    crate::design_render::render_with_footer(
+                        &doc,
+                        settings.dpi,
+                        &settings.footer,
+                        settings.safe_margin_mm,
+                    )?
                 }
                 crate::history::Kind::Import => {
                     let path = entry

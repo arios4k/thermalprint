@@ -54,6 +54,23 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
 <p><strong>Reset offset</strong> sets both values back to zero. The offset applies to printed labels only; exported PDF, PNG, SVG, and ZPL files are never shifted. It also does not apply to raw ZPL printing.</p>
 <div class="callout tip"><p>If the whole image is too small or the edges are cut off by the same amount all around, the cause is usually the <em>media size</em>, not alignment. Check that the printer media matches your labels first.</p></div>
 
+<h2 id="label-footer">Label footer</h2>
+<p>The <strong>Label footer</strong> card adds a small line of text along the bottom of every label you print, such as <em>Printed with ThermalPrint</em> or your shop's name. You can also add a small QR code just before the message, for example a link to your website. The footer is off until you turn it on, and when it is off your labels print exactly as before.</p>
+<ol>
+  <li>In <strong>Print Center</strong>, open the <strong>Label footer</strong> card and enable <strong>Print a footer message</strong>.</li>
+  <li>Type your <strong>Message</strong>, up to 80 characters.</li>
+  <li>To add a QR code, enable <strong>Add a QR code beside the message</strong> and enter a link or text, up to 200 characters. It starts with a link to this user manual. The QR code prints only with a message.</li>
+  <li>Choose the <strong>Footer position</strong>: <strong>Left</strong>, <strong>Center</strong>, or <strong>Right</strong>. The QR code and message move together, with the message centered beside the QR code.</li>
+  <li>Print one label and scan the QR code with your phone before printing a batch.</li>
+</ol>
+<p>The footer applies to imported labels, Label Designer prints, batches, number ranges, printed sheets, reprints, and automatic printing. It never covers the label itself:</p>
+<ul>
+  <li><strong>Imported labels</strong> are fitted above a thin strip reserved for the footer, so they shrink slightly. With <strong>Actual size</strong> or a custom scale, a label that no longer fits is blocked with a warning instead of being covered. Use <strong>Fit</strong>, reduce the scale, or turn the footer off.</li>
+  <li><strong>Designs</strong> keep their layout. The footer goes in the empty strip at the bottom of the label, inside the safe margin. If part of the design is in that strip, the footer is left out and the Label Designer says why. Move the design up to make room.</li>
+</ul>
+<p>The footer stays small: the message is about 2 mm tall, and long messages are shortened to fit. The QR code uses modules at least 0.25 mm wide and the full white border scanners need. That border also serves as the space above the footer and overlaps the white margin below it, so a 4 × 6 in label gives up about 8 mm for a footer with a QR code and about 3 mm for a message alone. On short labels, where the QR code would take more than about an eighth of the height, it is left out and only the message prints.</p>
+<p>Your footer settings are saved and stay on between sessions. <strong>Reset footer</strong> turns the footer off and restores the default message and link. The footer appears in the preview and on printed labels only. Exported PDF, PNG, SVG, and ZPL files never include it.</p>
+
 <h2 id="recent-prints">Recent prints</h2>
 <p>Batch runs and number ranges are recorded once, with the count in the title, for example <em>Customer label · batch of 50</em> or <em>Shelf tag · numbers 20</em>; reopening one opens the original design, not a single numbered label.</p>
 <p>Each label you print is added to <strong>Recent prints</strong> at the bottom of Print Center, with the date and time, printer, and copies. The app keeps up to 50 entries. Search by label name or printer; <strong>Clear</strong> beside the search field clears the search, while <strong>Clear history</strong> removes the entries.</p>

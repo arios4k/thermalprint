@@ -118,6 +118,8 @@ pub struct Settings {
     pub auto_print_pattern: String,
     /// The most labels printed automatically per minute.
     pub auto_print_per_minute: u8,
+    /// The optional message and QR code printed along the bottom of each label.
+    pub footer: crate::footer::Footer,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct StockProfile {
@@ -172,6 +174,7 @@ impl Default for Settings {
             auto_print_warned: false,
             auto_print_pattern: String::new(),
             auto_print_per_minute: crate::autoprint::DEFAULT_PER_MINUTE,
+            footer: crate::footer::Footer::default(),
         }
     }
 }
@@ -210,6 +213,7 @@ impl Settings {
                     .chars()
                     .take(crate::autoprint::MAX_PATTERN_CHARS)
                     .collect();
+                s.footer.clean();
                 while s.profiles.len() > MAX_PROFILES {
                     s.profiles.pop_last();
                 }

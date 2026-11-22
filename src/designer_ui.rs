@@ -218,6 +218,10 @@ pub struct Designer {
     pub pan: Vec2,
     revision: u64,
     rendered_revision: Option<u64>,
+    /// The print footer (and safe margin) the preview was, or is being, rendered with.
+    rendered_footer: Option<(crate::footer::Footer, f32)>,
+    /// Why the print footer is left out of this design, when it is.
+    footer_note: Option<String>,
     worker: Option<(u64, mpsc::Receiver<anyhow::Result<Output>>)>,
     texture: Option<egui::TextureHandle>,
     output: Option<Arc<Output>>,
@@ -289,6 +293,8 @@ impl Designer {
             pan: Vec2::ZERO,
             revision: 1,
             rendered_revision: None,
+            rendered_footer: None,
+            footer_note: None,
             worker: None,
             texture: None,
             output: None,
@@ -1042,10 +1048,15 @@ impl Designer {
             ),
             move || {
                 let submitted = if raw {
-                    let bytes = zpl::encode_design(&doc, settings.dpi)?;
+                    let bytes = zpl::encode_design_for_print(&doc, &settings)?;
                     printing::submit_raw_zpl(&bytes, &settings, &printer)
                 } else {
-                    let output = design_render::render_for_print(&doc, settings.dpi)?;
+                    let output = design_render::render_with_footer(
+                        &doc,
+                        settings.dpi,
+                        &settings.footer,
+                        settings.safe_margin_mm,
+                    )?;
                     printing::submit(&output, &settings, &printer)
                 }?;
                 crate::history::record(
@@ -1428,11 +1439,18 @@ impl Designer {
             };
             if let Some((printer, path)) = target {
                 let first = doc.serial_number;
+                // Printed sheets carry the optional footer on each label; saved PDFs do not.
+                let footer = if print {
+                    settings.footer.clone()
+                } else {
+                    crate::footer::Footer::default()
+                };
+                let margin = settings.safe_margin_mm;
                 self.start_job("Preparing sheet…", move || {
                     let outputs = (0..count)
                         .map(|i| {
                             let label = crate::batch::apply_range(&doc, first, 1, i);
-                            design_render::render_for_print(&label, dpi)
+                            design_render::render_with_footer(&label, dpi, &footer, margin)
                         })
                         .collect::<anyhow::Result<Vec<_>>>()?;
                     let pages = crate::sheet::compose(&outputs, &spec)?;
@@ -1719,10 +1737,15 @@ impl Designer {
             for index in 0..total {
                 let label = make(index);
                 if raw {
-                    let bytes = zpl::encode_design(&label, settings.dpi)?;
+                    let bytes = zpl::encode_design_for_print(&label, &settings)?;
                     printing::submit_raw_zpl(&bytes, &settings, &printer)
                 } else {
-                    let output = design_render::render_for_print(&label, settings.dpi)?;
+                    let output = design_render::render_with_footer(
+                        &label,
+                        settings.dpi,
+                        &settings.footer,
+                        settings.safe_margin_mm,
+                    )?;
                     printing::submit(&output, &settings, &printer)
                 }
                 .map_err(|e| {
@@ -1738,16 +1761,26 @@ impl Designer {
             ))
         });
     }
-    fn start_render(&mut self, dpi: u32) {
-        if self.worker.is_some() || self.rendered_revision == Some(self.revision) {
+    fn start_render(&mut self, settings: &Settings) {
+        let footer = (settings.footer.clone(), settings.safe_margin_mm);
+        if self.worker.is_some()
+            || (self.rendered_revision == Some(self.revision)
+                && self.rendered_footer.as_ref() == Some(&footer))
+        {
             return;
         }
         let doc = self.doc.clone();
+        let dpi = settings.dpi;
         let (tx, rx) = mpsc::channel();
         let rev = self.revision;
         self.worker = Some((rev, rx));
+        self.rendered_footer = Some(footer.clone());
         std::thread::spawn(move || {
-            let _ = tx.send(design_render::render_label(&doc, dpi));
+            // The preview shows the print footer where it will print.
+            let _ = tx.send(design_render::render_label(&doc, dpi).map(|mut output| {
+                let _ = crate::footer::add_to_design(&mut output, &footer.0, footer.1);
+                output
+            }));
         });
     }
     fn poll(&mut self, ctx: &egui::Context) {
@@ -1778,6 +1811,11 @@ impl Designer {
                     ),
                     egui::TextureOptions::LINEAR,
                 ));
+                self.footer_note = output
+                    .warnings
+                    .iter()
+                    .find(|w| w.contains("footer"))
+                    .cloned();
                 self.output = Some(Arc::new(output));
                 self.rendered_revision = Some(rev);
             }
@@ -2123,6 +2161,9 @@ impl Designer {
             {
                 ui.label(RichText::new(crate::i18n::tr(reason)).small().weak());
             }
+            if let Some(note) = &self.footer_note {
+                ui.label(RichText::new(crate::i18n::tr(note)).small());
+            }
             if self.doc.rotated_printing {
                 let (paper_w, paper_h) = self.doc.paper_size_mm();
                 ui.label(
@@ -2192,7 +2233,7 @@ impl Designer {
         };
         egui::CentralPanel::default().show(root, |ui| self.canvas(ui));
         self.shortcut(&ctx);
-        self.start_render(settings.dpi);
+        self.start_render(settings);
     }
     /// The address book menu: pick an address to add it as a text block.
     fn address_menu(&mut self, ui: &mut egui::Ui) {
