@@ -81,6 +81,8 @@ pub struct Settings {
     pub print_history: Vec<String>,
     /// Whether the navigation sidebar is collapsed to icons.
     pub navigation_collapsed: bool,
+    /// Tighter spacing throughout the interface.
+    pub compact_layout: bool,
     pub offset_x_mm: f32,
     pub offset_y_mm: f32,
     /// The safe margin for the selected printer; see [`PrinterProfile::safe_margin_mm`].
@@ -153,6 +155,7 @@ impl Default for Settings {
             recent: vec![],
             print_history: vec![],
             navigation_collapsed: false,
+            compact_layout: false,
             offset_x_mm: 0.,
             offset_y_mm: 0.,
             safe_margin_mm: 0.,

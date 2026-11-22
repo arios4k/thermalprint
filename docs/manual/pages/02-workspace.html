@@ -10,7 +10,7 @@ summary: The window, sidebar, main menu, light and dark mode, language, drag and
 
 <table>
   <tr><th>Part</th><th>What it does</th></tr>
-  <tr><td><strong>Title bar</strong></td><td>Above the sidebar it shows the app name and the main menu (<strong>☰</strong>). Above the workspace it shows the name of the area you are in, the <strong>?</strong> Help button, and the round minimize, maximize, and close buttons. Drag it to move the window; double-click to maximize.</td></tr>
+  <tr><td><strong>Title bar</strong></td><td>Above the sidebar it shows the app name and the main menu (<strong>☰</strong>). Above the workspace it shows the name of the area you are in, the <strong>?</strong> Help button, and the minimize, maximize, and close buttons. On Windows these are the familiar wide caption buttons, and the close button turns red when you point at it; on Linux they are small rounded buttons. Drag the title bar to move the window; double-click it to maximize.</td></tr>
   <tr><td><strong>Sidebar</strong></td><td>Chooses the area: Home, Label Designer, Import &amp; Convert, or Print Center.</td></tr>
   <tr><td><strong>Workspace</strong></td><td>The big area that changes with the sidebar choice.</td></tr>
   <tr><td><strong>Status bar</strong></td><td>The line at the bottom. It reports what the app is doing, such as <em>Rendering document</em>, and shows errors in red. Results and errors also appear for a few seconds in a message box above the status bar, so the next status change cannot hide them. The <strong>Messages</strong> button beside the status opens a list of the last 30 messages, newest first.</td></tr>
@@ -26,7 +26,7 @@ summary: The window, sidebar, main menu, light and dark mode, language, drag and
 </table>
 
 <h3>The sidebar</h3>
-<p>Click the small panel icon at the top of the sidebar to collapse it to icons only, or expand it again. ThermalPrint remembers your choice the next time you open it. In the Label Designer, <strong>Focus</strong> hides the sidebar and the properties panel to give the canvas the whole window.</p>
+<p>Click the small panel icon at the top of the sidebar to collapse it to icons only, or expand it again. ThermalPrint remembers your choice the next time you open it. In the Label Designer, <strong>Focus canvas</strong> (in the <strong>View</strong> and <strong>Label</strong> menus) hides the sidebar and the properties panel to give the canvas the whole window.</p>
 
 <h3>The Home screen</h3>
 <ul>
@@ -41,13 +41,14 @@ summary: The window, sidebar, main menu, light and dark mode, language, drag and
 <ul>
 </ul>
 
-<h2>The main menu</h2>
+<h2 id="the-main-menu">The main menu</h2>
 {{figure:main-menu|The hamburger menu with Help & Manual, Printing terms, About ThermalPrint, a separator and Quit|Help &amp; Manual opens this guide. Quit is separated from the help and About actions.}}
 <p>Open it with the <strong>☰</strong> button at the top of the sidebar, beside the app name. When the sidebar is hidden it sits at the top left.</p>
 <table>
   <tr><th>Item</th><th>What it does</th></tr>
   <tr><td><strong>Help &amp; Manual</strong></td><td>Opens this manual in your web browser, at the page for the area you are in.</td></tr>
   <tr><td><strong>Printing terms</strong></td><td>A searchable glossary inside the app: CUPS, DPI, ZPL, barcode terms, and more.</td></tr>
+  <tr><td><strong>Compact layout</strong></td><td>Tighter spacing, so more fits on a small laptop screen. ThermalPrint remembers the choice. Turn it off for roomier, easier-to-hit controls.</td></tr>
   <tr><td><strong>About ThermalPrint</strong></td><td>Shows the version (click it to copy), links to the project and bug tracker, the license, and the author's other apps.</td></tr>
   <tr><td><strong>Quit</strong></td><td>Closes the app. If a design has unsaved changes you are asked first.</td></tr>
 </table>
@@ -91,4 +92,13 @@ summary: The window, sidebar, main menu, light and dark mode, language, drag and
   <tr><td><kbd>Shift</kbd> while rotating</td><td>Snap rotation to 15° steps</td><td>Label Designer</td></tr>
   <tr><td><kbd>Tab</kbd> / <kbd>Enter</kbd> / <kbd>Space</kbd></td><td>Move between buttons and activate them</td><td>Everywhere</td></tr>
 </table>
-<p>Keyboard users can reach every button with <kbd>Tab</kbd>; each button has an accessible name for screen readers.</p>
+<h2 id="accessibility">Accessibility</h2>
+<p>ThermalPrint is built to be used with a keyboard and with a screen reader:</p>
+<ul>
+  <li><strong>Every control is reachable with <kbd>Tab</kbd></strong>, and <kbd>Enter</kbd> or <kbd>Space</kbd> activates it. The control that has the keyboard focus shows a clear ring in the accent color.</li>
+  <li><strong>Every button has an icon and a written name.</strong> Screen readers announce the name and the role, so icon buttons are never silent. Tabs are announced as tabs, with the one in view marked as selected.</li>
+  <li><strong>Text meets WCAG AA contrast</strong> (at least 4.5:1) in both light and dark mode, including grey hints, the teal accent, and amber warnings. The app's own tests check this.</li>
+  <li><strong>Nothing depends on color alone.</strong> Warnings carry a warning sign, information an <em>i</em>, and errors say what went wrong in words.</li>
+  <li><strong>Exact values can always be typed.</strong> Position, size, and rotation have number fields, so you never have to drag with a mouse.</li>
+  <li><strong>Light and dark mode and the language follow your system</strong>, and <a href="#the-main-menu">Compact layout</a> is optional, so you can keep larger, easier targets.</li>
+</ul>

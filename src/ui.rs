@@ -2,6 +2,7 @@ mod about;
 mod navigation;
 mod notices;
 mod screenshots;
+pub(crate) mod theme;
 mod window_chrome;
 mod workflows;
 use crate::{
@@ -21,6 +22,21 @@ use std::{
     sync::{Arc, mpsc},
     time::{Duration, Instant},
 };
+
+/// The tabs of Print Center.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum PrintTab {
+    Printer,
+    Stock,
+    History,
+}
+
+/// The tabs of the Import & Convert sidebar.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum ImportTab {
+    Label,
+    Automation,
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Area {
@@ -97,6 +113,10 @@ pub struct ThermalPrint {
     last_tray_check: Instant,
     explicit_quit: bool,
     setup_step: Option<usize>,
+    /// The Print Center tab in view.
+    print_tab: PrintTab,
+    /// The Import & Convert sidebar tab in view.
+    import_tab: ImportTab,
     stock_name: String,
     reprint_entry: Option<crate::history::Entry>,
     duplicate_clear: bool,
@@ -190,38 +210,8 @@ impl ThermalPrint {
             ThemeChoice::Light => egui::ThemePreference::Light,
             ThemeChoice::Dark => egui::ThemePreference::Dark,
         });
-        cc.egui_ctx.all_styles_mut(|style| {
-            style.spacing.item_spacing = Vec2::new(10., 8.);
-            style.spacing.button_padding = Vec2::new(12., 6.);
-            style.spacing.interact_size.y = 32.;
-            style
-                .text_styles
-                .insert(egui::TextStyle::Body, egui::FontId::proportional(14.));
-            style
-                .text_styles
-                .insert(egui::TextStyle::Button, egui::FontId::proportional(14.));
-            style
-                .text_styles
-                .insert(egui::TextStyle::Small, egui::FontId::proportional(12.));
-            style.visuals.weak_text_color = Some(if style.visuals.dark_mode {
-                Color32::from_rgb(180, 186, 196)
-            } else {
-                Color32::from_rgb(84, 92, 106)
-            });
-            style.visuals.selection.bg_fill = Color32::from_rgb(46, 101, 190);
-            style.visuals.widgets.inactive.corner_radius = egui::CornerRadius::same(8);
-            style.visuals.widgets.hovered.corner_radius = egui::CornerRadius::same(8);
-            style.visuals.widgets.active.corner_radius = egui::CornerRadius::same(8);
-            style
-                .text_styles
-                .insert(egui::TextStyle::Heading, egui::FontId::proportional(23.));
-            if !style.visuals.dark_mode {
-                style.visuals.panel_fill = Color32::from_rgb(242, 244, 248);
-                style.visuals.window_fill = Color32::WHITE;
-                style.visuals.override_text_color = Some(Color32::from_rgb(42, 48, 59));
-            }
-            style.visuals.selection.stroke = Stroke::new(1., Color32::WHITE);
-        });
+        theme::install_fonts(&cc.egui_ctx);
+        theme::apply(&cc.egui_ctx, settings.compact_layout);
         let (tx, rx) = mpsc::channel();
         let icon_image =
             image::load_from_memory(include_bytes!("../data/org.thermalprint.ThermalPrint.png"))
@@ -271,6 +261,8 @@ impl ThermalPrint {
             last_tray_check: Instant::now() - Duration::from_secs(1),
             explicit_quit: false,
             setup_step: None,
+            print_tab: PrintTab::Printer,
+            import_tab: ImportTab::Label,
             stock_name: String::new(),
             reprint_entry: None,
             duplicate_clear: false,
@@ -531,9 +523,9 @@ impl ThermalPrint {
             }
         }
     }
-    fn watch_controls(&mut self, ui: &mut egui::Ui) {
-        self.background_controls(ui);
-        let capturing = self.capture.is_some();
+    /// The watch folder's status line, with Pause auto-print and any folder error. It shows
+    /// on both tabs of the sidebar, so automatic printing is never out of sight.
+    fn watch_status(&mut self, ui: &mut egui::Ui) {
         if self.watcher.is_some() || (self.capture.is_some() && self.settings.watch_enabled) {
             let name = self
                 .settings
@@ -558,11 +550,15 @@ impl ThermalPrint {
                 ui.label(RichText::new(text).small().color(green));
                 if self.settings.auto_print
                     && ui
-                        .small_button(crate::i18n::tr(if self.auto_paused {
-                            "Resume auto-print"
-                        } else {
-                            "Pause auto-print"
-                        }))
+                        .scope(|ui| {
+                            let (icon, label) = if self.auto_paused {
+                                ("Play", "Resume auto-print")
+                            } else {
+                                ("Pause", "Pause auto-print")
+                            };
+                            crate::designer_ui::icon_button(ui, icon, crate::i18n::tr(label))
+                        })
+                        .inner
                         .on_hover_text(crate::i18n::tr(
                             "Stop or restart printing labels by themselves. Waiting labels stay in the queue.",
                         ))
@@ -581,9 +577,12 @@ impl ThermalPrint {
             );
             if self.watcher.is_none()
                 && self.settings.watch_folder.is_some()
-                && ui
-                    .small_button(crate::i18n::tr("Turn watching back on"))
-                    .clicked()
+                && crate::designer_ui::icon_button(
+                    ui,
+                    "Play",
+                    crate::i18n::tr("Turn watching back on"),
+                )
+                .clicked()
             {
                 self.settings.watch_enabled = true;
                 self.watch_error = None;
@@ -591,13 +590,17 @@ impl ThermalPrint {
                 self.persist();
             }
         }
+    }
+    /// Background printing, the watch folder, and automatic printing: the Automation tab.
+    fn watch_controls(&mut self, ui: &mut egui::Ui) {
+        self.background_controls(ui);
         egui::CollapsingHeader::new(crate::i18n::tr("Watch a folder"))
-            .default_open(capturing)
+            .default_open(true)
             .show(ui, |ui| {
             ui.label(RichText::new(crate::i18n::tr("Add new PDF and image labels automatically when they appear in a folder, such as Downloads. Files already there when you turn this on are ignored; labels saved while ThermalPrint is closed are added when it opens.")).small().weak());
             let folder = self.settings.watch_folder.clone();
             ui.horizontal_wrapped(|ui| {
-                if ui.button(crate::i18n::tr("Choose folder…")).clicked()
+                if crate::designer_ui::icon_button(ui, "Folder", crate::i18n::tr("Choose folder…")).clicked()
                     && let Some(picked) = rfd::FileDialog::new().pick_folder()
                 {
                     self.settings.watch_folder = Some(picked);
@@ -605,7 +608,7 @@ impl ThermalPrint {
                     self.sync_watcher();
                     self.persist();
                 }
-                if folder.is_some() && ui.button(crate::i18n::tr("Clear")).clicked() {
+                if folder.is_some() && crate::designer_ui::icon_button(ui, "Clear", crate::i18n::tr("Clear")).clicked() {
                     self.settings.watch_folder = None;
                     self.settings.watch_enabled = false;
                     self.sync_watcher();
@@ -752,11 +755,7 @@ impl ThermalPrint {
                 });
             }
             if let Some(dir) = &folder
-                && ui
-                    .add_enabled(
-                        !self.busy,
-                        egui::Button::new(crate::i18n::tr("Add from Processed…")),
-                    )
+                && crate::designer_ui::icon_button_enabled(ui, !self.busy, "Folder", crate::i18n::tr("Add from Processed…"))
                     .on_hover_text(crate::i18n::tr(
                         "Choose labels from the Processed folder to print them again",
                     ))
@@ -1577,14 +1576,7 @@ impl ThermalPrint {
                 ));
                 ui.add_space(10.);
                 ui.horizontal(|ui| {
-                    if ui
-                        .add(
-                            egui::Button::new(
-                                RichText::new(crate::i18n::tr("Turn on")).color(Color32::WHITE),
-                            )
-                            .fill(Color32::from_rgb(28, 111, 100))
-                            .min_size(Vec2::new(110., 34.)),
-                        )
+                    if crate::designer_ui::primary_button(ui, true, "Check", crate::i18n::tr("Turn on"), Vec2::new(110., 34.))
                         .clicked()
                     {
                         self.settings.auto_print = true;
@@ -1593,8 +1585,7 @@ impl ThermalPrint {
                         self.auto_confirm = false;
                         self.persist();
                     }
-                    if ui
-                        .add(egui::Button::new(crate::i18n::tr("Cancel")).min_size(Vec2::new(90., 34.)))
+                    if crate::designer_ui::icon_button_styled(ui, true, "Close", crate::i18n::tr("Cancel"), false, Vec2::new(90., 34.))
                         .clicked()
                     {
                         self.auto_confirm = false;
@@ -1750,13 +1741,18 @@ impl ThermalPrint {
                 ));
             }
             ui.horizontal(|ui| {
-                if ui
-                    .button(crate::i18n::tr("Open Import & Convert"))
-                    .clicked()
+                if crate::designer_ui::icon_button(
+                    ui,
+                    "Import label",
+                    crate::i18n::tr("Open Import & Convert"),
+                )
+                .clicked()
                 {
                     self.area = Area::Import;
                 }
-                if ui.button(crate::i18n::tr("Hide this")).clicked() {
+                if crate::designer_ui::icon_button(ui, "Hide", crate::i18n::tr("Hide this"))
+                    .clicked()
+                {
                     self.settings.setup_dismissed = true;
                     self.persist();
                 }
@@ -1907,30 +1903,27 @@ impl ThermalPrint {
                 );
                 ui.add_space(10.);
                 ui.horizontal(|ui| {
-                    if ui
-                        .add_enabled(
-                            !self.busy,
-                            egui::Button::new(
-                                RichText::new(crate::i18n::tr("Restore"))
-                                    .size(16.)
-                                    .strong()
-                                    .color(Color32::WHITE),
-                            )
-                            .fill(accent)
-                            .corner_radius(10.)
-                            .min_size(Vec2::new(150., 44.)),
-                        )
-                        .clicked()
+                    let _ = accent;
+                    if crate::designer_ui::primary_button(
+                        ui,
+                        !self.busy,
+                        "Restore",
+                        crate::i18n::tr("Restore"),
+                        Vec2::new(150., 44.),
+                    )
+                    .clicked()
                     {
                         self.restore_queue(offer);
                     }
-                    if ui
-                        .add(
-                            egui::Button::new(RichText::new(crate::i18n::tr("Discard")).size(16.))
-                                .corner_radius(10.)
-                                .min_size(Vec2::new(120., 44.)),
-                        )
-                        .clicked()
+                    if crate::designer_ui::icon_button_styled(
+                        ui,
+                        true,
+                        "Delete",
+                        crate::i18n::tr("Discard"),
+                        false,
+                        Vec2::new(120., 44.),
+                    )
+                    .clicked()
                     {
                         self.restore_offer = None;
                     }
@@ -2195,7 +2188,16 @@ impl ThermalPrint {
                 crate::help::notice(ui, "Label size differs from printer media", &message, true);
                 ui.label(RichText::new(crate::i18n::tr("If the loaded paper matches the printer media, match the output below. Otherwise select media that matches the label size you want.")).small().weak());
                 if let Some(&(w, h)) = p.media_sizes.get(&self.settings.media)
-                    && ui.button(crate::i18n::tr("Match output to printer media")).on_hover_text(crate::i18n::tr("Update the output width and height to match the selected printer stock")).clicked() {
+                    && crate::designer_ui::icon_button(
+                        ui,
+                        "Ruler",
+                        crate::i18n::tr("Match output to printer media"),
+                    )
+                    .on_hover_text(crate::i18n::tr(
+                        "Update the output width and height to match the selected printer stock",
+                    ))
+                    .clicked()
+                {
                     self.settings.width_mm = w;
                     self.settings.height_mm = h;
                     self.dirty = self.page.is_some();
@@ -2223,29 +2225,61 @@ impl ThermalPrint {
         }
     }
     fn print_center(&mut self, ui: &mut egui::Ui) {
-        ui.heading(RichText::new(crate::i18n::tr("Print Center")).size(28.));
+        ui.heading(
+            RichText::new(crate::i18n::tr("Print Center"))
+                .size(26.)
+                .strong()
+                .color(ui.visuals().strong_text_color()),
+        );
         ui.label(
             RichText::new(crate::i18n::tr(
                 "Set up your printer and check your next print run.",
             ))
             .weak(),
         );
-        ui.add_space(14.);
+        ui.add_space(8.);
         let old = self.settings.clone();
-        self.stock_setup(ui);
-        ui.add_space(12.);
-        if ui.available_width() >= 900. {
-            ui.columns(2, |columns| {
-                self.print_settings(&mut columns[0]);
-                self.print_overview(&mut columns[1]);
-            });
-        } else {
-            self.print_settings(ui);
-            ui.add_space(12.);
-            self.print_overview(ui);
+        theme::tabs(
+            ui,
+            &mut self.print_tab,
+            &[
+                (PrintTab::Printer, "Printer", "Print device"),
+                (PrintTab::Stock, "Label stock", "Profile"),
+                (PrintTab::History, "Recent prints", "Status"),
+            ],
+        );
+        ui.add_space(8.);
+        match self.print_tab {
+            PrintTab::Printer => {
+                self.stock_setup(ui);
+                // The assistant's last step saves a profile, so show that card with it.
+                if self.setup_step == Some(3) {
+                    ui.add_space(12.);
+                    self.stock_profiles(ui);
+                }
+                ui.add_space(12.);
+                if ui.available_width() >= 900. {
+                    ui.columns(2, |columns| {
+                        self.print_settings(&mut columns[0]);
+                        self.print_overview(&mut columns[1]);
+                    });
+                } else {
+                    self.print_settings(ui);
+                    ui.add_space(12.);
+                    self.print_overview(ui);
+                }
+            }
+            PrintTab::Stock => self.stock_profiles(ui),
+            PrintTab::History => {
+                self.refresh_history();
+                if self.history.is_empty() {
+                    ui.label(crate::i18n::tr(
+                        "Labels you print are listed here, so you can open or reprint them.",
+                    ));
+                }
+                self.recent_prints(ui);
+            }
         }
-        ui.add_space(12.);
-        self.recent_prints(ui);
         if serde_json::to_string(&old).ok() != serde_json::to_string(&self.settings).ok() {
             self.persist();
         }
@@ -2311,7 +2345,10 @@ impl ThermalPrint {
                         .hint_text(crate::i18n::tr("Search")),
                 )
                 .accessible_name(crate::i18n::tr("Recent prints"));
-                if !self.history_query.is_empty() && ui.button(crate::i18n::tr("Clear")).clicked() {
+                if !self.history_query.is_empty()
+                    && crate::designer_ui::icon_button(ui, "Clear", crate::i18n::tr("Clear"))
+                        .clicked()
+                {
                     self.history_query.clear();
                 }
             });
@@ -2330,22 +2367,22 @@ impl ThermalPrint {
             }
             for (index, entry) in filtered {
                 ui.horizontal_wrapped(|ui| {
-                    if ui
-                        .button(crate::i18n::tr("Open"))
+                    if crate::designer_ui::icon_button(ui, "Import label", crate::i18n::tr("Open"))
                         .on_hover_text(crate::i18n::tr("Open this label for review"))
                         .clicked()
                     {
                         open = Some(index);
                     }
-                    if ui
-                        .add_enabled(
-                            !self.busy && entry.settings.is_some(),
-                            egui::Button::new(crate::i18n::tr("Reprint…")),
-                        )
-                        .on_hover_text(crate::i18n::tr(
-                            "Review and reprint with the recorded settings",
-                        ))
-                        .clicked()
+                    if crate::designer_ui::icon_button_enabled(
+                        ui,
+                        !self.busy && entry.settings.is_some(),
+                        "Print device",
+                        crate::i18n::tr("Reprint…"),
+                    )
+                    .on_hover_text(crate::i18n::tr(
+                        "Review and reprint with the recorded settings",
+                    ))
+                    .clicked()
                     {
                         reprint = Some(index);
                     }
@@ -2366,7 +2403,9 @@ impl ThermalPrint {
                     );
                 });
             }
-            if ui.small_button(crate::i18n::tr("Clear history")).clicked() {
+            if crate::designer_ui::icon_button(ui, "Delete", crate::i18n::tr("Clear history"))
+                .clicked()
+            {
                 clear = true;
             }
         });
@@ -2384,14 +2423,21 @@ impl ThermalPrint {
     }
     fn center_heading(ui: &mut egui::Ui, title: &str, icon: &str) {
         ui.horizontal(|ui| {
-            let (rect, _) = ui.allocate_exact_size(Vec2::splat(32.), Sense::hover());
-            let accent = if ui.visuals().dark_mode {
-                Color32::from_rgb(88, 199, 173)
-            } else {
-                Color32::from_rgb(28, 111, 100)
-            };
-            crate::designer_ui::paint_tool_icon(ui.painter(), rect.center(), accent, icon);
-            ui.heading(title);
+            let (rect, _) = ui.allocate_exact_size(Vec2::splat(28.), Sense::hover());
+            let accent = theme::accent(ui.visuals());
+            crate::designer_ui::paint_tool_icon_scaled(
+                ui.painter(),
+                rect.center(),
+                accent,
+                icon,
+                0.85,
+            );
+            ui.label(
+                RichText::new(title)
+                    .size(17.)
+                    .strong()
+                    .color(ui.visuals().strong_text_color()),
+            );
         });
         ui.add_space(4.);
     }
@@ -2555,18 +2601,13 @@ impl ThermalPrint {
             });
             ui.label(RichText::new(crate::i18n::tr("Keeps designs this far from the label's edge. Use it when your printer cuts off the edges but its driver reports no unprintable border. It is remembered for each printer.")).small().weak());
             ui.horizontal(|ui| {
-                if ui
-                    .add_enabled(!self.busy && !self.settings.printer.is_empty(), egui::Button::new(crate::i18n::tr("Print alignment test")))
+                if crate::designer_ui::icon_button_enabled(ui, !self.busy && !self.settings.printer.is_empty(), "Print device", crate::i18n::tr("Print alignment test"))
                     .on_hover_text(crate::i18n::tr("Prints a ruler label with a 1 mm border so you can measure the offset"))
                     .clicked()
                 {
                     self.print_alignment_test();
                 }
-                if ui
-                    .add_enabled(
-                        self.settings.offset_x_mm != 0. || self.settings.offset_y_mm != 0.,
-                        egui::Button::new(crate::i18n::tr("Reset offset")),
-                    )
+                if crate::designer_ui::icon_button_enabled(ui, self.settings.offset_x_mm != 0. || self.settings.offset_y_mm != 0., "Restore", crate::i18n::tr("Reset offset"))
                     .clicked()
                 {
                     self.settings.offset_x_mm = 0.;
@@ -2762,21 +2803,10 @@ impl ThermalPrint {
         response
     }
     fn section_frame(ui: &egui::Ui) -> egui::Frame {
-        egui::Frame::group(ui.style())
-            .fill(if ui.visuals().dark_mode {
-                Color32::from_rgb(34, 42, 45)
-            } else {
-                Color32::WHITE
-            })
-            .inner_margin(14)
-            .corner_radius(12)
+        theme::card(ui)
     }
     fn import_step_heading(ui: &mut egui::Ui, title: &str, icon: &str) {
-        let accent = if ui.visuals().dark_mode {
-            Color32::from_rgb(88, 199, 173)
-        } else {
-            Color32::from_rgb(28, 111, 100)
-        };
+        let accent = theme::accent(ui.visuals());
         ui.horizontal(|ui| {
             let (rect, _) = ui.allocate_exact_size(Vec2::splat(24.), Sense::hover());
             crate::designer_ui::paint_tool_icon(ui.painter(), rect.center(), accent, icon);
@@ -2784,17 +2814,11 @@ impl ThermalPrint {
         });
     }
     fn sidebar(&mut self, ui: &mut egui::Ui) {
-        ui.label(
-            RichText::new(crate::i18n::tr("WORKSPACE"))
-                .size(12.)
+        ui.heading(
+            RichText::new(crate::i18n::tr("Prepare your label"))
+                .size(22.)
                 .strong()
-                .color(Color32::from_rgb(36, 146, 126)),
-        );
-        ui.heading(RichText::new(crate::i18n::tr("Prepare your label")).size(24.));
-        ui.label(
-            RichText::new(crate::i18n::tr("OPEN  /  CHECK  /  PRINT"))
-                .small()
-                .weak(),
+                .color(ui.visuals().strong_text_color()),
         );
         ui.add_space(6.);
         if crate::designer_ui::icon_action(
@@ -2820,18 +2844,36 @@ impl ThermalPrint {
                 false,
             );
             ui.horizontal(|ui| {
-                if ui
-                    .add_enabled(!self.busy, egui::Button::new(crate::i18n::tr("Restore")))
-                    .clicked()
+                if crate::designer_ui::icon_button_enabled(
+                    ui,
+                    !self.busy,
+                    "Restore",
+                    crate::i18n::tr("Restore"),
+                )
+                .clicked()
                 {
                     self.restore_queue(offer);
                 }
-                if ui.button(crate::i18n::tr("Discard")).clicked() {
+                if crate::designer_ui::icon_button(ui, "Delete", crate::i18n::tr("Discard"))
+                    .clicked()
+                {
                     self.restore_offer = None;
                 }
             });
         }
-        self.watch_controls(ui);
+        theme::tabs(
+            ui,
+            &mut self.import_tab,
+            &[
+                (ImportTab::Label, "Label", "Import label"),
+                (ImportTab::Automation, "Automation", "Refresh"),
+            ],
+        );
+        self.watch_status(ui);
+        if self.import_tab == ImportTab::Automation {
+            self.watch_controls(ui);
+            return;
+        }
         if !self.queue.is_empty() {
             ui.add_space(8.);
             ui.label(RichText::new(format!("Print queue · {} labels", self.queue.len())).strong());
@@ -3011,15 +3053,15 @@ impl ThermalPrint {
             {
                 self.persist();
             }
-            if ui
-                .add_enabled(
-                    !self.busy
-                        && !self.settings.printer.is_empty()
-                        && !self.settings.media.is_empty(),
-                    egui::Button::new(format!("Print all {} labels in order", self.queue.len()))
-                        .min_size(Vec2::new(ui.available_width(), 38.)),
-                )
-                .clicked()
+            if crate::designer_ui::icon_button_styled(
+                ui,
+                !self.busy && !self.settings.printer.is_empty() && !self.settings.media.is_empty(),
+                "Print device",
+                &format!("Print all {} labels in order", self.queue.len()),
+                false,
+                Vec2::new(ui.available_width(), 38.),
+            )
+            .clicked()
             {
                 self.print_all();
             }
@@ -3068,7 +3110,7 @@ impl ThermalPrint {
             if self.settings.mode!=old_mode {self.dirty=true;self.drag=None;self.zoom=1.;match self.settings.mode {Mode::Automatic=>{self.original=false;if let Some(d)=&self.detection {self.crop=d.proposed;self.reviewed = !d.needs_review;}},Mode::Manual=>{self.original=true;self.reviewed=false;},Mode::FullPage=>{self.original=false;self.reviewed=true;}}}
             if self.settings.mode==Mode::Automatic && let Some(d)=self.detection.clone(){ui.label(RichText::new(d.message).small());if !d.candidates.is_empty(){ui.horizontal_wrapped(|ui|{for (i,c) in d.candidates.iter().enumerate(){if ui.selectable_label(self.crop==*c,format!("Region {}",i+1)).clicked(){self.crop = *c;self.dirty=true;self.original=true;self.reviewed=false;}}});}}
             if self.settings.mode==Mode::Automatic && let Some(d)=self.detection.clone() && d.candidates.len()>1 && d.proposed==Crop::FULL
-                && ui.button(format!("Queue all {} detected regions",d.candidates.len())).clicked()
+                && crate::designer_ui::icon_button(ui, "Import label", &format!("Queue all {} detected regions",d.candidates.len())).clicked()
                 && let (Some(i),Some(page))=(self.selected,self.page.as_ref()) {
                         let items=d.candidates.into_iter().map(|crop|QueueItem{thumb:None,path:page.path.clone(),page:page.index,crop,reviewed:false,mode:Mode::Automatic}).collect::<Vec<_>>();
                         self.queue.splice(i..=i,items);
@@ -3692,7 +3734,11 @@ impl eframe::App for ThermalPrint {
                     if self.settings.navigation_collapsed {
                         side.center()
                     } else {
-                        window_chrome::title_text(ui, side.center(), "ThermalPrint");
+                        window_chrome::title_text(
+                            ui,
+                            Pos2::new(side.left() + 18., side.center().y),
+                            "ThermalPrint",
+                        );
                         Pos2::new(side.right() - 24., side.center().y)
                     }
                 } else {
@@ -3702,7 +3748,11 @@ impl eframe::App for ThermalPrint {
                     Pos2::new(bar.left() + navigation_width, bar.top()),
                     bar.max,
                 );
-                window_chrome::title_text(ui, content.center(), crate::i18n::tr(page_title));
+                window_chrome::title_text(
+                    ui,
+                    Pos2::new(content.left() + 18., content.center().y),
+                    crate::i18n::tr(page_title),
+                );
                 let controls_left = window_chrome::controls(ui, bar);
 
                 let menu = window_chrome::flat_button(ui, menu_center, "Main menu")
@@ -3723,20 +3773,50 @@ impl eframe::App for ThermalPrint {
                 }
                 egui::Popup::menu(&menu).show(|ui| {
                     ui.set_min_width(164.);
-                    if ui.button(crate::i18n::tr("Help & Manual")).clicked() {
+                    if crate::designer_ui::icon_button(ui, "Book", crate::i18n::tr("Help & Manual"))
+                        .clicked()
+                    {
                         self.open_manual(&ctx);
                         ui.close();
                     }
-                    if ui.button(crate::i18n::tr("Printing terms")).clicked() {
+                    if crate::designer_ui::icon_button(
+                        ui,
+                        "Help",
+                        crate::i18n::tr("Printing terms"),
+                    )
+                    .clicked()
+                    {
                         self.terms_open = true;
                         ui.close();
                     }
-                    if ui.button(crate::i18n::tr("About ThermalPrint")).clicked() {
+                    if crate::designer_ui::icon_button(
+                        ui,
+                        "Info",
+                        crate::i18n::tr("About ThermalPrint"),
+                    )
+                    .clicked()
+                    {
                         self.about_open = true;
                         ui.close();
                     }
                     ui.separator();
-                    if ui.button(crate::i18n::tr("Quit")).clicked() {
+                    if ui
+                        .checkbox(
+                            &mut self.settings.compact_layout,
+                            crate::i18n::tr("Compact layout"),
+                        )
+                        .on_hover_text(crate::i18n::tr(
+                            "Tighter spacing, so more fits on a small screen",
+                        ))
+                        .changed()
+                    {
+                        theme::apply(&ctx, self.settings.compact_layout);
+                        self.persist();
+                    }
+                    ui.separator();
+                    if crate::designer_ui::icon_button(ui, "Quit", crate::i18n::tr("Quit"))
+                        .clicked()
+                    {
                         self.explicit_quit = true;
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
@@ -3873,8 +3953,7 @@ impl eframe::App for ThermalPrint {
                 } else {
                     ui.visuals().text_color()
                 }));
-                if ui
-                    .small_button(crate::i18n::tr("Messages"))
+                if crate::designer_ui::icon_button(ui, "Messages", crate::i18n::tr("Messages"))
                     .on_hover_text(crate::i18n::tr("Show recent messages"))
                     .clicked()
                 {
@@ -3943,9 +4022,9 @@ impl eframe::App for ThermalPrint {
                     .frame(
                         egui::Frame::new()
                             .fill(if ui.visuals().dark_mode {
-                                Color32::from_rgb(25, 32, 35)
+                                Color32::from_rgb(31, 35, 38)
                             } else {
-                                Color32::from_rgb(244, 247, 246)
+                                Color32::from_rgb(243, 245, 246)
                             })
                             .inner_margin(14),
                     )
@@ -3960,9 +4039,9 @@ impl eframe::App for ThermalPrint {
                     .frame(
                         egui::Frame::new()
                             .fill(if ui.visuals().dark_mode {
-                                Color32::from_rgb(22, 28, 31)
+                                Color32::from_rgb(24, 27, 30)
                             } else {
-                                Color32::from_rgb(249, 251, 250)
+                                Color32::from_rgb(250, 251, 251)
                             })
                             .inner_margin(18),
                     )
@@ -3997,7 +4076,9 @@ impl eframe::App for ThermalPrint {
                     ui.set_width((ctx.content_rect().width() - 72.).clamp(260., 480.));
                     ui.horizontal(|ui| {
                         ui.heading(crate::i18n::tr("MIT License"));
-                        if ui.button(crate::i18n::tr("Back")).clicked() {
+                        if crate::designer_ui::icon_button(ui, "Back", crate::i18n::tr("Back"))
+                            .clicked()
+                        {
                             ui.close();
                         }
                     });

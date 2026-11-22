@@ -226,8 +226,16 @@ pub struct Designer {
     footer: crate::footer::Footer,
     /// The footer was just changed here; the app saves it in the settings.
     pub footer_request: Option<crate::footer::Footer>,
-    /// Open the footer section of the properties panel on the next frame.
+    /// Open the footer tab of the properties panel on the next frame.
     pub footer_open: bool,
+    /// The properties panel tab in view.
+    inspector_tab: InspectorTab,
+    /// The selection the tab was last chosen for; a new selection shows the Object tab.
+    tab_selection: Vec<u64>,
+    /// Whether every note under the canvas is listed, not just the first.
+    issues_open: bool,
+    /// Keep the template menu open (documentation screenshots only).
+    pub(crate) demo_templates: bool,
     /// Barcodes and QR codes that overlap another object in the last preview. Print stays
     /// off while there are any; the canvas stays editable so they can be moved apart.
     overlaps: Vec<u64>,
@@ -307,6 +315,10 @@ impl Designer {
             footer: crate::footer::Footer::default(),
             footer_request: None,
             footer_open: false,
+            inspector_tab: InspectorTab::Label,
+            tab_selection: Vec::new(),
+            issues_open: false,
+            demo_templates: false,
             overlaps: Vec::new(),
             worker: None,
             texture: None,
@@ -933,33 +945,39 @@ impl Designer {
                 }
                 ui.add_space(16.);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui
-                        .add(
-                            egui::Button::new(
-                                RichText::new(crate::i18n::tr("Save")).color(Color32::WHITE),
-                            )
-                            .fill(accent)
-                            .min_size(Vec2::new(96., 38.)),
-                        )
-                        .clicked()
+                    let _ = accent;
+                    if primary_button(
+                        ui,
+                        true,
+                        "Save document",
+                        crate::i18n::tr("Save"),
+                        Vec2::new(96., 38.),
+                    )
+                    .clicked()
                     {
                         proceed = self.save(false);
                     }
-                    if ui
-                        .add(
-                            egui::Button::new(crate::i18n::tr("Discard"))
-                                .min_size(Vec2::new(96., 38.)),
-                        )
-                        .clicked()
+                    if icon_button_styled(
+                        ui,
+                        true,
+                        "Delete",
+                        crate::i18n::tr("Discard"),
+                        false,
+                        Vec2::new(96., 38.),
+                    )
+                    .clicked()
                     {
                         proceed = true;
                     }
-                    if ui
-                        .add(
-                            egui::Button::new(crate::i18n::tr("Cancel"))
-                                .min_size(Vec2::new(96., 38.)),
-                        )
-                        .clicked()
+                    if icon_button_styled(
+                        ui,
+                        true,
+                        "Close",
+                        crate::i18n::tr("Cancel"),
+                        false,
+                        Vec2::new(96., 38.),
+                    )
+                    .clicked()
                     {
                         cancel = true;
                     }
@@ -1615,11 +1633,10 @@ impl Designer {
                 ui.label(crate::i18n::tr("Put ${column} placeholders in text, barcode, and QR content. Each row of your spreadsheet becomes one label."));
                 ui.label(RichText::new(crate::i18n::tr("Export a CSV from your spreadsheet. Column names are not case-sensitive; ${serial} counts up from the design's serial number.")).small().weak());
                 ui.horizontal(|ui| {
-                    if ui.button(crate::i18n::tr("Choose CSV file…")).clicked() {
+                    if icon_button(ui, "File", crate::i18n::tr("Choose CSV file…")).clicked() {
                         Self::batch_choose(&mut state);
                     }
-                    if ui
-                        .button(crate::i18n::tr("Help"))
+                    if icon_button(ui, "Help", crate::i18n::tr("Help"))
                         .on_hover_text(crate::i18n::tr("Open the user manual in your browser (F1)"))
                         .clicked()
                     {
@@ -1702,14 +1719,16 @@ impl Designer {
                     ui.label(RichText::new(crate::i18n::tr("Choose a printer in Print Center first.")).weak());
                 }
                 let copies = settings.copies;
-                if ui
-                    .add_enabled(
+                if primary_button(
+                        ui,
                         ready && self.job.is_none(),
-                        egui::Button::new(format!(
+                        "Print device",
+                        &format!(
                             "Print {} labels{}",
                             table.rows.len(),
                             if copies > 1 { format!(" × {copies} copies") } else { String::new() }
-                        )),
+                        ),
+                        Vec2::ZERO,
                     )
                     .on_hover_text(crate::i18n::tr("Every row is checked first; nothing prints if a row has a problem."))
                     .clicked()
@@ -1794,14 +1813,200 @@ impl Designer {
         });
     }
     /// The optional footer for designed labels: a message and, with it, a QR code, aligned
+    /// What needs attention under the canvas, most important first.
+    fn issues(&self, settings: &Settings, printers: &[Printer]) -> Vec<Issue> {
+        let mut issues = vec![];
+        if let Some(margins) = self.printable {
+            let outside = self.doc.objects_in_margins(margins);
+            if !outside.is_empty() {
+                let names: Vec<String> = self
+                    .doc
+                    .objects
+                    .iter()
+                    .filter(|o| outside.contains(&o.id))
+                    .map(|o| format!("{} #{}", o.label(), o.id))
+                    .collect();
+                issues.push(Issue {
+                    level: IssueLevel::Warning,
+                    text: format!(
+                        "{} {}",
+                        if settings.safe_margin_mm > 0. {
+                            crate::i18n::tr("These objects reach into the unprintable border or your safe margin and may be cut off:")
+                        } else {
+                            crate::i18n::tr("These objects reach into the printer's unprintable border and may be cut off:")
+                        },
+                        names.join(", ")
+                    ),
+                });
+            }
+        }
+        match printers.iter().find(|p| p.name == settings.printer) {
+            Some(printer) => {
+                let (paper_w, paper_h) = self.doc.paper_size_mm();
+                if self.raw_zpl {
+                    issues.push(Issue {
+                        level: IssueLevel::Note,
+                        text: crate::i18n::tr("Raw ZPL: verify printer compatibility and loaded label size.").into(),
+                    });
+                } else if let Some(warning) = printer.media_mismatch(&settings.media, paper_w, paper_h) {
+                    issues.push(Issue {
+                        level: IssueLevel::Warning,
+                        text: format!(
+                            "{} {}",
+                            warning,
+                            crate::i18n::tr("If the loaded paper matches the printer media, use the button below. To keep the current label size, choose matching media in Print Center instead.")
+                        ),
+                    });
+                } else if settings.media.is_empty() {
+                    issues.push(Issue {
+                        level: IssueLevel::Warning,
+                        text: crate::i18n::tr("Select printer media in Print Center before printing.").into(),
+                    });
+                }
+            }
+            None => issues.push(Issue {
+                level: IssueLevel::Note,
+                text: crate::i18n::tr("Choose a printer in Print Center to print this design. Export is available without a printer.").into(),
+            }),
+        }
+        if let Some(note) = &self.footer_note {
+            issues.push(Issue {
+                level: IssueLevel::Warning,
+                text: crate::i18n::tr(note).into(),
+            });
+        }
+        if self.doc.rotated_printing {
+            let (paper_w, paper_h) = self.doc.paper_size_mm();
+            issues.push(Issue {
+                level: IssueLevel::Note,
+                text: format!(
+                    "{} {paper_w:.1} × {paper_h:.1} mm.",
+                    crate::i18n::tr("Rotated printing: Print rotates it 90° to fit")
+                ),
+            });
+        }
+        if self.show_printable
+            && self.printable.is_none()
+            && !settings.printer.is_empty()
+            && let Some(reason) = self.printable_note
+        {
+            issues.push(Issue {
+                level: IssueLevel::Note,
+                text: crate::i18n::tr(reason).into(),
+            });
+        }
+        issues.sort_by_key(|issue| issue.level);
+        issues
+    }
+    /// The Label tab of the properties panel: the label's name, size, and options.
+    fn label_setup(&mut self, ui: &mut egui::Ui) {
+        let before = self.doc.clone();
+        ui.vertical(|ui| {
+                let label = ui.label(crate::i18n::tr("Label name"));
+                ui.text_edit_singleline(&mut self.doc.title)
+                    .labelled_by(label.id);
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Width"));
+                    ui.add(
+                        egui::DragValue::new(&mut self.doc.width_mm)
+                            .range(1.0..=2000.0)
+                            .speed(0.2)
+                            .suffix(" mm"),
+                    )
+                    .accessible_name(crate::i18n::tr("Label width in millimeters"));
+                    ui.label(crate::i18n::tr("Height"));
+                    ui.add(
+                        egui::DragValue::new(&mut self.doc.height_mm)
+                            .range(1.0..=2000.0)
+                            .speed(0.2)
+                            .suffix(" mm"),
+                    )
+                    .accessible_name(crate::i18n::tr("Label height in millimeters"));
+                });
+                let mut rotated = self.doc.rotated_printing;
+                ui.checkbox(&mut rotated, crate::i18n::tr("Rotate 90° when printing"))
+                    .on_hover_text(crate::i18n::tr("For wide content: design the label turned on its side so the text reads straight, and it is rotated 90° when it prints, to fit the label stock as loaded."));
+                if rotated != self.doc.rotated_printing {
+                    self.doc.set_rotated_printing(rotated);
+                    self.zoom = 1.;
+                    self.pan = Vec2::ZERO;
+                }
+                if self.doc.rotated_printing {
+                    let (paper_w, paper_h) = self.doc.paper_size_mm();
+                    ui.label(
+                        RichText::new(format!(
+                            "{} {paper_w:.1} × {paper_h:.1} mm.",
+                            crate::i18n::tr(if self.doc.rotate_counterclockwise {
+                                "Rotated 90° counterclockwise to print on"
+                            } else {
+                                "Rotated 90° clockwise to print on"
+                            })
+                        ))
+                        .small()
+                        .weak(),
+                    );
+                    ui.checkbox(&mut self.doc.rotate_counterclockwise, crate::i18n::tr("Rotate the other way"))
+                        .on_hover_text(crate::i18n::tr("Which way the design faces on the printed label. Check “As printed” beside the canvas."));
+                }
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Serial variable"));
+                    ui.add(egui::DragValue::new(&mut self.doc.serial_number))
+                        .accessible_name(crate::i18n::tr("Serial variable"));
+                });
+                ui.add_enabled(
+                    !self.doc.rotated_printing,
+                    egui::Checkbox::new(&mut self.doc.auto_length, crate::i18n::tr("Auto-length (continuous roll)")),
+                )
+                .on_hover_text(crate::i18n::tr(
+                    "Print only as long as the content needs, plus a bottom margin. Use it with continuous label rolls.",
+                ))
+                .on_disabled_hover_text(crate::i18n::tr("Not available with rotated printing."));
+                if self.doc.auto_length {
+                    ui.horizontal(|ui| {
+                        ui.label(crate::i18n::tr("Bottom margin"));
+                        ui.add(
+                            egui::DragValue::new(&mut self.doc.auto_margin_mm)
+                                .range(0.0..=50.0)
+                                .speed(0.1)
+                                .suffix(" mm"),
+                        )
+                        .accessible_name(crate::i18n::tr("Bottom margin in millimeters"));
+                    });
+                    ui.label(
+                        RichText::new(format!(
+                            "{}: {:.1} mm",
+                            crate::i18n::tr("Printed length"),
+                            self.doc.effective_height_mm()
+                        ))
+                        .small()
+                        .weak(),
+                    );
+                }
+                ui.horizontal(|ui| {
+                    ui.label(crate::i18n::tr("Grid size"));
+                    ui.add(
+                        egui::DragValue::new(&mut self.doc.grid_mm)
+                            .range(0.5..=50.0)
+                            .speed(0.1)
+                            .suffix(" mm"),
+                    )
+                    .on_hover_text(crate::i18n::tr(
+                        "Spacing of the guide grid. Snapping moves in steps of a fifth of it.",
+                    ))
+                    .accessible_name(crate::i18n::tr("Grid size in millimeters"));
+                });
+            });
+        if self.doc != before {
+            self.push_undo(before);
+            self.changed();
+        }
+    }
     /// along the bottom. Saved with the app's settings until reset.
     fn footer_section(&mut self, ui: &mut egui::Ui) {
-        let open = std::mem::take(&mut self.footer_open).then_some(true);
+        let opened = std::mem::take(&mut self.footer_open);
         let mut footer = self.footer.clone();
-        let section = egui::CollapsingHeader::new(crate::i18n::tr("Label footer"))
-            .id_salt("designer-label-footer")
-            .open(open)
-            .show(ui, |ui| {
+        let section = ui.vertical(|ui| {
+                ui.label(RichText::new(crate::i18n::tr("Label footer")).strong().size(16.));
                 let weak = |ui: &mut egui::Ui, text: &str| {
                     ui.label(RichText::new(crate::i18n::tr(text)).small().weak());
                 };
@@ -1860,8 +2065,7 @@ impl Designer {
                 if footer.shows_qr() {
                     weak(ui, "Scan a test print with your phone before printing a batch.");
                 }
-                if ui
-                    .add_enabled(footer != crate::footer::Footer::default(), egui::Button::new(crate::i18n::tr("Reset footer")))
+                if icon_button_enabled(ui, footer != crate::footer::Footer::default(), "Restore", crate::i18n::tr("Reset footer"))
                     .on_hover_text(crate::i18n::tr("Turn the footer off and restore the default message, QR code link, and alignment"))
                     .clicked()
                 {
@@ -1869,8 +2073,8 @@ impl Designer {
                 }
             });
         // Opened from the toolbar: bring the controls into view.
-        if open.is_some() {
-            section.header_response.scroll_to_me(Some(egui::Align::TOP));
+        if opened {
+            section.response.scroll_to_me(Some(egui::Align::TOP));
         }
         if footer != self.footer {
             self.footer = footer.clone();
@@ -2028,34 +2232,48 @@ impl Designer {
         self.autosave(&ctx);
         self.recovery_banner(root);
         egui::Panel::top("designer-toolbar").show(root, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                ui.menu_button(crate::i18n::tr("File"), |ui| {
-                    if ui.button(crate::i18n::tr("New label")).clicked() {
+            // Print stays alone at the right; everything else wraps at the left.
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if icon_action(
+                    ui,
+                    "Print device",
+                    "Print",
+                    "Print label using the selected printer",
+                    self.can_print(),
+                    true,
+                )
+                .on_disabled_hover_text(crate::i18n::tr(OVERLAP_PRINT_OFF))
+                .clicked()
+                {
+                    self.print(settings, printers);
+                }
+                ui.with_layout(
+                    egui::Layout::left_to_right(egui::Align::Center).with_main_wrap(true),
+                    |ui| {
+                icon_menu(ui, "File", crate::i18n::tr("File"), |ui| {
+                    if icon_button(ui, "New document", crate::i18n::tr("New label")).clicked() {
                         self.request_new();
                         ui.close();
                     }
-                    if ui.button(crate::i18n::tr("Save as…")).clicked() {
+                    if icon_button(ui, "Save as", crate::i18n::tr("Save as…")).clicked() {
                         self.save(true);
                         ui.close();
                     }
-                    if ui
-                        .button(crate::i18n::tr("Save as template…"))
+                    if icon_button(ui, "Choose a label template", crate::i18n::tr("Save as template…"))
                         .on_hover_text(crate::i18n::tr("Keep this design in your Templates menu, named after the label"))
                         .clicked()
                     {
                         self.save_as_template();
                         ui.close();
                     }
-                    if ui
-                        .button(crate::i18n::tr("Template gallery…"))
+                    if icon_button(ui, "Choose a label template", crate::i18n::tr("Template gallery…"))
                         .on_hover_text(crate::i18n::tr("Browse the built-in templates and your own with previews"))
                         .clicked()
                     {
                         self.gallery = Some(String::new());
                         ui.close();
                     }
-                    if ui
-                        .button(crate::i18n::tr("Print on a sheet…"))
+                    if icon_button(ui, "Print device", crate::i18n::tr("Print on a sheet…"))
                         .on_hover_text(crate::i18n::tr("Place several labels on one A4 or Letter page"))
                         .clicked()
                     {
@@ -2074,8 +2292,7 @@ impl Designer {
                         });
                         ui.close();
                     }
-                    if ui
-                        .button(crate::i18n::tr("Print a number range…"))
+                    if icon_button(ui, "Print device", crate::i18n::tr("Print a number range…"))
                         .on_hover_text(crate::i18n::tr("Print labels numbered by ${serial} with a start, step, and count"))
                         .clicked()
                     {
@@ -2086,8 +2303,7 @@ impl Designer {
                         });
                         ui.close();
                     }
-                    if ui
-                        .button(crate::i18n::tr("Batch print from CSV…"))
+                    if icon_button(ui, "Print device", crate::i18n::tr("Batch print from CSV…"))
                         .on_hover_text(crate::i18n::tr("Print one label per row of a spreadsheet, filling ${column} placeholders"))
                         .clicked()
                     {
@@ -2150,8 +2366,15 @@ impl Designer {
                 {
                     self.redo();
                 }
+                ui.separator();
                 if icon_action(ui, "Zoom out", "", "Zoom out", true, false).clicked() {
                     self.zoom = (self.zoom / 1.25).max(0.25);
+                }
+                if icon_button(ui, "Fit page", &format!("{}%", (self.zoom * 100.).round() as u32))
+                    .on_hover_text(crate::i18n::tr("Zoom to 100%"))
+                    .clicked()
+                {
+                    self.zoom = 1.;
                 }
                 if icon_action(ui, "Zoom in", "", "Zoom in", true, false).clicked() {
                     self.zoom = (self.zoom * 1.25).min(5.);
@@ -2169,7 +2392,7 @@ impl Designer {
                     self.zoom = 1.;
                     self.pan = Vec2::ZERO;
                 }
-                ui.menu_button(crate::i18n::tr("View"), |ui| {
+                icon_menu(ui, "View", crate::i18n::tr("View"), |ui| {
                     ui.checkbox(&mut self.grid, crate::i18n::tr("Show grid"));
                     ui.checkbox(&mut self.snap, crate::i18n::tr("Snap to grid"));
                     ui.checkbox(&mut self.smart_guides, crate::i18n::tr("Smart guides"))
@@ -2199,14 +2422,14 @@ impl Designer {
                     ui.checkbox(&mut self.show_properties, crate::i18n::tr("Properties panel"));
                     ui.checkbox(&mut self.focus_canvas, crate::i18n::tr("Focus canvas"));
                 });
-                ui.menu_button(crate::i18n::tr("Export"), |ui| {
+                icon_menu(ui, "Export document", crate::i18n::tr("Export"), |ui| {
                     for (name, format) in [
                         ("PDF document", "pdf"),
                         ("PNG image", "png"),
                         ("SVG vector", "svg"),
                         ("ZPL label", "zpl"),
                     ] {
-                        if ui.button(name).clicked() {
+                        if icon_button(ui, "Export document", name).clicked() {
                             self.export(format, settings.dpi);
                             ui.close();
                         }
@@ -2215,41 +2438,44 @@ impl Designer {
                     ui.checkbox(&mut self.raw_zpl, crate::i18n::tr("Print using raw ZPL"))
                         .on_hover_text(crate::i18n::tr(printing::platform_message("Requires a ZPL-compatible printer and raw CUPS queue.", "Requires a ZPL-compatible printer that accepts RAW jobs.")));
                 });
-                if ui
-                    .selectable_label(self.footer.is_active(), crate::i18n::tr("Footer"))
-                    .on_hover_text(crate::i18n::tr("Show the label footer settings in the properties panel"))
-                    .clicked()
-                {
-                    self.show_properties = true;
-                    self.focus_canvas = false;
-                    self.footer_open = true;
-                }
-                if ui.button(crate::i18n::tr("Check barcodes")).clicked() {
-                    match design_render::check_codes(&self.doc,settings.dpi) {
-                        Ok(message) => { self.status=message;self.error=false; }
-                        Err(error) => { self.status=format!("{error:#}");self.error=true; }
+                icon_menu(ui, "Tag", crate::i18n::tr("Label"), |ui| {
+                    let footer_label = if self.footer.is_active() {
+                        crate::i18n::tr("Label footer (on)…")
+                    } else {
+                        crate::i18n::tr("Label footer…")
+                    };
+                    if ui
+                        .button(footer_label)
+                        .on_hover_text(crate::i18n::tr("Show the label footer settings in the properties panel"))
+                        .clicked()
+                    {
+                        self.show_properties = true;
+                        self.focus_canvas = false;
+                        self.footer_open = true;
+                        ui.close();
                     }
-                }
-                if ui
-                    .selectable_label(self.focus_canvas, crate::i18n::tr("Focus"))
-                    .on_hover_text(crate::i18n::tr("Hide navigation and properties to expand the canvas"))
-                    .clicked()
-                {
-                    self.focus_canvas = !self.focus_canvas;
-                }
-                if icon_action(
-                    ui,
-                    "Print device",
-                    "Print",
-                    "Print label using the selected printer",
-                    self.can_print(),
-                    true,
-                )
-                .on_disabled_hover_text(crate::i18n::tr(OVERLAP_PRINT_OFF))
-                .clicked()
-                {
-                    self.print(settings, printers);
-                }
+                    if icon_button(ui, "Status", crate::i18n::tr("Check barcodes"))
+                        .on_hover_text(crate::i18n::tr("Check every barcode and QR code for content, size, clear space, overlap, and clipping"))
+                        .clicked()
+                    {
+                        match design_render::check_codes(&self.doc, settings.dpi) {
+                            Ok(message) => {
+                                self.status = message;
+                                self.error = false;
+                            }
+                            Err(error) => {
+                                self.status = format!("{error:#}");
+                                self.error = true;
+                            }
+                        }
+                        ui.close();
+                    }
+                    ui.separator();
+                    ui.checkbox(&mut self.focus_canvas, crate::i18n::tr("Focus canvas"))
+                        .on_hover_text(crate::i18n::tr("Hide navigation and properties to expand the canvas"));
+                });
+                    },
+                );
             });
         });
         self.batch_window(&ctx, settings, printers);
@@ -2285,65 +2511,43 @@ impl Designer {
                     self.doc.objects.len()
                 ));
                 if self.error {
-                    ui.colored_label(Color32::RED, &self.status);
+                    ui.colored_label(ui.visuals().error_fg_color, &self.status);
                 } else {
                     ui.label(&self.status);
                 }
             });
-            if let Some(margins) = self.printable {
-                let outside = self.doc.objects_in_margins(margins);
-                if !outside.is_empty() {
-                    let names: Vec<String> = self
-                        .doc
-                        .objects
-                        .iter()
-                        .filter(|o| outside.contains(&o.id))
-                        .map(|o| format!("{} #{}", o.label(), o.id))
-                        .collect();
-                    let color = if ui.visuals().dark_mode { Color32::from_rgb(245, 193, 99) } else { Color32::from_rgb(132, 83, 10) };
-                    ui.colored_label(
-                        color,
-                        format!(
-                            "{} {}",
-                            if settings.safe_margin_mm > 0. {
-                                crate::i18n::tr("These objects reach into the unprintable border or your safe margin and may be cut off:")
-                            } else {
-                                crate::i18n::tr("These objects reach into the printer's unprintable border and may be cut off:")
-                            },
-                            names.join(", ")
-                        ),
-                    );
+            // Everything else that needs attention is one list: the most important item
+            // shows, and the rest are one click away.
+            let issues = self.issues(settings, printers);
+            if let Some(first) = issues.first() {
+                ui.horizontal_wrapped(|ui| {
+                    issue_line(ui, first);
+                    if issues.len() > 1 {
+                        let label = if self.issues_open {
+                            crate::i18n::tr("Hide other notes").to_owned()
+                        } else {
+                            format!("{} ({})", crate::i18n::tr("More notes"), issues.len() - 1)
+                        };
+                        if icon_button(ui, if self.issues_open { "Hide" } else { "Messages" }, &label)
+                            .clicked()
+                        {
+                            self.issues_open = !self.issues_open;
+                        }
+                    }
+                });
+                if self.issues_open {
+                    for issue in issues.iter().skip(1) {
+                        issue_line(ui, issue);
+                    }
                 }
             }
-            if self.show_printable
-                && self.printable.is_none()
-                && !settings.printer.is_empty()
-                && let Some(reason) = self.printable_note
-            {
-                ui.label(RichText::new(crate::i18n::tr(reason)).small().weak());
-            }
-            if let Some(note) = &self.footer_note {
-                ui.label(RichText::new(crate::i18n::tr(note)).small());
-            }
-            if self.doc.rotated_printing {
-                let (paper_w, paper_h) = self.doc.paper_size_mm();
-                ui.label(
-                    RichText::new(format!(
-                        "{} {paper_w:.1} × {paper_h:.1} mm.",
-                        crate::i18n::tr("Rotated printing: Print rotates it 90° to fit")
-                    ))
-                    .strong(),
-                );
-            }
             if let Some(printer) = printers.iter().find(|p| p.name == settings.printer) {
-                if self.raw_zpl {
-                    ui.label(crate::i18n::tr("Raw ZPL: verify printer compatibility and loaded label size."))
-                        .on_hover_text(crate::help::explanation("ZPL"));
-                } else if let Some(warning) = printer.media_mismatch(&settings.media, self.doc.paper_size_mm().0, self.doc.paper_size_mm().1) {
-                    let color = if ui.visuals().dark_mode { Color32::from_rgb(245, 193, 99) }
-                        else { Color32::from_rgb(132, 83, 10) };
-                    ui.colored_label(color, warning);
-                    ui.label(RichText::new(crate::i18n::tr("If the loaded paper matches the printer media, use the button below. To keep the current label size, choose matching media in Print Center instead.")).small().weak());
+                // The fixes for a label that does not match the printer media.
+                if !self.raw_zpl
+                    && printer
+                        .media_mismatch(&settings.media, self.doc.paper_size_mm().0, self.doc.paper_size_mm().1)
+                        .is_some()
+                {
                     if let Some(&(width, height)) = printer.media_sizes.get(&settings.media)
                         && !self.doc.rotated_printing
                         && (width - self.doc.effective_height_mm()).abs() < 0.5
@@ -2369,11 +2573,7 @@ impl Designer {
                         self.changed();
                         self.status = format!("Label matched to printer media: {width:.1} × {height:.1} mm");
                     }
-                } else if settings.media.is_empty() {
-                    ui.label(crate::i18n::tr("Select printer media in Print Center before printing."));
                 }
-            } else {
-                ui.label(crate::i18n::tr("Choose a printer in Print Center to print this design. Export is available without a printer."));
             }
         });
         let printer = printers.iter().find(|p| p.name == settings.printer);
@@ -2725,6 +2925,9 @@ impl Designer {
             let symbols = element_tool(ui, "Symbols and logos");
             egui::Popup::menu(&symbols).show(|ui| self.symbols_menu(ui));
             let templates = element_tool(ui, "Choose a label template");
+            if self.demo_templates {
+                egui::Popup::open_id(ui.ctx(), egui::Popup::default_response_id(&templates));
+            }
             egui::Popup::menu(&templates).show(|ui| {
                 ui.label(crate::i18n::tr("Templates"));
                 for (i, t) in design::TEMPLATES.iter().enumerate() {
@@ -2744,7 +2947,7 @@ impl Designer {
                 let mut remove = None;
                 for t in &self.user_templates {
                     ui.horizontal(|ui| {
-                        if ui.button(&t.name).clicked() {
+                        if icon_button(ui, "Choose a label template", &t.name).clicked() {
                             open = Some(t.path.clone());
                         }
                         if icon_action(ui, "Delete", "", "Remove this template", true, false)
@@ -2773,6 +2976,35 @@ impl Designer {
     }
     fn inspector(&mut self, ui: &mut egui::Ui) {
         ui.heading(crate::i18n::tr("Properties"));
+        if self.footer_open {
+            self.inspector_tab = InspectorTab::Footer;
+        }
+        if self.selected != self.tab_selection {
+            if !self.selected.is_empty() {
+                self.inspector_tab = InspectorTab::Object;
+            }
+            self.tab_selection = self.selected.clone();
+        }
+        crate::ui::theme::tabs(
+            ui,
+            &mut self.inspector_tab,
+            &[
+                (InspectorTab::Object, "Object", "Add Rectangle"),
+                (InspectorTab::Label, "Label", "Blank custom"),
+                (InspectorTab::Footer, "Footer", "Tag"),
+            ],
+        );
+        match self.inspector_tab {
+            InspectorTab::Label => {
+                self.label_setup(ui);
+                return;
+            }
+            InspectorTab::Footer => {
+                self.footer_section(ui);
+                return;
+            }
+            InspectorTab::Object => {}
+        }
         let before = self.doc.clone();
         let selected_name = self
             .selected
@@ -2807,105 +3039,6 @@ impl Designer {
             })
             .response
             .accessible_name(crate::i18n::tr("Select label object"));
-        egui::CollapsingHeader::new("Label setup")
-            .default_open(self.selected.is_empty())
-            .show(ui, |ui| {
-                let label = ui.label(crate::i18n::tr("Label name"));
-                ui.text_edit_singleline(&mut self.doc.title)
-                    .labelled_by(label.id);
-                ui.horizontal(|ui| {
-                    ui.label(crate::i18n::tr("Width"));
-                    ui.add(
-                        egui::DragValue::new(&mut self.doc.width_mm)
-                            .range(1.0..=2000.0)
-                            .speed(0.2)
-                            .suffix(" mm"),
-                    )
-                    .accessible_name(crate::i18n::tr("Label width in millimeters"));
-                    ui.label(crate::i18n::tr("Height"));
-                    ui.add(
-                        egui::DragValue::new(&mut self.doc.height_mm)
-                            .range(1.0..=2000.0)
-                            .speed(0.2)
-                            .suffix(" mm"),
-                    )
-                    .accessible_name(crate::i18n::tr("Label height in millimeters"));
-                });
-                let mut rotated = self.doc.rotated_printing;
-                ui.checkbox(&mut rotated, crate::i18n::tr("Rotate 90° when printing"))
-                    .on_hover_text(crate::i18n::tr("For wide content: design the label turned on its side so the text reads straight, and it is rotated 90° when it prints, to fit the label stock as loaded."));
-                if rotated != self.doc.rotated_printing {
-                    self.doc.set_rotated_printing(rotated);
-                    self.zoom = 1.;
-                    self.pan = Vec2::ZERO;
-                }
-                if self.doc.rotated_printing {
-                    let (paper_w, paper_h) = self.doc.paper_size_mm();
-                    ui.label(
-                        RichText::new(format!(
-                            "{} {paper_w:.1} × {paper_h:.1} mm.",
-                            crate::i18n::tr(if self.doc.rotate_counterclockwise {
-                                "Rotated 90° counterclockwise to print on"
-                            } else {
-                                "Rotated 90° clockwise to print on"
-                            })
-                        ))
-                        .small()
-                        .weak(),
-                    );
-                    ui.checkbox(&mut self.doc.rotate_counterclockwise, crate::i18n::tr("Rotate the other way"))
-                        .on_hover_text(crate::i18n::tr("Which way the design faces on the printed label. Check “As printed” beside the canvas."));
-                }
-                ui.horizontal(|ui| {
-                    ui.label(crate::i18n::tr("Serial variable"));
-                    ui.add(egui::DragValue::new(&mut self.doc.serial_number))
-                        .accessible_name(crate::i18n::tr("Serial variable"));
-                });
-                ui.add_enabled(
-                    !self.doc.rotated_printing,
-                    egui::Checkbox::new(&mut self.doc.auto_length, crate::i18n::tr("Auto-length (continuous roll)")),
-                )
-                .on_hover_text(crate::i18n::tr(
-                    "Print only as long as the content needs, plus a bottom margin. Use it with continuous label rolls.",
-                ))
-                .on_disabled_hover_text(crate::i18n::tr("Not available with rotated printing."));
-                if self.doc.auto_length {
-                    ui.horizontal(|ui| {
-                        ui.label(crate::i18n::tr("Bottom margin"));
-                        ui.add(
-                            egui::DragValue::new(&mut self.doc.auto_margin_mm)
-                                .range(0.0..=50.0)
-                                .speed(0.1)
-                                .suffix(" mm"),
-                        )
-                        .accessible_name(crate::i18n::tr("Bottom margin in millimeters"));
-                    });
-                    ui.label(
-                        RichText::new(format!(
-                            "{}: {:.1} mm",
-                            crate::i18n::tr("Printed length"),
-                            self.doc.effective_height_mm()
-                        ))
-                        .small()
-                        .weak(),
-                    );
-                }
-                ui.horizontal(|ui| {
-                    ui.label(crate::i18n::tr("Grid size"));
-                    ui.add(
-                        egui::DragValue::new(&mut self.doc.grid_mm)
-                            .range(0.5..=50.0)
-                            .speed(0.1)
-                            .suffix(" mm"),
-                    )
-                    .on_hover_text(crate::i18n::tr(
-                        "Spacing of the guide grid. Snapping moves in steps of a fifth of it.",
-                    ))
-                    .accessible_name(crate::i18n::tr("Grid size in millimeters"));
-                });
-            });
-        self.footer_section(ui);
-        ui.separator();
         if self.selected.len() > 1 {
             ui.label(format!("{} objects selected", self.selected.len()));
             let unlocked = self
@@ -3174,13 +3307,16 @@ impl Designer {
                     } else {
                         crate::i18n::tr(&crate::fonts::display_name(&o.options.font)).to_string()
                     };
-                    let button = ui
-                        .add(
-                            egui::Button::new(format!("{current}     "))
-                                .min_size(Vec2::new(200., 0.)),
-                        )
-                        .on_hover_text(crate::i18n::tr("Choose a font"))
-                        .accessible_name(crate::i18n::tr("Font"));
+                    let button = icon_button_styled(
+                        ui,
+                        true,
+                        "Add text",
+                        &format!("{current}     "),
+                        false,
+                        Vec2::new(200., 0.),
+                    )
+                    .on_hover_text(crate::i18n::tr("Choose a font"))
+                    .accessible_name(crate::i18n::tr("Font"));
                     // A small downward arrow, drawn because the font has no arrow character.
                     let tip = Pos2::new(button.rect.right() - 14., button.rect.center().y + 3.);
                     ui.painter().add(egui::Shape::convex_polygon(
@@ -3380,10 +3516,12 @@ impl Designer {
                     } else {
                         "Add logo…"
                     };
-                    if ui.button(crate::i18n::tr(label)).clicked() {
+                    if icon_button(ui, "Symbols and logos", crate::i18n::tr(label)).clicked() {
                         pick_qr_logo = true;
                     }
-                    if has_logo && ui.button(crate::i18n::tr("Remove logo")).clicked() {
+                    if has_logo
+                        && icon_button(ui, "Delete", crate::i18n::tr("Remove logo")).clicked()
+                    {
                         o.options.qr_logo.clear();
                     }
                 });
@@ -4681,6 +4819,44 @@ fn printed_corners(counterclockwise: bool) -> [Pos2; 4] {
 
 /// A strip across the top of the canvas saying that rotated printing is on: the label is
 /// designed on its side and rotated when it prints, so it never surprises anyone.
+/// How much a note under the canvas matters.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum IssueLevel {
+    Warning,
+    Note,
+}
+
+/// One thing under the canvas that needs attention.
+struct Issue {
+    level: IssueLevel,
+    text: String,
+}
+
+/// One note: an amber warning icon or a grey information icon, then its text.
+fn issue_line(ui: &mut egui::Ui, issue: &Issue) {
+    ui.horizontal_wrapped(|ui| {
+        let (color, icon) = match issue.level {
+            IssueLevel::Warning => (crate::ui::theme::warning(ui.visuals()), "Fragile"),
+            IssueLevel::Note => (ui.visuals().weak_text_color(), "Info"),
+        };
+        let (rect, _) = ui.allocate_exact_size(Vec2::splat(18.), Sense::hover());
+        paint_tool_icon_scaled(ui.painter(), rect.center(), color, icon, 0.7);
+        let text = RichText::new(&issue.text);
+        ui.label(match issue.level {
+            IssueLevel::Warning => text.color(color),
+            IssueLevel::Note => text.small(),
+        });
+    });
+}
+
+/// The tabs of the properties panel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum InspectorTab {
+    Object,
+    Label,
+    Footer,
+}
+
 /// Which labels get the footer, next to its controls.
 pub(crate) const FOOTER_APPLIES: &str = "Adds a small message, and if you like a QR code, along the bottom of labels you design here when you print them. Imported shipping labels never get a footer.";
 /// How the alignment works.
@@ -5058,9 +5234,19 @@ fn barcode_hint(kind: BarcodeKind) -> &'static str {
 }
 
 pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Color32, label: &str) {
-    let origin = center - Vec2::splat(12.);
-    let stroke = Stroke::new(1.65, color);
-    let point = |x: f32, y: f32| origin + Vec2::new(x, y);
+    paint_tool_icon_scaled(painter, center, color, label, 1.);
+}
+/// [`paint_tool_icon`] at `scale` times its 24-point size.
+pub(crate) fn paint_tool_icon_scaled(
+    painter: &egui::Painter,
+    center: Pos2,
+    color: Color32,
+    label: &str,
+    scale: f32,
+) {
+    let origin = center - Vec2::splat(12. * scale);
+    let stroke = Stroke::new((1.65 * scale).max(1.2), color);
+    let point = |x: f32, y: f32| origin + Vec2::new(x, y) * scale;
     // Round caps soften short strokes and keep small icons legible.
     let path = |points: &[(f32, f32)]| {
         let points: Vec<_> = points.iter().map(|&(x, y)| point(x, y)).collect();
@@ -5072,13 +5258,202 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
     };
     let outline = |x, y, w, h, radius| {
         painter.rect_stroke(
-            Rect::from_min_size(point(x, y), Vec2::new(w, h)),
-            radius,
+            Rect::from_min_size(point(x, y), Vec2::new(w, h) * scale),
+            radius * scale,
             stroke,
             StrokeKind::Middle,
         );
     };
     match label {
+        "Close" => {
+            path(&[(6., 6.), (18., 18.)]);
+            path(&[(18., 6.), (6., 18.)]);
+        }
+        "Check" => path(&[(5., 12.5), (10., 17.5), (19., 7.)]),
+        "Back" => {
+            path(&[(20., 12.), (5., 12.)]);
+            path(&[(11., 6.), (5., 12.), (11., 18.)]);
+        }
+        "Folder" => {
+            path(&[
+                (3., 6.),
+                (3., 19.),
+                (21., 19.),
+                (21., 8.),
+                (11., 8.),
+                (9., 5.),
+                (3., 5.),
+                (3., 6.),
+            ]);
+        }
+        "File" => {
+            path(&[
+                (14., 3.),
+                (5., 3.),
+                (5., 21.),
+                (19., 21.),
+                (19., 8.),
+                (14., 3.),
+                (14., 8.),
+                (19., 8.),
+            ]);
+            path(&[(8., 13.), (16., 13.)]);
+            path(&[(8., 17.), (14., 17.)]);
+        }
+        "Help" => {
+            painter.circle_stroke(point(12., 12.), 9. * scale, stroke);
+            path(&[
+                (9.5, 9.5),
+                (10.2, 7.6),
+                (12., 7.),
+                (13.8, 7.6),
+                (14.5, 9.5),
+                (13.5, 11.),
+                (12., 12.),
+                (12., 13.5),
+            ]);
+            painter.circle_filled(point(12., 16.8), 1.1 * scale, color);
+        }
+        "Info" => {
+            painter.circle_stroke(point(12., 12.), 9. * scale, stroke);
+            path(&[(12., 11.), (12., 17.)]);
+            painter.circle_filled(point(12., 7.8), 1.1 * scale, color);
+        }
+        "Book" => {
+            path(&[(12., 6.), (12., 20.)]);
+            path(&[
+                (12., 6.),
+                (8., 4.5),
+                (3., 5.),
+                (3., 18.),
+                (8., 17.5),
+                (12., 20.),
+                (16., 17.5),
+                (21., 18.),
+                (21., 5.),
+                (16., 4.5),
+                (12., 6.),
+            ]);
+        }
+        "Quit" => {
+            path(&[(12., 3.), (12., 11.)]);
+            path(&[
+                (7.5, 6.),
+                (5.2, 8.6),
+                (4.5, 12.5),
+                (6., 16.5),
+                (9., 19.3),
+                (12., 20.),
+                (15., 19.3),
+                (18., 16.5),
+                (19.5, 12.5),
+                (18.8, 8.6),
+                (16.5, 6.),
+            ]);
+        }
+        "Restore" => {
+            path(&[(5., 7.), (5., 12.)]);
+            path(&[(5., 12.), (10., 12.)]);
+            path(&[
+                (6., 11.),
+                (7.5, 7.5),
+                (11., 5.2),
+                (15., 5.4),
+                (18.3, 7.8),
+                (19.8, 11.7),
+                (19., 15.8),
+                (16., 18.8),
+                (12., 19.8),
+                (8., 18.5),
+            ]);
+        }
+        "Clear" => {
+            painter.circle_stroke(point(12., 12.), 9. * scale, stroke);
+            path(&[(8.5, 8.5), (15.5, 15.5)]);
+            path(&[(15.5, 8.5), (8.5, 15.5)]);
+        }
+        "Messages" => {
+            path(&[
+                (4., 5.),
+                (20., 5.),
+                (20., 16.),
+                (11., 16.),
+                (6., 20.),
+                (7., 16.),
+                (4., 16.),
+                (4., 5.),
+            ]);
+            path(&[(8., 9.), (16., 9.)]);
+            path(&[(8., 12.), (14., 12.)]);
+        }
+        "Pause" => {
+            path(&[(8., 5.), (8., 19.)]);
+            path(&[(16., 5.), (16., 19.)]);
+        }
+        "Play" => path(&[(7., 4.5), (19., 12.), (7., 19.5), (7., 4.5)]),
+        "Hide" => {
+            path(&[
+                (2.5, 12.),
+                (6., 7.5),
+                (12., 5.5),
+                (18., 7.5),
+                (21.5, 12.),
+                (18., 16.5),
+                (12., 18.5),
+                (6., 16.5),
+                (2.5, 12.),
+            ]);
+            painter.circle_stroke(point(12., 12.), 3. * scale, stroke);
+            path(&[(4., 20.), (20., 4.)]);
+        }
+        "View" => {
+            path(&[
+                (2.5, 12.),
+                (6., 7.5),
+                (12., 5.5),
+                (18., 7.5),
+                (21.5, 12.),
+                (18., 16.5),
+                (12., 18.5),
+                (6., 16.5),
+                (2.5, 12.),
+            ]);
+            painter.circle_stroke(point(12., 12.), 3. * scale, stroke);
+        }
+        "Profile" => {
+            path(&[(12., 3.), (21., 7.5), (12., 12.), (3., 7.5), (12., 3.)]);
+            path(&[(3., 12.), (12., 16.5), (21., 12.)]);
+            path(&[(3., 16.5), (12., 21.), (21., 16.5)]);
+        }
+        "Ruler" => {
+            path(&[(3., 15.), (15., 3.), (21., 9.), (9., 21.), (3., 15.)]);
+            path(&[(7., 11.), (9., 13.)]);
+            path(&[(10., 8.), (13., 11.)]);
+            path(&[(13., 5.), (15., 7.)]);
+        }
+        "Settings" => {
+            painter.circle_stroke(point(12., 12.), 3. * scale, stroke);
+            for i in 0..8 {
+                let angle = i as f32 * std::f32::consts::FRAC_PI_4;
+                let (sin, cos) = angle.sin_cos();
+                path(&[
+                    (12. + 6. * cos, 12. + 6. * sin),
+                    (12. + 9. * cos, 12. + 9. * sin),
+                ]);
+            }
+            painter.circle_stroke(point(12., 12.), 6. * scale, stroke);
+        }
+        "Tag" => {
+            path(&[
+                (3., 3.),
+                (12., 3.),
+                (21., 12.),
+                (12., 21.),
+                (3., 12.),
+                (3., 3.),
+            ]);
+            painter.circle_stroke(point(8., 8.), 1.5 * scale, stroke);
+        }
         "External link" => {
             path(&[(10., 4.), (4., 4.), (4., 20.), (20., 20.), (20., 14.)]);
             path(&[(13., 3.), (21., 3.), (21., 11.)]);
@@ -5109,7 +5484,7 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
                 (6., 17.),
                 (2., 12.),
             ]);
-            painter.circle_stroke(point(12., 12.), 3., stroke);
+            painter.circle_stroke(point(12., 12.), 3. * scale, stroke);
         }
         "Collapse navigation" | "Expand navigation" => {
             outline(3., 4., 18., 16., 2.);
@@ -5222,7 +5597,7 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
             path(&[(7., 5.), (9., 7.)]);
         }
         "Zoom in" | "Zoom out" => {
-            painter.circle_stroke(point(10., 10.), 6., stroke);
+            painter.circle_stroke(point(10., 10.), 6. * scale, stroke);
             path(&[(15., 15.), (21., 21.)]);
             path(&[(7., 10.), (13., 10.)]);
             if label == "Zoom in" {
@@ -5243,7 +5618,7 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
             outline(3., 8., 18., 10., 2.);
             outline(7., 3., 10., 5., 1.);
             outline(7., 14., 10., 7., 1.);
-            painter.circle_filled(point(17., 11.), 1., color);
+            painter.circle_filled(point(17., 11.), 1. * scale, color);
         }
         "System" => {
             outline(3., 4., 18., 13., 2.);
@@ -5251,7 +5626,7 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
             path(&[(8., 21.), (16., 21.)]);
         }
         "Light" => {
-            painter.circle_stroke(point(12., 12.), 4., stroke);
+            painter.circle_stroke(point(12., 12.), 4. * scale, stroke);
             for i in 0..8 {
                 let angle = i as f32 * std::f32::consts::TAU / 8.;
                 let (dy, dx) = angle.sin_cos();
@@ -5324,7 +5699,7 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
                 (3., 21.),
                 (3., 3.),
             ]);
-            painter.circle_stroke(point(7., 7.), 1.2, stroke);
+            painter.circle_stroke(point(7., 7.), 1.2 * scale, stroke);
             for x in [7., 10., 13., 17.] {
                 path(&[(x, 12.), (x, 17.)]);
             }
@@ -5353,7 +5728,7 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
                 (3., 12.),
                 (3., 3.),
             ]);
-            painter.circle_stroke(point(7.5, 7.5), 1.5, stroke);
+            painter.circle_stroke(point(7.5, 7.5), 1.5 * scale, stroke);
         }
         "Fragile" => {
             path(&[
@@ -5377,7 +5752,7 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
         }
         "Add address" => {
             outline(3., 4., 18., 16., 3.);
-            painter.circle_stroke(point(8., 10.), 2., stroke);
+            painter.circle_stroke(point(8., 10.), 2. * scale, stroke);
             path(&[(5., 16.), (5.8, 14.), (10.2, 14.), (11., 16.)]);
             path(&[(14., 9.), (18., 9.)]);
             path(&[(14., 13.), (18., 13.)]);
@@ -5390,7 +5765,7 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
             path(&[(18., 21.), (21., 21.), (21., 17.)]);
             for (x, w) in [(6., 1.5), (9., 2.), (13., 1.), (16., 2.)] {
                 painter.rect_filled(
-                    Rect::from_min_size(point(x, 7.), Vec2::new(w, 10.)),
+                    Rect::from_min_size(point(x, 7.), Vec2::new(w, 10.) * scale),
                     0.5,
                     color,
                 );
@@ -5399,7 +5774,7 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
         "Add QR code" => {
             for (x, y) in [(3., 3.), (15., 3.), (3., 15.)] {
                 outline(x, y, 6., 6., 1.);
-                painter.circle_filled(point(x + 3., y + 3.), 0.9, color);
+                painter.circle_filled(point(x + 3., y + 3.), 0.9 * scale, color);
             }
             path(&[(15., 15.), (15., 18.), (18., 18.), (18., 21.), (21., 21.)]);
             path(&[(21., 15.), (21., 16.)]);
@@ -5416,7 +5791,7 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
         "Add Line" => {
             path(&[(5., 19.), (19., 5.)]);
             for (x, y) in [(5., 19.), (19., 5.)] {
-                painter.circle_filled(point(x, y), 2., color);
+                painter.circle_filled(point(x, y), 2. * scale, color);
             }
         }
         "Add Horizontal divider" => {
@@ -5527,7 +5902,7 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
             path(&[(3., 7.), (7., 7.)]);
             path(&[(3., 12.), (7., 12.)]);
             path(&[(3., 17.), (7., 17.)]);
-            painter.circle_stroke(point(13., 10.), 2.5, stroke);
+            painter.circle_stroke(point(13., 10.), 2.5 * scale, stroke);
             path(&[(9., 17.), (11., 14.), (15., 14.), (17., 17.)]);
         }
         "Symbols and logos" => {
@@ -5547,10 +5922,121 @@ pub(crate) fn paint_tool_icon(painter: &egui::Painter, center: Pos2, color: Colo
         }
         _ => {
             outline(3., 3., 18., 18., 3.);
-            painter.circle_stroke(point(16., 8.), 2., stroke);
+            painter.circle_stroke(point(16., 8.), 2. * scale, stroke);
             path(&[(3., 17.), (9., 11.), (15., 17.), (18., 14.), (21., 17.)]);
         }
     }
+}
+
+/// A button with a small icon before its label, sized like a regular button. Inside a
+/// menu it takes the menu's frameless look.
+pub(crate) fn icon_button(ui: &mut egui::Ui, icon: &str, label: &str) -> egui::Response {
+    icon_button_enabled(ui, true, icon, label)
+}
+/// [`icon_button`] that can be disabled.
+pub(crate) fn icon_button_enabled(
+    ui: &mut egui::Ui,
+    enabled: bool,
+    icon: &str,
+    label: &str,
+) -> egui::Response {
+    icon_button_styled(ui, enabled, icon, label, false, Vec2::ZERO)
+}
+/// The main action of a dialog or card: an [`icon_button`] filled with the accent color.
+pub(crate) fn primary_button(
+    ui: &mut egui::Ui,
+    enabled: bool,
+    icon: &str,
+    label: &str,
+    min_size: Vec2,
+) -> egui::Response {
+    icon_button_styled(ui, enabled, icon, label, true, min_size)
+}
+/// An [`icon_button`] at least `min_size`, optionally `primary`.
+pub(crate) fn icon_button_styled(
+    ui: &mut egui::Ui,
+    enabled: bool,
+    icon: &str,
+    label: &str,
+    primary: bool,
+    min_size: Vec2,
+) -> egui::Response {
+    let font = egui::TextStyle::Button.resolve(ui.style());
+    let text_width = ui
+        .painter()
+        .layout_no_wrap(label.to_owned(), font.clone(), Color32::WHITE)
+        .size()
+        .x;
+    let padding = ui.spacing().button_padding;
+    let icon_size = 16.;
+    let gap = 6.;
+    let content = icon_size + gap + text_width;
+    let size = Vec2::new(padding.x * 2. + content, ui.spacing().interact_size.y).max(min_size);
+    let mut button = egui::Button::new("").min_size(size);
+    if primary {
+        button = button.fill(if enabled {
+            crate::ui::theme::ACCENT_LIGHT
+        } else {
+            crate::ui::theme::ACCENT_LIGHT.gamma_multiply(0.45)
+        });
+    }
+    let response = ui.add_enabled(enabled, button);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, label));
+    let color = if primary {
+        Color32::WHITE
+    } else if !enabled || !ui.is_enabled() {
+        ui.visuals().weak_text_color()
+    } else {
+        ui.style().interact(&response).text_color()
+    };
+    let rect = response.rect;
+    // Center the icon and label when the button is wider than they need.
+    let start = rect.left() + ((rect.width() - content) / 2.).max(padding.x);
+    let start = if min_size.x > 0. {
+        start
+    } else {
+        rect.left() + padding.x
+    };
+    let padding = Vec2::new(start - rect.left(), padding.y);
+    let icon_center = Pos2::new(rect.left() + padding.x + icon_size / 2., rect.center().y);
+    paint_tool_icon_scaled(ui.painter(), icon_center, color, icon, icon_size / 24.);
+    let galley = ui.painter().layout_no_wrap(label.to_owned(), font, color);
+    ui.painter().galley(
+        Pos2::new(
+            rect.left() + padding.x + icon_size + gap,
+            rect.center().y - galley.size().y / 2.,
+        ),
+        galley,
+        color,
+    );
+    focus_ring(ui, &response);
+    response
+}
+
+/// A clearly visible ring around the focused control, for keyboard users.
+pub(crate) fn focus_ring(ui: &egui::Ui, response: &egui::Response) {
+    if response.has_focus() {
+        ui.painter().rect_stroke(
+            response.rect.expand(2.),
+            crate::ui::theme::RADIUS + 2,
+            Stroke::new(2., crate::ui::theme::accent(ui.visuals())),
+            StrokeKind::Outside,
+        );
+    }
+}
+
+/// A toolbar menu button with an icon; the menu opens below it.
+pub(crate) fn icon_menu(
+    ui: &mut egui::Ui,
+    icon: &str,
+    label: &str,
+    add_contents: impl FnOnce(&mut egui::Ui),
+) -> egui::Response {
+    let response = icon_button(ui, icon, label);
+    egui::Popup::menu(&response)
+        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+        .show(add_contents);
+    response
 }
 
 pub(crate) fn icon_action(
@@ -5607,7 +6093,7 @@ pub(crate) fn icon_action(
             color,
         );
     }
-
+    focus_ring(ui, &response);
     response
 }
 
@@ -6881,6 +7367,84 @@ mod overlap_footer_symbol_tests {
             designer.footer_request.as_ref().map(|f| f.align),
             Some(crate::footer::FooterAlign::Right)
         );
+    }
+
+    #[test]
+    fn every_control_on_the_designer_screen_has_a_name_and_print_sits_alone_at_the_right() {
+        let harness = Harness::new();
+        let (mut designer, qr, _) = overlapping_design();
+        designer.selected = vec![qr];
+        let output = harness.settle(&mut designer);
+        let nodes = &output
+            .platform_output
+            .accesskit_update
+            .as_ref()
+            .unwrap()
+            .nodes;
+        use egui::accesskit::Role;
+        let mut unnamed = vec![];
+        for (_, node) in nodes {
+            if matches!(node.role(), Role::Button | Role::Tab | Role::CheckBox)
+                && node.label().is_none_or(|l| l.trim().is_empty())
+            {
+                unnamed.push(format!("{:?} {:?}", node.role(), node.bounds()));
+            }
+        }
+        assert!(unnamed.is_empty(), "controls without a name: {unnamed:?}");
+        // The grouped toolbar: File, View, Export, and Label menus, and Print at the right.
+        for name in ["File", "View", "Export", "Label", "Object", "Footer"] {
+            assert!(node(&output, name).is_some(), "{name}");
+        }
+        let print = node(&output, PRINT).unwrap().bounds().unwrap();
+        let label = node(&output, "Label").unwrap().bounds().unwrap();
+        assert!(print.x0 > label.x1, "Print is right of the menus");
+        // The properties panel opened on the Object tab for the selection.
+        assert_eq!(designer.inspector_tab, InspectorTab::Object);
+    }
+
+    #[test]
+    fn icon_buttons_are_focusable_named_buttons_with_a_focus_ring() {
+        let ctx = egui::Context::default();
+        ctx.enable_accesskit();
+        let mut clicks = 0;
+        let run = |events: Vec<egui::Event>, clicks: &mut i32| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    events,
+                    ..Default::default()
+                },
+                |root| {
+                    egui::CentralPanel::default().show(root, |ui| {
+                        if icon_button(ui, "Folder", "Choose folder…").clicked() {
+                            *clicks += 1;
+                        }
+                    });
+                },
+            );
+            output.textures_delta.clear();
+            output
+        };
+        run(vec![], &mut clicks);
+        let output = run(vec![], &mut clicks);
+        let found = node(&output, "Choose folder…").expect("named");
+        assert_eq!(found.role(), egui::accesskit::Role::Button);
+        let key = |key| egui::Event::Key {
+            key,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        };
+        run(vec![key(egui::Key::Tab)], &mut clicks);
+        let focused = run(vec![], &mut clicks);
+        // The focus ring is drawn in the accent color.
+        let accent = crate::ui::theme::accent(&ctx.style_of(ctx.theme()).visuals);
+        assert!(focused.shapes.iter().any(|clipped| matches!(
+            &clipped.shape,
+            egui::Shape::Rect(rect) if rect.stroke.color == accent && rect.stroke.width >= 2.
+        )));
+        run(vec![key(egui::Key::Enter)], &mut clicks);
+        assert_eq!(clicks, 1, "Enter activates it");
     }
 
     #[test]

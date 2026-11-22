@@ -1,7 +1,7 @@
 //! Client-side title bar with native window-manager move/resize commands.
 use eframe::egui::{self, Pos2, Rect, Sense, Stroke, StrokeKind, Vec2};
 
-/// Height of the client-side title bar, matching a libadwaita header bar.
+/// Height of the client-side title bar.
 pub(super) const HEADER_HEIGHT: f32 = 46.;
 
 /// Makes `rect` move the window when dragged and maximize it when double-clicked.
@@ -21,15 +21,15 @@ pub(super) fn drag_area(ui: &mut egui::Ui, rect: Rect) {
     }
 }
 
-/// A bold-looking title centered on `center`. The interface font has no bold face,
-/// so the text is drawn twice, half a pixel apart.
-pub(super) fn title_text(ui: &egui::Ui, center: Pos2, text: &str) {
+/// A bold-looking title starting at `left`, vertically centered on `left.y`. The
+/// interface font may have no bold face, so the text is drawn twice, half a pixel apart.
+pub(super) fn title_text(ui: &egui::Ui, left: Pos2, text: &str) {
     let font = egui::FontId::proportional(15.);
     let color = ui.visuals().strong_text_color();
     for dx in [0., 0.5] {
         ui.painter().text(
-            center + Vec2::new(dx, 0.),
-            egui::Align2::CENTER_CENTER,
+            left + Vec2::new(dx, 0.),
+            egui::Align2::LEFT_CENTER,
             text,
             font.clone(),
             color,
@@ -38,7 +38,7 @@ pub(super) fn title_text(ui: &egui::Ui, center: Pos2, text: &str) {
 }
 
 /// A frameless header button (the main menu or help) that shows a soft rounded
-/// background on hover, like a flat libadwaita header button.
+/// background on hover.
 pub(super) fn flat_button(ui: &mut egui::Ui, center: Pos2, label: &str) -> egui::Response {
     let rect = Rect::from_center_size(center, Vec2::splat(34.));
     let response = ui.put(rect, egui::Button::new("").frame(false));
@@ -50,10 +50,18 @@ pub(super) fn flat_button(ui: &mut egui::Ui, center: Pos2, label: &str) -> egui:
     response
 }
 
-/// The minimize, maximize and close buttons as small round buttons at the right end of
-/// `bar`, the way GNOME draws them. Returns the left edge of the group.
+/// The minimize, maximize and close buttons at the right end of `bar`, drawn the way
+/// the platform does: Windows' wide caption buttons, the close one turning red, or small
+/// rounded squares elsewhere. Returns the left edge of the group.
 pub(super) fn controls(ui: &mut egui::Ui, bar: Rect) -> f32 {
     let maximized = ui.ctx().input(|i| i.viewport().maximized.unwrap_or(false));
+    let windows = cfg!(windows);
+    // Windows' caption buttons fill the bar and touch each other.
+    let (size, step) = if windows {
+        (Vec2::new(46., bar.height()), 46.)
+    } else {
+        (Vec2::splat(30.), 36.)
+    };
     let mut center = Pos2::new(bar.right() - 23., bar.center().y);
     for (kind, label, command) in [
         ("close", "Close window", egui::ViewportCommand::Close),
@@ -72,28 +80,44 @@ pub(super) fn controls(ui: &mut egui::Ui, bar: Rect) -> f32 {
             egui::ViewportCommand::Minimized(true),
         ),
     ] {
-        let hit = Rect::from_center_size(center, Vec2::splat(34.));
+        let hit = Rect::from_center_size(center, size);
         let response = ui
             .put(hit, egui::Button::new("").frame(false))
             .on_hover_text(label);
         response
             .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), label));
         let widgets = &ui.visuals().widgets;
-        let fill = if response.is_pointer_button_down_on() {
+        let pressed = response.is_pointer_button_down_on();
+        let hovered = response.hovered() || response.has_focus();
+        let close_hot = kind == "close" && (hovered || pressed);
+        let fill = if close_hot {
+            egui::Color32::from_rgb(if pressed { 200 } else { 220 }, 38, 38)
+        } else if pressed {
             widgets.active.weak_bg_fill
-        } else if response.hovered() || response.has_focus() {
+        } else if hovered {
             widgets.hovered.weak_bg_fill
+        } else if windows {
+            egui::Color32::TRANSPARENT
         } else {
             widgets.inactive.weak_bg_fill
         };
-        ui.painter().circle_filled(center, 12., fill);
+        let radius = if windows { 0. } else { 6. };
+        ui.painter().rect_filled(hit, radius, fill);
         if response.has_focus() {
-            ui.painter()
-                .circle_stroke(center, 13.5, ui.visuals().selection.stroke);
+            ui.painter().rect_stroke(
+                hit.shrink(1.),
+                radius,
+                ui.visuals().selection.stroke,
+                StrokeKind::Inside,
+            );
         }
-        let color = ui.visuals().strong_text_color();
-        let stroke = Stroke::new(1.5, color);
-        let r = Rect::from_center_size(center, Vec2::splat(8.));
+        let color = if close_hot {
+            egui::Color32::WHITE
+        } else {
+            ui.visuals().strong_text_color()
+        };
+        let stroke = Stroke::new(if windows { 1. } else { 1.5 }, color);
+        let r = Rect::from_center_size(center, Vec2::splat(if windows { 10. } else { 8. }));
         match kind {
             "close" => {
                 ui.painter()
@@ -121,9 +145,9 @@ pub(super) fn controls(ui: &mut egui::Ui, bar: Rect) -> f32 {
         if response.clicked() {
             ui.ctx().send_viewport_cmd(command);
         }
-        center.x -= 36.;
+        center.x -= step;
     }
-    center.x + 36. - 17.
+    center.x + step - size.x / 2.
 }
 
 fn resize_direction(rect: Rect, pos: Pos2) -> Option<egui::ResizeDirection> {

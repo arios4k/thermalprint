@@ -59,7 +59,7 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
   <tr><th>Write this</th><th>Printed as</th></tr>
   <tr><td><code>${date}</code></td><td>Today's date, like <code>2026-11-07</code>.</td></tr>
   <tr><td><code>${date:%d/%m/%Y}</code></td><td>Today's date in a format you choose, like <code>07/11/2026</code>. The codes are the usual <code>%Y</code> year, <code>%m</code> month, <code>%d</code> day, <code>%H</code> hour, <code>%M</code> minute. A format that is not valid is left as written.</td></tr>
-  <tr><td><code>${serial}</code></td><td>The serial number from <strong>Label setup → Serial variable</strong> (1 to start). In a <a href="batch.html">batch</a>, it counts up by one for each row.</td></tr>
+  <tr><td><code>${serial}</code></td><td>The serial number from <strong>Label</strong> tab → <strong>Serial variable</strong> (1 to start). In a <a href="batch.html">batch</a>, it counts up by one for each row.</td></tr>
   <tr><td><code>${serial:4}</code></td><td>The serial number padded with zeros to 4 digits, like <code>0007</code>. The width can be 1 to 12.</td></tr>
 </table>
 <p>For example, a barcode with the value <code>INV-${serial}</code> encodes <code>INV-1</code>. The hint above the text box reminds you: <em>${date} and ${serial} are dynamic</em>. Words in a batch, such as <code>${Name}</code>, are covered in <a href="batch.html">Batch printing</a>.</p>
@@ -141,6 +141,6 @@ summary: Text, barcodes, QR codes, shapes, and images, with every setting.
   <li>Leave at least 2 mm between objects and the label edge; many printers cannot print right to the edge.</li>
   <li>Use <em>Show grid</em>, <em>Snap to grid</em>, and <em>Smart guides</em> to line things up quickly, and the arrow keys for fine adjustments.</li>
   <li>Lock the parts of a design that must not move, such as a logo.</li>
-  <li>Use <strong>Focus</strong> (hide the panels) to see the label larger while you arrange it.</li>
+  <li>Use <strong>View → Focus canvas</strong> (it hides the panels) to see the label larger while you arrange it.</li>
   <li>Select several objects with <kbd>Shift</kbd>+click and press <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> to copy a whole group.</li>
 </ul>
