@@ -1,9 +1,10 @@
 //! An optional footer printed along the bottom of every label: a short message such as
 //! "Printed with ThermalPrint" and, only together with that message, a small QR code just
-//! before it. The pair sits at the left, center, or right of the label.
+//! before it. The pair always sits at the bottom-left of the label.
 //!
-//! The footer never covers label content. Imported labels are fitted above a reserved strip;
-//! a design keeps its layout and receives the footer only when its bottom strip is blank.
+//! The footer never covers label content and never changes a label's size. Imported labels
+//! and designs alike keep their layout and receive the footer only in blank space at the
+//! bottom; otherwise it is left out.
 //! When the footer is off, nothing is reserved and output is unchanged.
 use crate::layout::Output;
 use anyhow::Result;
@@ -44,26 +45,6 @@ pub struct Footer {
     /// Add a QR code beside the message. It prints only while the message does.
     pub qr_enabled: bool,
     pub qr_text: String,
-    /// Where the footer sits along the bottom of the label.
-    pub position: FooterPosition,
-}
-/// Where the footer sits along the bottom of the label.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum FooterPosition {
-    Left,
-    #[default]
-    Center,
-    Right,
-}
-impl FooterPosition {
-    pub const ALL: [FooterPosition; 3] = [Self::Left, Self::Center, Self::Right];
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Left => "Left",
-            Self::Center => "Center",
-            Self::Right => "Right",
-        }
-    }
 }
 impl Default for Footer {
     fn default() -> Self {
@@ -72,7 +53,6 @@ impl Default for Footer {
             message: DEFAULT_MESSAGE.into(),
             qr_enabled: false,
             qr_text: DEFAULT_QR_TEXT.into(),
-            position: FooterPosition::Center,
         }
     }
 }
@@ -149,9 +129,8 @@ impl Footer {
     }
 
     /// Draw the footer inside `x0..x1`, in the space [`Self::reserved_dots`] gives it above
-    /// row `bottom`, with `below` white rows under it. The QR code comes first and the
-    /// message follows it, vertically centered on it; the pair is placed at the left,
-    /// center, or right as chosen.
+    /// row `bottom`, with `below` white rows under it. The QR code comes first at the left
+    /// and the message follows it, vertically centered on it.
     pub fn draw(&self, image: &mut RgbImage, dpi: u32, x0: u32, x1: u32, bottom: u32, below: u32) {
         let label_h = image.height();
         let reserved = self.reserved_dots(dpi, label_h, below);
@@ -174,13 +153,9 @@ impl Footer {
         let qr_width = qr.as_ref().map_or(0, |code| Self::qr_side(code, dpi));
         let gap = if qr.is_some() { gap } else { 0 };
         let text = fit_text(self.message.trim(), dpi, room - qr_width - gap);
-        let text_width = text.as_ref().map_or(0, |t| t.width);
-        let group = qr_width + gap + text_width;
-        let left = match self.position {
-            FooterPosition::Left => x0,
-            FooterPosition::Center => x0 + (room - group) / 2,
-            FooterPosition::Right => x1 - group,
-        };
+        // Always at the left: away from the carrier tracking barcode in the middle of a
+        // shipping label and the 2D code USPS prints in its bottom-right corner.
+        let left = x0;
         if let Some(code) = qr {
             let module = Self::module(dpi);
             let origin_x = left + QR_QUIET * module;
@@ -315,6 +290,7 @@ pub fn add_to_design(output: &mut Output, footer: &Footer, safe_margin_mm: f32) 
 }
 
 pub const FOOTER_BLOCKED: &str = "The footer was not added: part of the design is in the bottom strip it needs. Move the design up to make room, or turn the footer off.";
+pub const FOOTER_NO_BLANK_SPACE: &str = "The footer was left out: this label has no blank space at the bottom for it, and a label is never shrunk to make room, so its barcodes print exactly as they are.";
 pub const QR_LEFT_OUT: &str = "The footer QR code was left out because it would be large on this short label. The message still prints.";
 pub const FOOTER_NO_ROOM: &str = "The footer was not added: the label is too small for it.";
 
@@ -417,44 +393,16 @@ mod tests {
             text_middle.abs_diff(qr_middle) <= 2,
             "{text_middle} vs {qr_middle}"
         );
-        // Centered by default: equal space on both sides of the pair, within a module.
-        let (first, last) = (columns[0], *columns.last().unwrap());
-        let quiet = QR_QUIET * Footer::module(dpi);
-        let left_space = first - quiet - 10;
-        let right_space = 790 - last;
-        assert!(
-            left_space.abs_diff(right_space) <= 4,
-            "{left_space} vs {right_space}"
-        );
+        // At the left, the QR code's white border against the left edge, and the right side
+        // of the label stays clear.
+        assert_eq!(columns[0], 10 + quiet);
+        assert!(*columns.last().unwrap() < 600);
     }
 
     #[test]
-    fn the_footer_can_sit_left_center_or_right() {
-        let dpi = 203;
-        let place = |position| {
-            let mut image = RgbImage::from_pixel(800, 1200, Rgb([255; 3]));
-            Footer {
-                position,
-                ..on(true)
-            }
-            .draw(&mut image, dpi, 10, 790, 1190, 10);
-            let columns = ink_columns(&image, 1000..1190);
-            (columns[0], *columns.last().unwrap())
-        };
-        let quiet = QR_QUIET * Footer::module(dpi);
-        let (left, _) = place(FooterPosition::Left);
-        assert_eq!(left, 10 + quiet);
-        let (_, right) = place(FooterPosition::Right);
-        assert!(790 - right <= 3, "{right}");
-        let (center_first, center_last) = place(FooterPosition::Center);
-        assert!(center_first > left && center_last < right);
-        // A message alone moves the same way.
+    fn a_message_alone_also_sits_at_the_left() {
         let mut image = RgbImage::from_pixel(800, 1200, Rgb([255; 3]));
-        Footer {
-            position: FooterPosition::Left,
-            ..on(false)
-        }
-        .draw(&mut image, dpi, 10, 790, 1190, 10);
+        on(false).draw(&mut image, 203, 10, 790, 1190, 10);
         assert!(ink_columns(&image, 1100..1190)[0] <= 12);
     }
 

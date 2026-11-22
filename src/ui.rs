@@ -2627,16 +2627,6 @@ impl ThermalPrint {
                         .accessible_name(crate::i18n::tr("Footer QR code content"));
                     });
                 });
-                ui.horizontal(|ui| {
-                    ui.label(crate::i18n::tr("Footer position"));
-                    for position in crate::footer::FooterPosition::ALL {
-                        ui.selectable_value(
-                            &mut footer.position,
-                            position,
-                            crate::i18n::tr(position.label()),
-                        );
-                    }
-                });
             });
             if footer.message_enabled && footer.message.trim().is_empty() {
                 ui.label(RichText::new(crate::i18n::tr("Enter a message to print the footer. The QR code prints only with a message.")).small());

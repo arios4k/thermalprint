@@ -1373,7 +1373,10 @@ const ES: &[(&str, &str)] = &[
     ("Choose a font", "Elegir una fuente"),
     // Label footer
     ("Label footer", "Pie de etiqueta"),
-    ("Footer position", "Posición del pie"),
+    (
+        "The footer was left out: this label has no blank space at the bottom for it, and a label is never shrunk to make room, so its barcodes print exactly as they are.",
+        "Se omitió el pie: esta etiqueta no tiene espacio en blanco en la parte inferior y nunca se reduce una etiqueta para hacerle sitio, así que sus códigos de barras se imprimen tal cual.",
+    ),
     (
         "Add a small message along the bottom of every printed label, imported or designed. It gets its own strip and never covers the label's content. Exports are unchanged.",
         "Añade un mensaje pequeño en la parte inferior de cada etiqueta impresa, importada o diseñada. Tiene su propia franja y nunca cubre el contenido de la etiqueta. Las exportaciones no cambian.",
@@ -2666,7 +2669,10 @@ const DE: &[(&str, &str)] = &[
     ("Choose a font", "Schrift wählen"),
     // Label footer
     ("Label footer", "Etikettenfußzeile"),
-    ("Footer position", "Position der Fußzeile"),
+    (
+        "The footer was left out: this label has no blank space at the bottom for it, and a label is never shrunk to make room, so its barcodes print exactly as they are.",
+        "Die Fußzeile wurde weggelassen: Dieses Etikett hat unten keinen freien Platz dafür, und ein Etikett wird nie verkleinert, um Platz zu schaffen. Seine Barcodes werden also unverändert gedruckt.",
+    ),
     (
         "Add a small message along the bottom of every printed label, imported or designed. It gets its own strip and never covers the label's content. Exports are unchanged.",
         "Fügt unten auf jedem gedruckten Etikett, importiert oder gestaltet, eine kleine Nachricht hinzu. Sie erhält einen eigenen Streifen und verdeckt nie den Etiketteninhalt. Exporte bleiben unverändert.",
@@ -3995,7 +4001,10 @@ const FR: &[(&str, &str)] = &[
     ("Choose a font", "Choisir une police"),
     // Label footer
     ("Label footer", "Pied d'étiquette"),
-    ("Footer position", "Position du pied"),
+    (
+        "The footer was left out: this label has no blank space at the bottom for it, and a label is never shrunk to make room, so its barcodes print exactly as they are.",
+        "Le pied a été omis : cette étiquette n'a pas d'espace libre en bas, et une étiquette n'est jamais réduite pour lui faire de la place, donc ses codes-barres s'impriment tels quels.",
+    ),
     (
         "Add a small message along the bottom of every printed label, imported or designed. It gets its own strip and never covers the label's content. Exports are unchanged.",
         "Ajoute un petit message en bas de chaque étiquette imprimée, importée ou conçue. Il dispose de sa propre bande et ne couvre jamais le contenu de l'étiquette. Les exports ne changent pas.",
