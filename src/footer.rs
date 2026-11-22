@@ -1,9 +1,10 @@
 //! An optional footer printed along the bottom of every label: a short message such as
 //! "Printed with ThermalPrint" and, only together with that message, a small QR code just
-//! before it. The pair sits at the left, center, or right of the label.
+//! before it. The pair always sits at the bottom-left of the label.
 //!
-//! The footer never covers label content. Imported labels are fitted above a reserved strip;
-//! a design keeps its layout and receives the footer only when its bottom strip is blank.
+//! The footer never covers label content and never changes a label's size. Imported labels
+//! and designs alike keep their layout and receive the footer only in blank space at the
+//! bottom; otherwise it is left out.
 //! When the footer is off, nothing is reserved and output is unchanged.
 use crate::layout::Output;
 use anyhow::Result;
@@ -34,6 +35,10 @@ const QR_MODULE_MM: f32 = 0.25;
 const QR_QUIET: u32 = 4;
 /// Designs keep at least this much distance between the footer and the label edge.
 const DESIGN_EDGE_MM: f32 = 1.5;
+/// A message without a QR code keeps this much white between it and the label's left and
+/// bottom edges, counting any margin already there. (A QR code's white border does this
+/// job when it is present.)
+const TEXT_EDGE_MM: f32 = 1.5;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -44,26 +49,6 @@ pub struct Footer {
     /// Add a QR code beside the message. It prints only while the message does.
     pub qr_enabled: bool,
     pub qr_text: String,
-    /// Where the footer sits along the bottom of the label.
-    pub position: FooterPosition,
-}
-/// Where the footer sits along the bottom of the label.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum FooterPosition {
-    Left,
-    #[default]
-    Center,
-    Right,
-}
-impl FooterPosition {
-    pub const ALL: [FooterPosition; 3] = [Self::Left, Self::Center, Self::Right];
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Left => "Left",
-            Self::Center => "Center",
-            Self::Right => "Right",
-        }
-    }
 }
 impl Default for Footer {
     fn default() -> Self {
@@ -72,7 +57,6 @@ impl Default for Footer {
             message: DEFAULT_MESSAGE.into(),
             qr_enabled: false,
             qr_text: DEFAULT_QR_TEXT.into(),
-            position: FooterPosition::Center,
         }
     }
 }
@@ -88,6 +72,28 @@ impl Footer {
     }
     pub fn shows_qr(&self) -> bool {
         self.is_active() && self.qr_enabled && !self.qr_text.trim().is_empty()
+    }
+    /// What to try printing, in order: the footer as set, then, if it has a QR code, the
+    /// message alone, which needs less space.
+    pub fn choices(&self) -> Vec<Footer> {
+        let mut choices = vec![self.clone()];
+        if self.shows_qr() {
+            choices.push(Footer {
+                qr_enabled: false,
+                ..self.clone()
+            });
+        }
+        choices
+    }
+    /// The warning for printing `chosen` instead of this footer, if any.
+    pub fn fallback_note(&self, chosen: &Footer, dpi: u32, label_h: u32) -> Option<&'static str> {
+        if self.qr_left_out(dpi, label_h) {
+            Some(QR_LEFT_OUT)
+        } else if self.shows_qr() && !chosen.shows_qr() {
+            Some(QR_NO_SPACE)
+        } else {
+            None
+        }
     }
     /// Keep values loaded from a settings file within bounds.
     pub fn clean(&mut self) {
@@ -139,7 +145,11 @@ impl Footer {
                 let quiet = QR_QUIET * Self::module(dpi);
                 code.width() as u32 * Self::module(dpi) + quiet + quiet.saturating_sub(below)
             }
-            None => Self::text_dots(dpi) + dots(GAP_MM, dpi),
+            None => {
+                Self::text_dots(dpi)
+                    + dots(GAP_MM, dpi)
+                    + dots(TEXT_EDGE_MM, dpi).saturating_sub(below)
+            }
         }
     }
     /// A short problem with the QR text, for the settings panel.
@@ -149,9 +159,8 @@ impl Footer {
     }
 
     /// Draw the footer inside `x0..x1`, in the space [`Self::reserved_dots`] gives it above
-    /// row `bottom`, with `below` white rows under it. The QR code comes first and the
-    /// message follows it, vertically centered on it; the pair is placed at the left,
-    /// center, or right as chosen.
+    /// row `bottom`, with `below` white rows under it. The QR code comes first at the left
+    /// and the message follows it, vertically centered on it.
     pub fn draw(&self, image: &mut RgbImage, dpi: u32, x0: u32, x1: u32, bottom: u32, below: u32) {
         let label_h = image.height();
         let reserved = self.reserved_dots(dpi, label_h, below);
@@ -164,7 +173,10 @@ impl Footer {
                 bottom - reserved + QR_QUIET * Self::module(dpi),
                 code.width() as u32 * Self::module(dpi),
             ),
-            None => (bottom - Self::text_dots(dpi), Self::text_dots(dpi)),
+            None => (
+                bottom - dots(TEXT_EDGE_MM, dpi).saturating_sub(below) - Self::text_dots(dpi),
+                Self::text_dots(dpi),
+            ),
         };
         let room = x1 - x0;
         let gap = dots(TEXT_GAP_MM, dpi);
@@ -173,14 +185,16 @@ impl Footer {
             .filter(|code| Self::qr_side(code, dpi) + gap < room);
         let qr_width = qr.as_ref().map_or(0, |code| Self::qr_side(code, dpi));
         let gap = if qr.is_some() { gap } else { 0 };
-        let text = fit_text(self.message.trim(), dpi, room - qr_width - gap);
-        let text_width = text.as_ref().map_or(0, |t| t.width);
-        let group = qr_width + gap + text_width;
-        let left = match self.position {
-            FooterPosition::Left => x0,
-            FooterPosition::Center => x0 + (room - group) / 2,
-            FooterPosition::Right => x1 - group,
+        // A message alone is kept off the label's left edge.
+        let inset = if qr.is_none() {
+            dots(TEXT_EDGE_MM, dpi).saturating_sub(x0).min(room / 4)
+        } else {
+            0
         };
+        let text = fit_text(self.message.trim(), dpi, room - inset - qr_width - gap);
+        // Always at the left: away from the carrier tracking barcode in the middle of a
+        // shipping label and the 2D code USPS prints in its bottom-right corner.
+        let left = x0 + inset;
         if let Some(code) = qr {
             let module = Self::module(dpi);
             let origin_x = left + QR_QUIET * module;
@@ -290,31 +304,48 @@ pub fn add_to_design(output: &mut Output, footer: &Footer, safe_margin_mm: f32) 
     let dpi = output.dpi;
     let (w, h) = output.image.dimensions();
     let edge = dots(safe_margin_mm.max(DESIGN_EDGE_MM), dpi);
-    let reserved = footer.reserved_dots(dpi, h, edge);
-    if reserved == 0 {
+    if !footer.is_active() {
         return Ok(());
     }
-    if footer.qr_left_out(dpi, h) {
-        output.warnings.push(QR_LEFT_OUT.into());
-    }
-    if edge * 2 >= w || reserved + edge >= h {
+    if edge * 2 >= w {
         output.warnings.push(FOOTER_NO_ROOM.into());
         return Ok(());
     }
     let (x0, x1, bottom) = (edge, w - edge, h - edge);
     // The footer's space and the margin under it, which the QR code's border may use, must
-    // both be blank.
-    let blank = (bottom - reserved..h)
-        .all(|y| (x0..x1).all(|x| output.image.get_pixel(x, y).0.iter().all(|&v| v > 245)));
-    if !blank {
-        output.warnings.push(FOOTER_BLOCKED.into());
+    // both be blank. If the QR code does not fit, the message alone may.
+    let fits = |choice: &Footer| {
+        let reserved = choice.reserved_dots(dpi, h, edge);
+        reserved > 0
+            && reserved + edge < h
+            && (bottom - reserved..h)
+                .all(|y| (x0..x1).all(|x| output.image.get_pixel(x, y).0.iter().all(|&v| v > 245)))
+    };
+    let Some(chosen) = footer.choices().into_iter().find(|choice| fits(choice)) else {
+        let too_small = footer
+            .choices()
+            .iter()
+            .all(|c| c.reserved_dots(dpi, h, edge) + edge >= h);
+        output.warnings.push(
+            if too_small {
+                FOOTER_NO_ROOM
+            } else {
+                FOOTER_BLOCKED
+            }
+            .into(),
+        );
         return Ok(());
+    };
+    if let Some(note) = footer.fallback_note(&chosen, dpi, h) {
+        output.warnings.push(note.into());
     }
-    footer.draw(&mut output.image, dpi, x0, x1, bottom, edge);
+    chosen.draw(&mut output.image, dpi, x0, x1, bottom, edge);
     Ok(())
 }
 
 pub const FOOTER_BLOCKED: &str = "The footer was not added: part of the design is in the bottom strip it needs. Move the design up to make room, or turn the footer off.";
+pub const FOOTER_NO_BLANK_SPACE: &str = "The footer was left out: this label has no blank space at the bottom for it, and a label is never shrunk to make room, so its barcodes print exactly as they are.";
+pub const QR_NO_SPACE: &str = "The footer QR code was left out because there is not enough blank space at the bottom of this label for it. The message still prints.";
 pub const QR_LEFT_OUT: &str = "The footer QR code was left out because it would be large on this short label. The message still prints.";
 pub const FOOTER_NO_ROOM: &str = "The footer was not added: the label is too small for it.";
 
@@ -417,45 +448,35 @@ mod tests {
             text_middle.abs_diff(qr_middle) <= 2,
             "{text_middle} vs {qr_middle}"
         );
-        // Centered by default: equal space on both sides of the pair, within a module.
-        let (first, last) = (columns[0], *columns.last().unwrap());
-        let quiet = QR_QUIET * Footer::module(dpi);
-        let left_space = first - quiet - 10;
-        let right_space = 790 - last;
-        assert!(
-            left_space.abs_diff(right_space) <= 4,
-            "{left_space} vs {right_space}"
-        );
+        // At the left, the QR code's white border against the left edge, and the right side
+        // of the label stays clear.
+        assert_eq!(columns[0], 10 + quiet);
+        assert!(*columns.last().unwrap() < 600);
     }
 
     #[test]
-    fn the_footer_can_sit_left_center_or_right() {
-        let dpi = 203;
-        let place = |position| {
-            let mut image = RgbImage::from_pixel(800, 1200, Rgb([255; 3]));
-            Footer {
-                position,
-                ..on(true)
-            }
-            .draw(&mut image, dpi, 10, 790, 1190, 10);
-            let columns = ink_columns(&image, 1000..1190);
-            (columns[0], *columns.last().unwrap())
-        };
-        let quiet = QR_QUIET * Footer::module(dpi);
-        let (left, _) = place(FooterPosition::Left);
-        assert_eq!(left, 10 + quiet);
-        let (_, right) = place(FooterPosition::Right);
-        assert!(790 - right <= 3, "{right}");
-        let (center_first, center_last) = place(FooterPosition::Center);
-        assert!(center_first > left && center_last < right);
-        // A message alone moves the same way.
+    fn a_message_alone_also_sits_at_the_left() {
         let mut image = RgbImage::from_pixel(800, 1200, Rgb([255; 3]));
-        Footer {
-            position: FooterPosition::Left,
-            ..on(false)
-        }
-        .draw(&mut image, dpi, 10, 790, 1190, 10);
-        assert!(ink_columns(&image, 1100..1190)[0] <= 12);
+        on(false).draw(&mut image, 203, 10, 790, 1190, 10);
+        assert!(ink_columns(&image, 1100..1190)[0] <= 16);
+    }
+
+    #[test]
+    fn a_message_alone_keeps_clear_of_the_label_edges_without_a_margin() {
+        // No margin: the message still stays about 1.5 mm from the left and bottom edges.
+        let dpi = 203;
+        let edge = dots(TEXT_EDGE_MM, dpi);
+        let mut image = RgbImage::from_pixel(812, 1218, Rgb([255; 3]));
+        on(false).draw(&mut image, dpi, 0, 812, 1218, 0);
+        let columns = ink_columns(&image, 1100..1218);
+        assert!(columns[0] >= edge, "left {}", columns[0]);
+        let last_row = (1100..1218)
+            .rev()
+            .find(|&y| (0..812).any(|x| image.get_pixel(x, y).0[0] < 128))
+            .unwrap();
+        assert!(1218 - 1 - last_row >= edge - 1, "bottom {last_row}");
+        // The space reserved includes that padding.
+        assert!(on(false).reserved_dots(dpi, 1218, 0) > on(false).reserved_dots(dpi, 1218, 16));
     }
 
     fn decode(image: &RgbImage) -> Option<String> {
@@ -533,6 +554,29 @@ mod tests {
         add_to_design(&mut untouched, &Footer::default(), 0.).unwrap();
         assert_eq!(untouched.image, blank().image);
         assert!(untouched.warnings.is_empty());
+    }
+
+    #[test]
+    fn designs_fall_back_to_the_message_alone_when_the_qr_code_does_not_fit() {
+        let mut output = Output {
+            image: RgbImage::from_pixel(812, 1218, Rgb([255; 3])),
+            warnings: vec![],
+            clipped: false,
+            width_mm: 101.6,
+            height_mm: 152.4,
+            dpi: 203,
+        };
+        // A line of the design 50 rows above the footer's bottom: too close for the QR code,
+        // far enough for the message.
+        let edge = dots(DESIGN_EDGE_MM, 203);
+        let line = 1218 - edge - 50;
+        for x in 100..700 {
+            output.image.put_pixel(x, line, Rgb([0; 3]));
+        }
+        add_to_design(&mut output, &on(true), 0.).unwrap();
+        assert_eq!(output.warnings, vec![QR_NO_SPACE.to_string()]);
+        assert!(ink(&output.image, line + 1..1218) > 0, "message printed");
+        assert!(decode(&output.image).is_none(), "QR code printed");
     }
 
     #[test]

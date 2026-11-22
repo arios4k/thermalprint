@@ -1373,10 +1373,17 @@ const ES: &[(&str, &str)] = &[
     ("Choose a font", "Elegir una fuente"),
     // Label footer
     ("Label footer", "Pie de etiqueta"),
-    ("Footer position", "Posición del pie"),
     (
-        "Add a small message along the bottom of every printed label, imported or designed. It gets its own strip and never covers the label's content. Exports are unchanged.",
-        "Añade un mensaje pequeño en la parte inferior de cada etiqueta impresa, importada o diseñada. Tiene su propia franja y nunca cubre el contenido de la etiqueta. Las exportaciones no cambian.",
+        "The footer QR code was left out because there is not enough blank space at the bottom of this label for it. The message still prints.",
+        "Se omitió el código QR del pie porque no hay suficiente espacio en blanco en la parte inferior de esta etiqueta. El mensaje se imprime igualmente.",
+    ),
+    (
+        "The footer was left out: this label has no blank space at the bottom for it, and a label is never shrunk to make room, so its barcodes print exactly as they are.",
+        "Se omitió el pie: esta etiqueta no tiene espacio en blanco en la parte inferior y nunca se reduce una etiqueta para hacerle sitio, así que sus códigos de barras se imprimen tal cual.",
+    ),
+    (
+        "Add a small message along the bottom of every printed label, imported or designed. Labels are never shrunk or covered for it: it prints only in blank space at the bottom, and the QR code, or the whole footer, is left out when there is not enough room. Exports are unchanged.",
+        "Añade un mensaje pequeño en la parte inferior de cada etiqueta impresa, importada o diseñada. Las etiquetas nunca se reducen ni se cubren por él: solo se imprime en el espacio en blanco inferior, y se omite el código QR, o todo el pie, cuando no hay espacio suficiente. Las exportaciones no cambian.",
     ),
     ("Print a footer message", "Imprimir un mensaje al pie"),
     ("Footer message", "Mensaje al pie"),
@@ -2666,10 +2673,17 @@ const DE: &[(&str, &str)] = &[
     ("Choose a font", "Schrift wählen"),
     // Label footer
     ("Label footer", "Etikettenfußzeile"),
-    ("Footer position", "Position der Fußzeile"),
     (
-        "Add a small message along the bottom of every printed label, imported or designed. It gets its own strip and never covers the label's content. Exports are unchanged.",
-        "Fügt unten auf jedem gedruckten Etikett, importiert oder gestaltet, eine kleine Nachricht hinzu. Sie erhält einen eigenen Streifen und verdeckt nie den Etiketteninhalt. Exporte bleiben unverändert.",
+        "The footer QR code was left out because there is not enough blank space at the bottom of this label for it. The message still prints.",
+        "Der QR-Code der Fußzeile wurde weggelassen, weil unten auf diesem Etikett nicht genug freier Platz dafür ist. Die Nachricht wird trotzdem gedruckt.",
+    ),
+    (
+        "The footer was left out: this label has no blank space at the bottom for it, and a label is never shrunk to make room, so its barcodes print exactly as they are.",
+        "Die Fußzeile wurde weggelassen: Dieses Etikett hat unten keinen freien Platz dafür, und ein Etikett wird nie verkleinert, um Platz zu schaffen. Seine Barcodes werden also unverändert gedruckt.",
+    ),
+    (
+        "Add a small message along the bottom of every printed label, imported or designed. Labels are never shrunk or covered for it: it prints only in blank space at the bottom, and the QR code, or the whole footer, is left out when there is not enough room. Exports are unchanged.",
+        "Fügt unten auf jedem gedruckten Etikett, importiert oder gestaltet, eine kleine Nachricht hinzu. Etiketten werden dafür nie verkleinert oder verdeckt: Sie wird nur in freien Platz unten gedruckt, und der QR-Code oder die ganze Fußzeile wird weggelassen, wenn nicht genug Platz ist. Exporte bleiben unverändert.",
     ),
     ("Print a footer message", "Fußzeilennachricht drucken"),
     ("Footer message", "Fußzeilennachricht"),
@@ -3995,10 +4009,17 @@ const FR: &[(&str, &str)] = &[
     ("Choose a font", "Choisir une police"),
     // Label footer
     ("Label footer", "Pied d'étiquette"),
-    ("Footer position", "Position du pied"),
     (
-        "Add a small message along the bottom of every printed label, imported or designed. It gets its own strip and never covers the label's content. Exports are unchanged.",
-        "Ajoute un petit message en bas de chaque étiquette imprimée, importée ou conçue. Il dispose de sa propre bande et ne couvre jamais le contenu de l'étiquette. Les exports ne changent pas.",
+        "The footer QR code was left out because there is not enough blank space at the bottom of this label for it. The message still prints.",
+        "Le code QR du pied a été omis car il n'y a pas assez d'espace libre en bas de cette étiquette. Le message s'imprime quand même.",
+    ),
+    (
+        "The footer was left out: this label has no blank space at the bottom for it, and a label is never shrunk to make room, so its barcodes print exactly as they are.",
+        "Le pied a été omis : cette étiquette n'a pas d'espace libre en bas, et une étiquette n'est jamais réduite pour lui faire de la place, donc ses codes-barres s'impriment tels quels.",
+    ),
+    (
+        "Add a small message along the bottom of every printed label, imported or designed. Labels are never shrunk or covered for it: it prints only in blank space at the bottom, and the QR code, or the whole footer, is left out when there is not enough room. Exports are unchanged.",
+        "Ajoute un petit message en bas de chaque étiquette imprimée, importée ou conçue. Les étiquettes ne sont jamais réduites ni couvertes pour lui : il s'imprime seulement dans l'espace libre en bas, et le code QR, ou tout le pied, est omis quand la place manque. Les exports ne changent pas.",
     ),
     ("Print a footer message", "Imprimer un message de pied"),
     ("Footer message", "Message de pied"),

@@ -1,9 +1,17 @@
 <!--
 title: What's new
 group: Reference
-summary: Changes in versions 0.6.0 to 0.13.1, how they work, and where to read more.
+summary: Changes in versions 0.6.0 to 0.14.0, how they work, and where to read more.
 -->
 <p>This page lists what changed recently and links to the full explanation of each tool. Your version is shown in <strong>☰ → About ThermalPrint</strong>.</p>
+
+<h2 id="version-0-14-0">Version 0.14.0</h2>
+<ul>
+  <li><strong>Label footer.</strong> Print a small message, such as <em>Printed with ThermalPrint</em>, along the bottom of every label, with an optional QR code before it that links to this manual or to your own site. It sits at the bottom-left, away from carrier tracking barcodes. The footer is off by default. See <a href="print-center.html#label-footer">Label footer</a>.</li>
+  <li><strong>Labels are never shrunk for the footer.</strong> The footer prints only in blank space at the bottom of a label, so every barcode prints exactly as it would without it. When the QR code does not fit, only the message prints; when the message does not fit either, the footer is left out and a note says why. Exported files never include it.</li>
+  <li><strong>More accurate automatic crop.</strong> A section with its own barcode now stays with the label. FedEx Ground Economy labels keep their lower USPS <em>Deliver to</em> section and tracking barcode, while printed instructions, such as those on Vinted FedEx labels, are still cropped away. See <a href="import.html">Importing labels</a>.</li>
+  <li><strong>Windows on the project page.</strong> The project page now shows how to install ThermalPrint on Windows 11 from the Microsoft Store.</li>
+</ul>
 
 <h2 id="version-0-13-1">Version 0.13.1</h2>
 <ul>

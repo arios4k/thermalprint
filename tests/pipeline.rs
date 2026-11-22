@@ -108,53 +108,172 @@ fn the_footer_changes_nothing_while_it_is_off() {
     assert_eq!(off.image, plain.image);
     assert_eq!(off.warnings, plain.warnings);
 }
-#[test]
-fn the_footer_gets_its_own_strip_and_never_covers_the_label() {
-    let plain = layout::render(&page(), Crop::FULL, &Settings::default()).unwrap();
-    let s = Settings {
+fn with_footer(qr: bool, base: &Settings) -> Settings {
+    Settings {
         footer: Footer {
             message_enabled: true,
-            qr_enabled: true,
+            qr_enabled: qr,
             ..Footer::default()
         },
-        ..Settings::default()
-    };
-    let with = layout::render(&page(), Crop::FULL, &s).unwrap();
-    assert!(!with.clipped);
-    assert_eq!(with.image.dimensions(), plain.image.dimensions());
-    let height = with.image.height();
-    let margin = (s.margin_mm / 25.4 * s.dpi as f32).round() as u32;
-    let reserved = s.footer.reserved_dots(s.dpi, height, margin);
-    // The label content ends where the footer's space begins, and at least 1 mm of white
-    // separates it from the footer.
-    let content_bottom = height - margin - reserved;
-    let gap = (1. / 25.4 * s.dpi as f32).round() as u32;
-    let rows = ink_rows(&with.image);
-    assert!(
-        rows.iter().any(|&y| y >= content_bottom + gap),
-        "footer printed"
-    );
-    assert!(
-        rows.iter()
-            .all(|&y| y < content_bottom || y >= content_bottom + gap)
-    );
-    // The footer is small next to the label.
-    assert!(reserved as f32 <= height as f32 * 0.1);
+        ..base.clone()
+    }
+}
+/// The page with its bottom rows cleared, as on a label with white space under its last line.
+fn with_blank_bottom(rows: u32) -> Page {
+    let mut p = page();
+    for y in 900 - rows..900 {
+        for x in 0..600 {
+            p.image.put_pixel(x, y, Rgb([255; 3]));
+        }
+    }
+    p
+}
+/// Ink from the page edge to edge, as on a carrier label that fills its stock.
+fn full_bleed() -> Page {
+    let mut p = page();
+    for y in 0..900 {
+        for x in 0..600 {
+            if (x / 3) % 2 == 0 {
+                p.image.put_pixel(x, y, Rgb([0; 3]));
+            }
+        }
+    }
+    p
+}
+/// Rows `from..` painted white, to compare a label without its footer.
+fn without_rows_from(image: &RgbImage, from: u32) -> RgbImage {
+    let mut copy = image.clone();
+    for y in from..copy.height() {
+        for x in 0..copy.width() {
+            copy.put_pixel(x, y, Rgb([255; 3]));
+        }
+    }
+    copy
 }
 #[test]
-fn actual_size_labels_that_would_lose_space_to_the_footer_are_blocked_not_covered() {
+fn the_footer_goes_in_blank_space_and_the_label_prints_exactly_as_before() {
+    let label = with_blank_bottom(250);
+    for qr in [false, true] {
+        let plain = Settings::default();
+        let before = layout::render(&label, Crop::FULL, &plain).unwrap();
+        let after = layout::render(&label, Crop::FULL, &with_footer(qr, &plain)).unwrap();
+        assert!(!after.clipped);
+        assert!(!after.warnings.iter().any(|w| w.contains("footer")), "{qr}");
+        // Pixel for pixel the same label above its last line: same size, same place.
+        let last = *ink_rows(&before.image).last().unwrap();
+        assert!(
+            without_rows_from(&after.image, last + 1) == without_rows_from(&before.image, last + 1),
+            "{qr}: label changed"
+        );
+        // The footer printed below, with white space between.
+        let footer_rows: Vec<u32> = ink_rows(&after.image)
+            .into_iter()
+            .filter(|&y| y > last)
+            .collect();
+        assert!(!footer_rows.is_empty(), "{qr}");
+        assert!(footer_rows[0] > last + 5, "{qr}");
+    }
+}
+#[test]
+fn labels_without_blank_space_are_never_shrunk_for_the_footer() {
+    // Fit on 4 × 6 stock, and actual size on stock the label's own size.
+    for (scale, width_mm, height_mm) in [(Scale::Fit, 101.6, 152.4), (Scale::Actual, 50.8, 76.2)] {
+        let plain = Settings {
+            scale,
+            width_mm,
+            height_mm,
+            margin_mm: 0.,
+            ..Settings::default()
+        };
+        let before = layout::render(&full_bleed(), Crop::FULL, &plain).unwrap();
+        let after = layout::render(&full_bleed(), Crop::FULL, &with_footer(true, &plain)).unwrap();
+        assert_eq!(after.clipped, before.clipped, "{scale:?}");
+        assert!(after.image == before.image, "{scale:?} label changed");
+        assert!(
+            after
+                .warnings
+                .iter()
+                .any(|w| w.contains("footer was left out")),
+            "{scale:?}"
+        );
+    }
+}
+#[test]
+fn a_label_with_room_above_moves_up_whole_to_make_space() {
+    // A wide label on slightly taller stock: centered, the spare rows below it are too few
+    // for the footer, but together with those above they are enough.
     let s = Settings {
-        scale: Scale::Actual,
-        width_mm: 50.8,
-        height_mm: 76.2,
-        margin_mm: 0.,
-        footer: Footer {
-            message_enabled: true,
-            ..Footer::default()
-        },
+        width_mm: 101.6,
+        height_mm: 84.,
         ..Settings::default()
     };
-    let output = layout::render(&page(), Crop::FULL, &s).unwrap();
-    assert!(output.clipped);
-    assert!(output.warnings.iter().any(|w| w.contains("footer")));
+    let wide = Page {
+        image: {
+            let mut image = RgbImage::from_pixel(900, 600, Rgb([255; 3]));
+            for y in 0..600 {
+                for x in 0..900 {
+                    if (x / 3) % 2 == 0 {
+                        image.put_pixel(x, y, Rgb([0; 3]));
+                    }
+                }
+            }
+            image
+        },
+        width_mm: 76.2,
+        height_mm: 50.8,
+        ..page()
+    };
+    let before = layout::render(&wide, Crop::FULL, &s).unwrap();
+    let after = layout::render(&wide, Crop::FULL, &with_footer(true, &s)).unwrap();
+    assert!(!after.warnings.iter().any(|w| w.contains("footer")));
+    // Same size: the label's ink spans the same number of rows and columns.
+    let (b, a) = (ink_rows(&before.image), ink_rows(&after.image));
+    let label_rows = b.last().unwrap() - b[0];
+    assert_eq!(a[0] + label_rows, a[a.len() - 1].min(a[0] + label_rows));
+    assert!(a[0] < b[0], "label moved up");
+    let moved_up = b[0] - a[0];
+    let (w, h) = before.image.dimensions();
+    let mut shifted = RgbImage::from_pixel(w, h, Rgb([255; 3]));
+    image::imageops::overlay(&mut shifted, &before.image, 0, -(moved_up as i64));
+    let cut = a[0] + label_rows + 1;
+    assert!(
+        without_rows_from(&after.image, cut) == without_rows_from(&shifted, cut),
+        "label changed beyond moving up"
+    );
+}
+#[test]
+fn without_room_for_the_qr_code_only_the_message_prints() {
+    // Enough blank space for the message, not for the QR code.
+    let mut label = full_bleed();
+    for y in 865..900 {
+        for x in 0..600 {
+            label.image.put_pixel(x, y, Rgb([255; 3]));
+        }
+    }
+    let plain = Settings::default();
+    let before = layout::render(&label, Crop::FULL, &plain).unwrap();
+    let after = layout::render(&label, Crop::FULL, &with_footer(true, &plain)).unwrap();
+    let message_only = layout::render(&label, Crop::FULL, &with_footer(false, &plain)).unwrap();
+    assert!(
+        after
+            .warnings
+            .iter()
+            .any(|w| w.contains("QR code was left out")),
+        "{:?}",
+        after.warnings
+    );
+    // Exactly the message-only footer, and the label itself is untouched.
+    assert!(
+        after.image == message_only.image,
+        "not the message-only footer"
+    );
+    let last = *ink_rows(&before.image).last().unwrap();
+    assert!(
+        without_rows_from(&after.image, last + 1) == without_rows_from(&before.image, last + 1),
+        "label changed"
+    );
+    assert!(
+        ink_rows(&after.image).iter().any(|&y| y > last + 1),
+        "message printed"
+    );
 }

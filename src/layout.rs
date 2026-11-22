@@ -75,14 +75,8 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
         }
         _ => source,
     };
-    // The optional footer gets its own strip at the bottom, so it never covers the label.
-    // When it is off nothing is reserved and the layout is unchanged.
-    let mut footer = s.footer.reserved_dots(s.dpi, height, margin);
-    if footer > 0 && footer + margin * 2 + 1 >= height {
-        footer = 0;
-    }
     let available_w = width - margin * 2;
-    let available_h = height - margin * 2 - footer;
+    let available_h = height - margin * 2;
     let fit = (available_w as f32 / source.width() as f32)
         .min(available_h as f32 / source.height() as f32);
     let factor = match s.scale {
@@ -96,14 +90,6 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
     let target_h = (source.height() as f32 * factor).round().max(1.) as u32;
     let clipped = target_w > available_w || target_h > available_h;
     let mut warnings = vec![];
-    if s.footer.is_active() && footer == 0 {
-        warnings.push(crate::footer::FOOTER_NO_ROOM.into());
-    } else if s.footer.qr_left_out(s.dpi, height) {
-        warnings.push(crate::footer::QR_LEFT_OUT.into());
-    }
-    if clipped && footer > 0 {
-        warnings.push("The footer takes space at the bottom of the label. Use Fit, reduce scale, or turn the footer off.".into());
-    }
     if clipped {
         warnings.push("Content exceeds the printable area. Printing is blocked. Use Fit, rotate, reduce scale, or choose larger paper.".into());
     }
@@ -140,14 +126,35 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
                     .into(),
             );
         }
-        imageops::overlay(
-            &mut canvas,
-            &resized,
-            ((width - target_w) / 2) as i64,
-            ((height - footer - target_h) / 2) as i64,
-        );
-        if footer > 0 {
-            s.footer.draw(
+        let mut top = ((height - target_h) / 2) as i64;
+        // The optional footer never changes the label's size: the label is laid out exactly as
+        // without it, and the footer goes only into blank space below the label's last line.
+        // If the label is centered with room to spare, it may move up, whole, to make that
+        // space; otherwise the footer is left out.
+        // If the footer with its QR code does not fit, the message alone may.
+        let mut chosen = None;
+        if s.footer.is_active() {
+            // A row is kept back so resampling never puts ink in the footer's gap.
+            let blank_below = blank_bottom_rows(&resized).saturating_sub(1) as i64;
+            let blank_above = blank_top_rows(&resized) as i64;
+            let ink_bottom = top + target_h as i64 - blank_below;
+            for choice in s.footer.choices() {
+                let footer = choice.reserved_dots(s.dpi, height, margin);
+                if footer == 0 || footer + margin * 2 >= height {
+                    continue;
+                }
+                let limit = (height - margin - footer) as i64;
+                let shift = (ink_bottom - limit).max(0);
+                if shift <= top + blank_above - margin as i64 {
+                    top -= shift;
+                    chosen = Some(choice);
+                    break;
+                }
+            }
+        }
+        imageops::overlay(&mut canvas, &resized, ((width - target_w) / 2) as i64, top);
+        if let Some(chosen) = chosen {
+            chosen.draw(
                 &mut canvas,
                 s.dpi,
                 margin,
@@ -155,6 +162,11 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
                 height - margin,
                 margin,
             );
+            if let Some(note) = s.footer.fallback_note(&chosen, s.dpi, height) {
+                warnings.push(note.into());
+            }
+        } else if s.footer.is_active() {
+            warnings.push(crate::footer::FOOTER_NO_BLANK_SPACE.into());
         }
     }
     let _ = mm_h;
@@ -166,6 +178,25 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
         height_mm: s.height_mm,
         dpi: s.dpi,
     })
+}
+
+/// How many rows at the top of an image are blank, with no ink at all.
+fn blank_top_rows(image: &RgbImage) -> u32 {
+    (0..image.height())
+        .take_while(|&y| {
+            (0..image.width()).all(|x| image.get_pixel(x, y).0.iter().all(|&v| v >= 245))
+        })
+        .count() as u32
+}
+
+/// How many rows at the bottom of an image are blank, with no ink at all.
+fn blank_bottom_rows(image: &RgbImage) -> u32 {
+    (0..image.height())
+        .rev()
+        .take_while(|&y| {
+            (0..image.width()).all(|x| image.get_pixel(x, y).0.iter().all(|&v| v >= 245))
+        })
+        .count() as u32
 }
 
 #[cfg(test)]
