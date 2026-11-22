@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,5 +72,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: sh source/scripts/pages-artifact.sh wait
+      # deploy-pages looks the artifact up through a different GitHub service than the wait
+      # step above, which can still report none for a moment after the artifact is listed.
+      # When the first attempt fails, wait and try once more before failing the job.
       - uses: actions/deploy-pages@v4
         id: deployment
+        continue-on-error: true
+      - name: Wait before retrying the deployment
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - uses: actions/deploy-pages@v4
+        id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
