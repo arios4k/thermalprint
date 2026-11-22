@@ -118,7 +118,7 @@ Run these from the download folder, keeping only the RPM matching your Fedora re
 | --- | --- |
 | Import | PDF, PNG, JPEG, TIFF, BMP, WebP; multipage PDFs join the queue; CSV, semicolon, or tab-separated tables for batch printing |
 | Editable designs | Versioned `.thermalprint` files with embedded images |
-| Barcodes | Code 128, Code 39, Code 93, EAN-13, EAN-8, UPC-A, ITF, Codabar, Data Matrix, QR |
+| Barcodes | Code 128, Code 39, Code 93, EAN-13, EAN-8, UPC-A, ITF, Codabar, Data Matrix, GS1-128, GS1 Data Matrix, QR |
 | Output | PDF, PNG; design SVG with embedded raster output; raster ZPL |
 | Layout | Automatic/manual/full-page extraction, rotation, fit/actual/custom scale, margins |
 | Print resolution | 203, 300, or 600 DPI |

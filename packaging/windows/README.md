@@ -27,17 +27,17 @@ Set the following GitHub Actions repository variables using the values shown und
 
 ### Build a Windows-only Store update
 
-Commit the updated `Cargo.toml` version and `Cargo.lock`, then tag that commit with `windows-vMAJOR.MINOR.PATCH`. Use a version higher than the current Store package. For example, for version `0.15.0`:
+Commit the updated `Cargo.toml` version and `Cargo.lock`, then tag that commit with `windows-vMAJOR.MINOR.PATCH`. Use a version higher than the current Store package. For example, for a Windows-only fix released as version `0.15.1`:
 
 ```sh
-git tag windows-v0.15.0
-git push origin windows-v0.15.0
+git tag windows-v0.15.1
+git push origin windows-v0.15.1
 ```
 
-The **Windows 11** workflow requires the tag to match the Cargo version and all three Store identity variables to be set. The MSIX version for this example is `0.15.0.0`. A `windows-v*` tag starts the Windows build without releasing Linux packages. Use the regular `v*` tag when releasing both platforms.
+The **Windows 11** workflow requires the tag to match the Cargo version and all three Store identity variables to be set. The MSIX version for this example is `0.15.1.0`. A `windows-v*` tag starts the Windows build without releasing Linux packages. Use the regular `v*` tag when releasing both platforms.
 
-Download the **ThermalPrint-Windows-x64-store** artifact, extract the MSIX, and upload it through **Partner Center → ThermalPrint → Start update → Packages**. Submit the update for certification. Local installation requires a signature trusted by the test machine. Microsoft signs the published Store package during certification.
+Download the **ThermalPrint-Windows-x64-store** artifact, extract the MSIX, and upload it through **Partner Center → ThermalPrint → Start update → Packages**. Partner Center marks the previous package for removal; save the page. Under **Store listings**, replace **What's new in this version** in every listing language (English, French, German, and Spanish) with the new release notes. Then submit the update for certification. Local installation requires a signature trusted by the test machine. Microsoft signs the published Store package during certification.
 
-For the initial Store release, set the US base price to **$4.99** and select a **7-day time-limited trial** under **Pricing and availability**. The trial offers the full app so customers can test their printer and label stock. Linux remains free. [Microsoft Store pricing and trials](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/price-and-availability)
+The Store edition's US base price is **$4.99** with a **7-day time-limited trial**, set under **Pricing and availability**; updates keep these settings. The trial offers the full app so customers can test their printer and label stock. Linux remains free. [Microsoft Store pricing and trials](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/price-and-availability)
 
 Before submitting, install a signed test package on Windows 11. Open a `.thermalprint` design through File Explorer, import a mixed-size PDF, and verify image and label exports. Print a 4 × 6 label and a Letter or A4 sheet. Check physical dimensions, offsets, copies, queue status, and barcode scans. Repeat with a RAW ZPL queue and test watched-folder printing with fictional labels.
