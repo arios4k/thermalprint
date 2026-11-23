@@ -1,7 +1,7 @@
 {
-  "servers": {
+  "mcpServers": {
     "chrome-devtools": {
-      "type": "stdio",
+      "type": "local",
       "command": "bash",
       "args": [
         "-lc",
