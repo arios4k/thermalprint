@@ -139,10 +139,10 @@ fn render_pdf_page(pdfium: &Pdfium, path: &Path, index: usize) -> Result<Page> {
 #[cfg(unix)]
 fn load_poppler(path: &Path, index: usize) -> Result<Page> {
     let path = std::fs::canonicalize(path)?;
-    let info = Command::new("pdfinfo")
-        .arg(&path)
-        .env("LC_ALL", "C")
-        .output()?;
+    let info = crate::process::output_within(
+        Command::new("pdfinfo").arg(&path).env("LC_ALL", "C"),
+        crate::process::QUERY_TIMEOUT,
+    )?;
     if !info.status.success() {
         bail!("pdfinfo: {}", String::from_utf8_lossy(&info.stderr));
     }
@@ -158,11 +158,13 @@ fn load_poppler(path: &Path, index: usize) -> Result<Page> {
     }
     // Query this page: mixed-size documents must not inherit page one's dimensions.
     let n = (index + 1).to_string();
-    let info = Command::new("pdfinfo")
-        .args(["-f", &n, "-l", &n])
-        .arg(&path)
-        .env("LC_ALL", "C")
-        .output()?;
+    let info = crate::process::output_within(
+        Command::new("pdfinfo")
+            .args(["-f", &n, "-l", &n])
+            .arg(&path)
+            .env("LC_ALL", "C"),
+        crate::process::QUERY_TIMEOUT,
+    )?;
     let text = String::from_utf8_lossy(&info.stdout);
     let size = text
         .lines()
@@ -195,11 +197,13 @@ fn load_poppler(path: &Path, index: usize) -> Result<Page> {
     }
     let dir = tempfile::tempdir()?;
     let prefix = dir.path().join("page");
-    let result = Command::new("pdftoppm")
-        .args(["-f", &n, "-l", &n, "-singlefile", "-r", "300", "-png"])
-        .arg(&path)
-        .arg(&prefix)
-        .output()?;
+    let result = crate::process::output_within(
+        Command::new("pdftoppm")
+            .args(["-f", &n, "-l", &n, "-singlefile", "-r", "300", "-png"])
+            .arg(&path)
+            .arg(&prefix),
+        crate::process::RENDER_TIMEOUT,
+    )?;
     if !result.status.success() {
         bail!(
             "PDF render failed: {}",

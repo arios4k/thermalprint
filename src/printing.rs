@@ -36,6 +36,8 @@ pub struct Printer {
     pub resolutions: Vec<String>,
     pub resolution_option: String,
     pub custom_media: bool,
+    /// Why this printer may not print right now (paused, offline, not answering).
+    pub problem: Option<String>,
 }
 impl Printer {
     /// The unprintable border for a media choice as (left, top, right, bottom) in design
@@ -68,13 +70,66 @@ impl Printer {
         match code {
             "" => "Select media".into(),
             "Custom" => "Custom — match output dimensions".into(),
-            _ => self
-                .media_labels
-                .get(code)
-                .cloned()
-                .unwrap_or_else(|| format!("{code} — driver-defined size")),
+            _ => self.media_labels.get(code).cloned().unwrap_or_else(|| {
+                match self.media_sizes.get(code) {
+                    Some(&(w, h)) => format!("{code} — {w:.1} × {h:.1} mm"),
+                    None => format!("{code} — driver-defined size"),
+                }
+            }),
         }
     }
+}
+
+/// The paper size a media name describes, in millimeters, for names that say it themselves:
+/// well-known paper names (Letter, Legal, A4…), PWG names (`na_legal_8.5x14in`,
+/// `iso_a4_210x297mm`), sizes such as `4x6` or `100x150mm`, and PostScript `w288h432`.
+pub fn size_from_name(code: &str) -> Option<(f32, f32)> {
+    // Drop variants such as ".Borderless", but keep decimals such as "177.8mm".
+    let base = code
+        .char_indices()
+        .find(|&(i, c)| c == '.' && code[i + 1..].starts_with(|n: char| n.is_ascii_alphabetic()))
+        .map_or(code, |(i, _)| &code[..i]);
+    let lower = base.to_ascii_lowercase();
+    let named = match lower.as_str() {
+        "letter" | "na_letter" => Some((215.9, 279.4)),
+        "legal" | "na_legal" => Some((215.9, 355.6)),
+        "executive" => Some((184.15, 266.7)),
+        "tabloid" | "ledger" => Some((279.4, 431.8)),
+        "a3" => Some((297., 420.)),
+        "a4" => Some((210., 297.)),
+        "a5" => Some((148., 210.)),
+        "a6" => Some((105., 148.)),
+        "isob5" | "b5" => Some((176., 250.)),
+        _ => None,
+    };
+    if named.is_some() {
+        return named;
+    }
+    // PWG self-describing names end with the size: class_name_WxHunit.
+    let size = lower.rsplit('_').next().unwrap_or(&lower);
+    if let Some(rest) = size.strip_prefix('w')
+        && let Some((w, h)) = rest.split_once('h')
+        && let (Ok(w), Ok(h)) = (w.parse::<f32>(), h.parse::<f32>())
+    {
+        // PostScript sizes in points; small numbers are inches (w4h6).
+        let unit = if w.max(h) <= 30. { 25.4 } else { 25.4 / 72. };
+        return valid(w * unit, h * unit);
+    }
+    let (numbers, unit) = if let Some(n) = size.strip_suffix("mm") {
+        (n, 1.)
+    } else if let Some(n) = size.strip_suffix("in") {
+        (n, 25.4)
+    } else if let Some(n) = size.strip_suffix("cm") {
+        (n, 10.)
+    } else {
+        (size, 25.4) // Bare "4x6" sizes are inches.
+    };
+    let (w, h) = numbers.split_once('x')?;
+    valid(w.parse::<f32>().ok()? * unit, h.parse::<f32>().ok()? * unit)
+}
+fn valid(w: f32, h: f32) -> Option<(f32, f32)> {
+    (w.is_finite() && h.is_finite() && w >= 5. && h >= 5. && w <= 2000. && h <= 2000.)
+        .then_some((w, h))
 }
 
 /// Read the public driver description through CUPS; the on-disk PPD may be root-only.
@@ -210,13 +265,15 @@ fn media_labels(ppd: &str) -> HashMap<String, String> {
 
 #[cfg(unix)]
 fn run(program: &str, args: &[&str]) -> Result<String> {
-    let o = Command::new(program)
-        .args(args)
-        .env("LC_ALL", "C")
-        .output()
-        .with_context(|| {
-            format!("Could not start {program}. Install the CUPS client utilities.")
-        })?;
+    let o = crate::process::output_within(
+        Command::new(program).args(args).env("LC_ALL", "C"),
+        crate::process::QUERY_TIMEOUT,
+    )
+    .with_context(|| {
+        format!(
+            "{program} failed. Check that CUPS is running and its client utilities are installed."
+        )
+    })?;
     if !o.status.success() {
         bail!("{program}: {}", String::from_utf8_lossy(&o.stderr).trim());
     }
@@ -256,46 +313,94 @@ pub fn discover() -> Result<Vec<Printer>> {
         .split_once(": ")
         .map(|(_, v)| v)
         .unwrap_or("");
-    let mut list = vec![];
-    for line in printers.lines().filter(|l| l.starts_with("printer ")) {
-        let Some(name) = line.split_whitespace().nth(1) else {
-            continue;
-        };
-        let mut p = Printer {
-            name: name.into(),
-            is_default: name == default,
-            description: line.into(),
-            ..Default::default()
-        };
-        let options = run("lpoptions", &["-p", name, "-l"]).unwrap_or_default();
-        for line in options.lines() {
-            let Some((key, values)) = line.split_once(':') else {
-                continue;
-            };
-            let key = key.split('/').next().unwrap_or(key);
-            let choices: Vec<String> = values
-                .split_whitespace()
-                .map(|v| v.trim_start_matches('*').to_owned())
-                .collect();
-            if key == "PageSize" || (key == "media" && p.media.is_empty()) {
-                p.custom_media = choices.iter().any(|v| v.starts_with("Custom"));
-                p.media = choices
-                    .into_iter()
-                    .filter(|v| !v.starts_with("Custom"))
+    let queues: Vec<(String, String)> = printers
+        .lines()
+        .filter(|l| l.starts_with("printer "))
+        .filter_map(|l| Some((l.split_whitespace().nth(1)?.to_owned(), l.to_owned())))
+        .collect();
+    // Ask every queue at the same time: one stuck queue must not hold up the others.
+    let workers: Vec<_> = queues
+        .into_iter()
+        .map(|(name, line)| {
+            let is_default = name == default;
+            std::thread::spawn(move || describe(name, line, is_default))
+        })
+        .collect();
+    Ok(workers.into_iter().filter_map(|w| w.join().ok()).collect())
+}
+/// Everything ThermalPrint needs to know about one queue. Never fails: a queue that does not
+/// answer is still listed, with what its driver file says and a note about the problem.
+#[cfg(unix)]
+fn describe(name: String, line: String, is_default: bool) -> Printer {
+    let mut p = Printer {
+        is_default,
+        description: line.clone(),
+        ..Default::default()
+    };
+    if line.contains(" disabled ") {
+        p.problem = Some("This printer queue is paused or offline in CUPS".into());
+    }
+    match run("lpoptions", &["-p", &name, "-l"]) {
+        Ok(options) => {
+            for line in options.lines() {
+                let Some((key, values)) = line.split_once(':') else {
+                    continue;
+                };
+                let key = key.split('/').next().unwrap_or(key);
+                let choices: Vec<String> = values
+                    .split_whitespace()
+                    .map(|v| v.trim_start_matches('*').to_owned())
                     .collect();
-            } else if ["Resolution", "printer-resolution"].contains(&key) {
-                p.resolutions = choices;
-                p.resolution_option = key.into();
+                if key == "PageSize" || (key == "media" && p.media.is_empty()) {
+                    p.custom_media = choices.iter().any(|v| v.starts_with("Custom"));
+                    p.media = choices
+                        .into_iter()
+                        .filter(|v| !v.starts_with("Custom"))
+                        .collect();
+                } else if ["Resolution", "printer-resolution"].contains(&key) {
+                    p.resolutions = choices;
+                    p.resolution_option = key.into();
+                }
             }
         }
-        if let Some(ppd) = driver_description(name) {
-            p.media_labels = media_labels(&ppd);
-            p.media_sizes = media_sizes(&ppd);
-            p.media_margins = media_margins(&ppd);
+        Err(error) => {
+            tracing::warn!(printer = %name, error = %format!("{error:#}"), "Printer options unavailable");
+            p.problem = Some("This printer did not answer. It may be off or disconnected".into());
         }
-        list.push(p);
     }
-    Ok(list)
+    if let Some(ppd) = driver_description(&name) {
+        p.media_labels = media_labels(&ppd);
+        p.media_sizes = media_sizes(&ppd);
+        p.media_margins = media_margins(&ppd);
+        if p.media.is_empty() {
+            // The queue did not answer; its driver file still lists the paper it takes.
+            p.media = ppd_page_sizes(&ppd);
+            p.custom_media = ppd.contains("*CustomPageSize True");
+        }
+    }
+    for code in &p.media {
+        if !p.media_sizes.contains_key(code)
+            && let Some(size) = size_from_name(code)
+        {
+            p.media_sizes.insert(code.clone(), size);
+        }
+    }
+    p.name = name;
+    p
+}
+/// The PageSize choices a driver file offers, in its order.
+#[cfg(unix)]
+fn ppd_page_sizes(ppd: &str) -> Vec<String> {
+    let mut codes = Vec::new();
+    for line in ppd.lines() {
+        if let Some(rest) = line.strip_prefix("*PageSize ") {
+            let code = rest.split(['/', ':']).next().unwrap_or("").trim();
+            if !code.is_empty() && !codes.iter().any(|c| c == code) {
+                codes.push(code.to_owned());
+            }
+        }
+    }
+    codes
 }
 #[cfg(unix)]
 pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
@@ -351,11 +456,11 @@ pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
         }
         cmd.args(["-o", &format!("{}={}", p.resolution_option, s.resolution)]);
     }
-    let o = cmd
-        .arg(file.path())
-        .env("LC_ALL", "C")
-        .output()
-        .context("Could not start CUPS lp")?;
+    let o = crate::process::output_within(
+        cmd.arg(file.path()).env("LC_ALL", "C"),
+        crate::process::SUBMIT_TIMEOUT,
+    )
+    .context("CUPS did not accept the job")?;
     if !o.status.success() {
         bail!(
             "CUPS rejected the job: {}",
@@ -428,20 +533,22 @@ pub fn submit_raw_zpl(data: &[u8], s: &Settings, p: &Printer) -> Result<String> 
     file.flush()?;
     let mut last = String::new();
     for _ in 0..s.copies {
-        let o = Command::new("lp")
-            .args([
-                "-d",
-                &p.name,
-                "-o",
-                "raw",
-                "-o",
-                "job-sheets=none",
-                "-t",
-                "ThermalPrint ZPL label",
-            ])
-            .arg(file.path())
-            .output()
-            .context("Could not start CUPS lp")?;
+        let o = crate::process::output_within(
+            Command::new("lp")
+                .args([
+                    "-d",
+                    &p.name,
+                    "-o",
+                    "raw",
+                    "-o",
+                    "job-sheets=none",
+                    "-t",
+                    "ThermalPrint ZPL label",
+                ])
+                .arg(file.path()),
+            crate::process::SUBMIT_TIMEOUT,
+        )
+        .context("CUPS did not accept the job")?;
         if !o.status.success() {
             bail!(
                 "CUPS rejected raw ZPL: {}",
@@ -459,6 +566,32 @@ pub fn submit_raw_zpl(data: &[u8], s: &Settings, p: &Printer) -> Result<String> 
 #[cfg(all(test, unix))]
 mod media_tests {
     use super::*;
+
+    #[test]
+    fn paper_names_give_their_sizes() {
+        let close = |a: Option<(f32, f32)>, w: f32, h: f32| {
+            let (x, y) = a.unwrap();
+            assert!((x - w).abs() < 0.1 && (y - h).abs() < 0.1, "{x} × {y}");
+        };
+        close(size_from_name("Letter"), 215.9, 279.4);
+        close(size_from_name("Legal"), 215.9, 355.6);
+        close(size_from_name("Legal.Borderless"), 215.9, 355.6);
+        close(size_from_name("A4"), 210., 297.);
+        close(size_from_name("na_legal_8.5x14in"), 215.9, 355.6);
+        close(size_from_name("iso_a4_210x297mm"), 210., 297.);
+        close(size_from_name("4x6"), 101.6, 152.4);
+        close(size_from_name("127x177.8mm"), 127., 177.8);
+        close(size_from_name("w288h432"), 101.6, 152.4);
+        close(size_from_name("w4h6"), 101.6, 152.4);
+        assert_eq!(size_from_name("Env10x"), None);
+        assert_eq!(size_from_name("Stationery"), None);
+    }
+
+    #[test]
+    fn a_driver_file_lists_its_page_sizes_in_order() {
+        let ppd = "*PageSize Letter/US Letter: \"<<>>\"\n*PageSize Legal/US Legal: \"<<>>\"\n*PageSize Letter/Again: \"\"\n*PaperDimension Letter/US Letter: \"612 792\"";
+        assert_eq!(ppd_page_sizes(ppd), ["Letter", "Legal"]);
+    }
     #[test]
     fn mismatch_uses_known_dimensions_and_tolerates_driver_rounding() {
         let p = Printer {

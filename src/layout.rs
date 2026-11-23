@@ -38,6 +38,8 @@ impl Output {
         }
     }
 }
+/// The most pixels one printed page may have: enough for US Legal paper at 600 DPI.
+pub const MAX_OUTPUT_PIXELS: u64 = 45_000_000;
 pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
     if ![s.width_mm, s.height_mm, s.margin_mm, s.scale_percent]
         .iter()
@@ -52,8 +54,11 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
     }
     let width = (s.width_mm / 25.4 * s.dpi as f32).round() as u32;
     let height = (s.height_mm / 25.4 * s.dpi as f32).round() as u32;
-    if width as u64 * height as u64 > 36_000_000 {
-        bail!("Output exceeds the 36 megapixel limit");
+    if width as u64 * height as u64 > MAX_OUTPUT_PIXELS {
+        bail!(
+            "The output is too large at {} DPI. Choose a lower resolution",
+            s.dpi
+        );
     }
     let margin = (s.margin_mm / 25.4 * s.dpi as f32).round() as u32;
     if margin * 2 >= width || margin * 2 >= height {

@@ -58,7 +58,7 @@ impl Default for PrinterProfile {
 pub const MAX_SAFE_MARGIN_MM: f32 = 10.;
 /// The largest alignment correction, in millimeters, in either direction.
 pub const MAX_OFFSET_MM: f32 = 10.;
-const MAX_PROFILES: usize = 50;
+pub const MAX_PROFILES: usize = 50;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -114,6 +114,8 @@ pub struct Settings {
     pub background_printing: bool,
     pub start_at_login: bool,
     pub stock_profiles: BTreeMap<String, StockProfile>,
+    /// The stock profile last loaded or saved, shown as the active one.
+    pub active_stock: Option<String>,
     /// The warning about automatic printing was shown and accepted once.
     pub auto_print_warned: bool,
     /// Only files whose names match this filter print automatically; empty allows every file.
@@ -127,6 +129,15 @@ pub struct Settings {
 pub struct StockProfile {
     pub printer: String,
     pub settings: PrinterProfile,
+}
+/// The key a stock profile is saved under: its printer and name, so two printers can each
+/// have a profile with the same name.
+pub fn stock_key(printer: &str, name: &str) -> String {
+    format!("{printer} · {}", name.trim())
+}
+/// The name the person gave a stock profile, without its printer.
+pub fn stock_display_name(key: &str) -> &str {
+    key.split_once(" · ").map_or(key, |(_, name)| name)
 }
 /// A queued label remembered between sessions.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -174,6 +185,7 @@ impl Default for Settings {
             background_printing: false,
             start_at_login: false,
             stock_profiles: BTreeMap::new(),
+            active_stock: None,
             auto_print_warned: false,
             auto_print_pattern: String::new(),
             auto_print_per_minute: crate::autoprint::DEFAULT_PER_MINUTE,
@@ -188,8 +200,18 @@ impl Settings {
     }
     pub fn load() -> Self {
         Self::path()
-            .and_then(|p| std::fs::read(p).ok())
-            .and_then(|v| serde_json::from_slice::<Self>(&v).ok())
+            .and_then(|p| {
+                let bytes = std::fs::read(&p).ok()?;
+                let parsed = serde_json::from_slice::<Self>(&bytes);
+                if let Err(error) = &parsed {
+                    // Keep the unreadable file: saving defaults over it would lose every saved
+                    // printer and stock profile for good.
+                    let backup = p.with_extension(format!("json.unreadable-{}", chrono::Local::now().format("%Y%m%d-%H%M%S")));
+                    tracing::warn!(%error, backup = %backup.display(), "Settings could not be read; keeping a copy");
+                    let _ = std::fs::write(&backup, &bytes);
+                }
+                parsed.ok()
+            })
             .map(|mut s| {
                 // Config files are input, too. Keep allocations and CUPS arguments bounded.
                 s.width_mm = finite(s.width_mm, 101.6).clamp(10., 500.);
@@ -222,6 +244,13 @@ impl Settings {
                 }
                 while s.stock_profiles.len() > MAX_PROFILES {
                     s.stock_profiles.pop_last();
+                }
+                if s
+                    .active_stock
+                    .as_ref()
+                    .is_some_and(|key| !s.stock_profiles.contains_key(key))
+                {
+                    s.active_stock = None;
                 }
                 for stock in s.stock_profiles.values_mut() {
                     stock.settings.clean();
@@ -460,6 +489,19 @@ mod profile_tests {
 #[cfg(test)]
 mod stock_profile_tests {
     use super::*;
+
+    #[test]
+    fn one_printer_keeps_several_named_profiles() {
+        let a = stock_key("HP", " Letter paper ");
+        let b = stock_key("HP", "4x6 labels");
+        assert_ne!(a, b);
+        assert_eq!(stock_display_name(&a), "Letter paper");
+        assert_eq!(
+            stock_display_name(&stock_key("Zebra", "4x6 labels")),
+            "4x6 labels"
+        );
+        assert_ne!(b, stock_key("Zebra", "4x6 labels"));
+    }
     #[test]
     fn stock_profiles_keep_media_alignment_and_dimensions_per_printer() {
         let mut settings = Settings {

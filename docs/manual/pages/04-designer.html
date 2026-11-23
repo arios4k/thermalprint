@@ -19,6 +19,7 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <table>
   <tr><th>Field</th><th>Meaning</th></tr>
   <tr><td><strong>Label name</strong></td><td>The title of the design. It is used when you save and in your recent prints.</td></tr>
+  <tr><td><strong>Printer paper size</strong></td><td>Every paper and label size the selected printer supports, such as 4 × 6 in on a label printer or Letter and Legal on an office printer. Choosing one sets the label to that size and selects the same paper in Print Center. <em>Custom size</em> shows when the label matches none of them. Ctrl+Z undoes the change.</td></tr>
   <tr><td><strong>Width</strong> and <strong>Height</strong></td><td>The label size in millimeters. With <strong>Rotate 90° when printing</strong> on, they are the canvas as you design it, turned on its side.</td></tr>
   <tr><td><strong>Rotate 90° when printing</strong></td><td>Optional, off to start. Design a wide label on its side so the text reads straight, and print it rotated 90° to fit the label stock as loaded. See <a href="designer.html#rotated-printing">Rotated printing</a>. When it is on, <strong>Rotate the other way</strong> appears.</td></tr>
   <tr><td><strong>Serial variable</strong></td><td>The starting number for <code>${serial}</code>. See <a href="objects.html#dynamic-text-date-and-serial-number">Dynamic text</a>. The number range and sheet windows start from it.</td></tr>
@@ -37,7 +38,7 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
       <li><em>Save as…</em>: save the design under a new file name.</li>
       <li><em>Save as template…</em>: keep the design in your Templates menu, named after the label. See <a href="#your-own-templates">Your own templates</a>.</li>
       <li><em>Template gallery…</em>: browse the built-in templates and your own, with previews. See <a href="#the-template-gallery">The template gallery</a>.</li>
-      <li><em>Print on a sheet…</em>: place several labels on one A4 or Letter page.</li>
+      <li><em>Print on a sheet…</em>: place several labels on one page of any paper size the printer supports.</li>
       <li><em>Print a number range…</em>: print labels numbered by <code>${serial}</code> with a start, step, and count. See <a href="#numbered-runs-and-sheets">Numbered runs and sheets</a>.</li>
       <li><em>Batch print from CSV…</em>: print one label per row of a spreadsheet, filling <code>${column}</code> placeholders. See <a href="batch.html">Batch printing</a>.</li>
     </ul></td></tr>
@@ -171,7 +172,7 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 <h2>Numbered runs and sheets</h2>
 <ul>
   <li><strong>File → Print a number range…</strong> prints labels numbered by <code>${serial}</code>: choose the <em>First number</em>, the <em>Step</em>, and <em>How many labels</em>. Every label is drawn first, so nothing is sent if one has a problem. Use <code>${serial:4}</code> for zero-padded numbers like <code>0007</code>, and type a prefix before it, such as <code>INV-${serial:4}</code>.</li>
-  <li><strong>File → Print on a sheet…</strong> places copies of the label on an A4 or Letter page for an office printer or a sheet of sticky labels. Choose columns, rows, margin, and gap, or press <strong>Fit as many as possible</strong>; a small diagram shows the layout. <code>${serial}</code> counts up from one label to the next. Pages are drawn at the resolution you choose (300 DPI to start; 203, 300, or 600 are offered), and the whole run is drawn before anything is sent. <strong>Save as PDF</strong> always works (with more than one page, files are numbered <code>-1</code>, <code>-2</code>, and so on); <strong>Print sheet</strong> needs a printer that lists the paper. More labels than fit make more pages.</li>
+  <li><strong>File → Print on a sheet…</strong> places copies of the label on one page for an office printer or a sheet of sticky labels. <strong>Paper</strong> lists every size the selected printer supports, such as Letter, Legal, or A4; without a printer it offers A4, Letter, and Legal. Choose columns, rows, margin, and gap, or press <strong>Fit as many as possible</strong>; a small diagram shows the layout. <code>${serial}</code> counts up from one label to the next. Pages are drawn at the resolution you choose (300 DPI to start; 203, 300, or 600 are offered), and the whole run is drawn before anything is sent. <strong>Save as PDF</strong> always works (with more than one page, files are numbered <code>-1</code>, <code>-2</code>, and so on); <strong>Print sheet</strong> needs a printer that lists the paper. More labels than fit make more pages.</li>
 </ul>
 {{figure:designer-sheet|The Print on a sheet window with columns, rows, margin, gap, and a diagram of the page|The sheet window. The blue cells are the labels that will print.}}
 {{figure:designer-range|The Print a number range window with first number, step, and count|The number range window.}}

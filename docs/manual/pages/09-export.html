@@ -10,7 +10,7 @@ summary: Save a finished label as PDF, PNG, SVG, or ZPL, and print raw ZPL to a 
   <tr><th>Area</th><th>How</th><th>Formats</th></tr>
   <tr><td>Import &amp; Convert</td><td><strong>PDF</strong> and <strong>PNG</strong> buttons in step 03.</td><td>PDF, PNG</td></tr>
   <tr><td>Label Designer</td><td><strong>Export</strong> menu in the toolbar.</td><td>PDF, PNG, SVG, ZPL</td></tr>
-  <tr><td>Label Designer, a sheet of labels</td><td><strong>File → Print on a sheet… → Save as PDF</strong>.</td><td>PDF (A4 or Letter)</td></tr>
+  <tr><td>Label Designer, a sheet of labels</td><td><strong>File → Print on a sheet… → Save as PDF</strong>.</td><td>PDF (any paper size the printer supports; A4, Letter, or Legal without one)</td></tr>
 </table>
 <p>Exporting works <em>without a printer</em>. A file chooser asks where to save, and the file is written safely: it is created under a temporary name and moved into place only when complete, so a failed export never leaves a half-written file.</p>
 
@@ -42,7 +42,7 @@ summary: Save a finished label as PDF, PNG, SVG, or ZPL, and print raw ZPL to a 
 
 <h2>Limits</h2>
 <ul>
-  <li>Output larger than 36 megapixels is refused. Lower the DPI or the label size.</li>
+  <li>Output larger than 45 megapixels is refused: US Legal fits at 600 DPI. For larger paper, lower the DPI or the size.</li>
   <li>A label that would be clipped cannot be exported until you fix the layout.</li>
   <li>A design where a barcode or QR code overlaps another object cannot be exported either. Move the objects apart; see <a href="designer.html#overlap-warning">When a code overlaps another object</a>.</li>
 </ul>

@@ -389,7 +389,40 @@ impl Capture {
                 "designer-templates" => app.designer.demo_templates = true,
                 "print-center-stock" => {
                     app.print_tab = PrintTab::Stock;
-                    app.stock_name = "Shipping 4 × 6".into();
+                    // Fictional profiles: two for the demo printer, one for an office printer.
+                    let printer = app.settings.printer.clone();
+                    let labels = crate::settings::StockProfile {
+                        printer: printer.clone(),
+                        settings: app.settings.current_profile(),
+                    };
+                    let small = crate::settings::StockProfile {
+                        printer: printer.clone(),
+                        settings: crate::settings::PrinterProfile {
+                            media: "4x4".into(),
+                            height_mm: 101.6,
+                            ..app.settings.current_profile()
+                        },
+                    };
+                    let office = crate::settings::StockProfile {
+                        printer: "Office inkjet".into(),
+                        settings: crate::settings::PrinterProfile {
+                            media: "Legal".into(),
+                            dpi: 300,
+                            width_mm: 215.9,
+                            height_mm: 355.6,
+                            ..app.settings.current_profile()
+                        },
+                    };
+                    for (name, stock) in [
+                        ("Shipping 4 × 6", labels),
+                        ("Square 4 × 4", small),
+                        ("Legal paper", office),
+                    ] {
+                        let key = crate::settings::stock_key(&stock.printer, name);
+                        app.settings.stock_profiles.insert(key, stock);
+                    }
+                    app.settings.active_stock =
+                        Some(crate::settings::stock_key(&printer, "Shipping 4 × 6"));
                 }
                 "import-background" => {
                     app.import_tab = ImportTab::Automation;
@@ -519,6 +552,7 @@ pub(super) fn seed(app: &mut ThermalPrint, ctx: &egui::Context) {
         resolutions: vec!["203dpi".into(), "300dpi".into()],
         resolution_option: "Resolution".into(),
         custom_media: true,
+        problem: None,
     }];
     let mut doc = LabelDocument::blank(101.6, 152.4);
     doc.title = "Northline · shipping label".into();

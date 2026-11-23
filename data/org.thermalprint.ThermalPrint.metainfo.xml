@@ -60,6 +60,17 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.17.0" date="2026-11-23">
+      <description>
+        <p>Easier printer setup, clear stock profiles, and every paper size your printer supports.</p>
+        <ul>
+          <li>Guide printer setup in four numbered steps, each with its own controls, and confirm when the profile is saved.</li>
+          <li>Show the active stock profile everywhere printing is set up, switch profiles across printers in one step, and update or delete profiles.</li>
+          <li>Offer every paper size the printer supports, including Letter and Legal, in Print Center, Import and Convert, the Label Designer, and sheets.</li>
+          <li>Never wait on a stuck or offline printer: printers are found in the background, and every printing command has a time limit.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.16.0" date="2026-11-23">
       <description>
         <p>A redesigned, better organized interface with its own look, and accessibility throughout.</p>

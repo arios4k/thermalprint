@@ -135,16 +135,7 @@ const ES: &[(&str, &str)] = &[
     ("Next", "Siguiente"),
     ("Print one test label", "Imprimir una etiqueta de prueba"),
     ("Close assistant", "Cerrar asistente"),
-    (
-        "Match media to label size",
-        "Ajustar papel al tamaño de etiqueta",
-    ),
-    (
-        "This printer does not advertise a matching media size. Configure the stock in its driver.",
-        "La impresora no indica un tamaño compatible. Configure las etiquetas en su controlador.",
-    ),
     ("Saved label stock", "Etiquetas guardadas"),
-    ("Load profile", "Cargar perfil"),
     ("Stock profile name", "Nombre del perfil de etiquetas"),
     ("Save stock profile", "Guardar perfil de etiquetas"),
     ("Reprint…", "Reimprimir…"),
@@ -177,22 +168,6 @@ const ES: &[(&str, &str)] = &[
     (
         "Compact product details and QR code",
         "Datos compactos del producto y código QR",
-    ),
-    (
-        "Choose your printer below. Refresh printers if it is missing.",
-        "Elija la impresora abajo. Actualice la lista si no aparece.",
-    ),
-    (
-        "Measure the loaded label. Set its width, height, orientation, media size, and DPI below.",
-        "Mida la etiqueta cargada. Ajuste abajo su ancho, alto, orientación, papel y PPP.",
-    ),
-    (
-        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets below.",
-        "Imprima una prueba de alineación. Compare el borde de 1 mm con la etiqueta y ajuste los desplazamientos abajo.",
-    ),
-    (
-        "Give this stock profile a name and save it below. Load it whenever you use this printer and label stock.",
-        "Asigne un nombre y guarde el perfil abajo. Cárguelo al usar esta impresora y estas etiquetas.",
     ),
     ("Printing", "Imprimiendo"),
     (
@@ -475,10 +450,6 @@ const ES: &[(&str, &str)] = &[
         "Elige una impresora en el Centro de impresión para imprimir este diseño. Puedes exportar sin impresora.",
     ),
     ("Choose folder…", "Elegir carpeta…"),
-    (
-        "Choose the driver media that matches your loaded labels. Custom uses the output dimensions.",
-        "Elige el papel del controlador que coincida con tus etiquetas cargadas. «Personalizado» usa las dimensiones de salida.",
-    ),
     ("Clear", "Quitar"),
     ("Clear history", "Borrar historial"),
     ("Close", "Cerrar"),
@@ -488,10 +459,6 @@ const ES: &[(&str, &str)] = &[
     ),
     ("Credits and license", "Créditos y licencia"),
     ("Custom scale", "Escala personalizada"),
-    (
-        "Custom — match output dimensions",
-        "Personalizado: igualar las dimensiones de salida",
-    ),
     (
         "Default processing preserves tones. Thresholding can damage fine barcode detail.",
         "El procesado predeterminado conserva los tonos. El umbral puede dañar los detalles finos del código de barras.",
@@ -530,10 +497,6 @@ const ES: &[(&str, &str)] = &[
     (
         "Driver default resolution",
         "Resolución predeterminada del controlador",
-    ),
-    (
-        "Driver media must match the paper dimensions above. Check your printer's unprintable margins.",
-        "El papel del controlador debe coincidir con las dimensiones anteriores. Revisa los márgenes no imprimibles de tu impresora.",
     ),
     (
         "Drop PDFs or images to build a print queue",
@@ -725,7 +688,6 @@ const ES: &[(&str, &str)] = &[
     ),
     ("Print using raw ZPL", "Imprimir con ZPL sin procesar"),
     ("Printer & media", "Impresora y papel"),
-    ("Printer media size", "Tamaño de papel de la impresora"),
     ("Printer queue", "Cola de la impresora"),
     ("Printer resolution", "Resolución de la impresora"),
     ("Printer status", "Estado de la impresora"),
@@ -1154,10 +1116,6 @@ const ES: &[(&str, &str)] = &[
         "Aún no hay nada guardado. Usa Archivo → Guardar como plantilla… para añadir una.",
     ),
     ("Print on a sheet", "Imprimir en una hoja"),
-    (
-        "Place copies of this label on an A4 or Letter page, for an office printer or a sheet of sticky labels. ${serial} counts up from one label to the next.",
-        "Coloca copias de esta etiqueta en una página A4 o Carta, para una impresora de oficina o una hoja de etiquetas adhesivas. ${serial} aumenta de una etiqueta a la siguiente.",
-    ),
     ("Paper", "Papel"),
     ("Resolution", "Resolución"),
     ("Columns", "Columnas"),
@@ -1220,10 +1178,6 @@ const ES: &[(&str, &str)] = &[
         "Explora las plantillas incluidas y las tuyas con vistas previas",
     ),
     ("Print on a sheet…", "Imprimir en una hoja…"),
-    (
-        "Place several labels on one A4 or Letter page",
-        "Coloca varias etiquetas en una página A4 o Carta",
-    ),
     ("Print a number range…", "Imprimir un rango de números…"),
     (
         "Print labels numbered by ${serial} with a start, step, and count",
@@ -1487,6 +1441,112 @@ const ES: &[(&str, &str)] = &[
     ("Zoom to 100%", "Zoom al 100%"),
     ("Printer", "Impresora"),
     ("Automation", "Automatización"),
+    (
+        "Place copies of this label on one page of any paper size your printer supports, for an office printer or a sheet of sticky labels. ${serial} counts up from one label to the next.",
+        "Coloca copias de esta etiqueta en una página de cualquier tamaño que admita tu impresora, para una impresora de oficina o una hoja de etiquetas adhesivas. ${serial} aumenta de una etiqueta a la siguiente.",
+    ),
+    ("Printer paper size", "Tamaño de papel de la impresora"),
+    ("Custom size", "Tamaño personalizado"),
+    (
+        "Place several labels on one page of any paper size",
+        "Coloca varias etiquetas en una página de cualquier tamaño",
+    ),
+    (
+        "Choose the paper or labels loaded in the printer. Custom uses the output dimensions.",
+        "Elige el papel o las etiquetas cargadas en la impresora. Personalizado usa las dimensiones de salida.",
+    ),
+    (
+        "Choose a printer and paper size, check alignment, and save it all as a stock profile you can load later.",
+        "Elige una impresora y un tamaño de papel, comprueba la alineación y guárdalo todo como un perfil que podrás cargar después.",
+    ),
+    ("Use the paper size", "Usar el tamaño del papel"),
+    ("Choose printer", "Elegir impresora"),
+    ("Looking for printers…", "Buscando impresoras…"),
+    (
+        "No printers found. Add a printer in your system settings, then refresh.",
+        "No se encontraron impresoras. Añade una en la configuración del sistema y actualiza.",
+    ),
+    ("Choose a printer first.", "Elige primero una impresora."),
+    ("Paper or label size", "Tamaño de papel o etiqueta"),
+    ("Custom dimensions", "Dimensiones personalizadas"),
+    (
+        "This printer does not list its paper sizes. Configure them in its driver.",
+        "Esta impresora no indica sus tamaños de papel. Configúralos en su controlador.",
+    ),
+    ("Saves:", "Guarda:"),
+    (
+        "For example: 4 × 6 shipping labels",
+        "Por ejemplo: etiquetas de envío 4 × 6",
+    ),
+    ("Replace stock profile", "Reemplazar perfil de etiquetas"),
+    ("Stock profile saved", "Perfil de etiquetas guardado"),
+    (
+        "A profile with this name already exists for this printer. Saving replaces it.",
+        "Ya existe un perfil con este nombre para esta impresora. Al guardar se reemplaza.",
+    ),
+    (
+        "You have reached the limit of saved stock profiles. Delete one to add another.",
+        "Has alcanzado el límite de perfiles guardados. Elimina uno para añadir otro.",
+    ),
+    (
+        "A stock profile remembers a printer with its paper size, resolution, and alignment. Load one to switch to all of it at once.",
+        "Un perfil de etiquetas recuerda una impresora con su tamaño de papel, resolución y alineación. Cárgalo para cambiar todo a la vez.",
+    ),
+    (
+        "No saved stock yet. Set up the printer and paper, then save them below.",
+        "Aún no hay perfiles guardados. Configura la impresora y el papel y guárdalos abajo.",
+    ),
+    ("Load", "Cargar"),
+    (
+        "This printer is not connected",
+        "Esta impresora no está conectada",
+    ),
+    ("Delete stock profile?", "¿Eliminar el perfil de etiquetas?"),
+    ("Stock profile deleted", "Perfil de etiquetas eliminado"),
+    (
+        "Choose the printer you will print on.",
+        "Elige la impresora en la que vas a imprimir.",
+    ),
+    (
+        "Choose the size loaded in the printer. Label printers list their label sizes; office printers list every paper size they support, such as Letter, Legal, or A4.",
+        "Elige el tamaño cargado en la impresora. Las impresoras de etiquetas muestran sus tamaños de etiqueta; las de oficina, todos los tamaños de papel que admiten, como Carta, Oficio o A4.",
+    ),
+    (
+        "Optional. Print one test page and compare its 1 mm border to the edges. If it is off, move it with the offsets.",
+        "Opcional. Imprime una página de prueba y compara su borde de 1 mm con los bordes. Si está desplazado, muévelo con los desplazamientos.",
+    ),
+    (
+        "Name this setup so you can switch back to it in one click from Label stock.",
+        "Ponle nombre a esta configuración para volver a ella con un clic desde Papel de etiquetas.",
+    ),
+    (
+        "It is now the active profile. Switch profiles any time from Active profile at the top of Print Center.",
+        "Ahora es el perfil activo. Cambia de perfil cuando quieras desde Perfil activo, arriba en el Centro de impresión.",
+    ),
+    ("Finish", "Terminar"),
+    ("Set up another", "Configurar otro"),
+    ("Active profile:", "Perfil activo:"),
+    ("Stock profile updated", "Perfil de etiquetas actualizado"),
+    ("None", "Ninguno"),
+    (
+        "Changed since it was loaded",
+        "Modificado desde que se cargó",
+    ),
+    ("Update profile", "Actualizar perfil"),
+    ("Active", "Activo"),
+    (
+        "Save the current printer, paper, resolution, and alignment into this profile",
+        "Guarda en este perfil la impresora, el papel, la resolución y la alineación actuales",
+    ),
+    (
+        "Changed since it was loaded. Update profile saves the changes.",
+        "Modificado desde que se cargó. Actualizar perfil guarda los cambios.",
+    ),
+    ("Saved and active:", "Guardado y activo:"),
+    (
+        "Save the current setup as a new profile",
+        "Guardar la configuración actual como un perfil nuevo",
+    ),
 ];
 const DE: &[(&str, &str)] = &[
     ("No matches", "Keine Treffer"),
@@ -1527,16 +1587,7 @@ const DE: &[(&str, &str)] = &[
     ("Next", "Weiter"),
     ("Print one test label", "Ein Testetikett drucken"),
     ("Close assistant", "Assistent schließen"),
-    (
-        "Match media to label size",
-        "Papierformat an Etikettengröße anpassen",
-    ),
-    (
-        "This printer does not advertise a matching media size. Configure the stock in its driver.",
-        "Der Drucker meldet kein passendes Papierformat. Konfigurieren Sie das Material im Druckertreiber.",
-    ),
     ("Saved label stock", "Gespeichertes Etikettenmaterial"),
-    ("Load profile", "Profil laden"),
     ("Stock profile name", "Name des Materialprofils"),
     ("Save stock profile", "Materialprofil speichern"),
     ("Reprint…", "Erneut drucken…"),
@@ -1569,22 +1620,6 @@ const DE: &[(&str, &str)] = &[
     (
         "Compact product details and QR code",
         "Kompakte Produktangaben und QR-Code",
-    ),
-    (
-        "Choose your printer below. Refresh printers if it is missing.",
-        "Wählen Sie unten den Drucker. Aktualisieren Sie die Liste, falls er fehlt.",
-    ),
-    (
-        "Measure the loaded label. Set its width, height, orientation, media size, and DPI below.",
-        "Messen Sie das eingelegte Etikett. Stellen Sie unten Breite, Höhe, Ausrichtung, Papierformat und DPI ein.",
-    ),
-    (
-        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets below.",
-        "Drucken Sie einen Ausrichtungstest. Vergleichen Sie den 1-mm-Rand mit den Etikettenkanten und korrigieren Sie unten den Versatz.",
-    ),
-    (
-        "Give this stock profile a name and save it below. Load it whenever you use this printer and label stock.",
-        "Benennen und speichern Sie unten dieses Materialprofil. Laden Sie es bei Verwendung dieses Druckers und Materials.",
     ),
     ("Printing", "Druckt"),
     (
@@ -1864,20 +1899,12 @@ const DE: &[(&str, &str)] = &[
         "Wählen Sie im Druckcenter einen Drucker, um dieses Design zu drucken. Der Export funktioniert auch ohne Drucker.",
     ),
     ("Choose folder…", "Ordner wählen…"),
-    (
-        "Choose the driver media that matches your loaded labels. Custom uses the output dimensions.",
-        "Wählen Sie das Treibermedium, das zu Ihren eingelegten Etiketten passt. „Benutzerdefiniert“ verwendet die Ausgabemaße.",
-    ),
     ("Clear", "Entfernen"),
     ("Clear history", "Verlauf löschen"),
     ("Close", "Schließen"),
     ("Copy version information", "Versionsinformationen kopieren"),
     ("Credits and license", "Danksagungen und Lizenz"),
     ("Custom scale", "Benutzerdefinierte Skalierung"),
-    (
-        "Custom — match output dimensions",
-        "Benutzerdefiniert – Ausgabemaße übernehmen",
-    ),
     (
         "Default processing preserves tones. Thresholding can damage fine barcode detail.",
         "Die Standardverarbeitung erhält Tonwerte. Die Schwellenwertbildung kann feine Barcode-Details beschädigen.",
@@ -1913,10 +1940,6 @@ const DE: &[(&str, &str)] = &[
     (
         "Driver default resolution",
         "Standardauflösung des Treibers",
-    ),
-    (
-        "Driver media must match the paper dimensions above. Check your printer's unprintable margins.",
-        "Das Treibermedium muss den obigen Papiermaßen entsprechen. Beachten Sie die nicht bedruckbaren Ränder Ihres Druckers.",
     ),
     (
         "Drop PDFs or images to build a print queue",
@@ -2099,7 +2122,6 @@ const DE: &[(&str, &str)] = &[
     ),
     ("Print using raw ZPL", "Mit Roh-ZPL drucken"),
     ("Printer & media", "Drucker und Medien"),
-    ("Printer media size", "Medienformat des Druckers"),
     ("Printer queue", "Druckerwarteschlange"),
     ("Printer resolution", "Druckerauflösung"),
     ("Printer status", "Druckerstatus"),
@@ -2525,10 +2547,6 @@ const DE: &[(&str, &str)] = &[
         "Noch nichts gespeichert. Mit Datei → Als Vorlage speichern… kannst du eine hinzufügen.",
     ),
     ("Print on a sheet", "Auf einem Bogen drucken"),
-    (
-        "Place copies of this label on an A4 or Letter page, for an office printer or a sheet of sticky labels. ${serial} counts up from one label to the next.",
-        "Platziert Kopien dieser Etikette auf einer A4- oder Letter-Seite, für einen Bürodrucker oder einen Bogen Haftetiketten. ${serial} zählt von Etikette zu Etikette hoch.",
-    ),
     ("Paper", "Papier"),
     ("Resolution", "Auflösung"),
     ("Columns", "Spalten"),
@@ -2588,10 +2606,6 @@ const DE: &[(&str, &str)] = &[
         "Die integrierten und eigenen Vorlagen mit Vorschau durchsuchen",
     ),
     ("Print on a sheet…", "Auf einem Bogen drucken…"),
-    (
-        "Place several labels on one A4 or Letter page",
-        "Mehrere Etiketten auf eine A4- oder Letter-Seite setzen",
-    ),
     ("Print a number range…", "Nummernbereich drucken…"),
     (
         "Print labels numbered by ${serial} with a start, step, and count",
@@ -2852,6 +2866,109 @@ const DE: &[(&str, &str)] = &[
     ("Zoom to 100%", "Auf 100 % zoomen"),
     ("Printer", "Drucker"),
     ("Automation", "Automatisierung"),
+    (
+        "Place copies of this label on one page of any paper size your printer supports, for an office printer or a sheet of sticky labels. ${serial} counts up from one label to the next.",
+        "Platziert Kopien dieses Etiketts auf einer Seite in jedem Papierformat, das dein Drucker unterstützt, für einen Bürodrucker oder einen Bogen Klebeetiketten. ${serial} zählt von einem Etikett zum nächsten hoch.",
+    ),
+    ("Printer paper size", "Papierformat des Druckers"),
+    ("Custom size", "Eigenes Format"),
+    (
+        "Place several labels on one page of any paper size",
+        "Mehrere Etiketten auf einer Seite in beliebigem Papierformat platzieren",
+    ),
+    (
+        "Choose the paper or labels loaded in the printer. Custom uses the output dimensions.",
+        "Wähle das Papier oder die Etiketten, die im Drucker liegen. Eigene Maße verwendet die Ausgabegröße.",
+    ),
+    (
+        "Choose a printer and paper size, check alignment, and save it all as a stock profile you can load later.",
+        "Wähle Drucker und Papierformat, prüfe die Ausrichtung und speichere alles als Materialprofil, das du später laden kannst.",
+    ),
+    ("Use the paper size", "Papierformat übernehmen"),
+    ("Choose printer", "Drucker wählen"),
+    ("Looking for printers…", "Drucker werden gesucht…"),
+    (
+        "No printers found. Add a printer in your system settings, then refresh.",
+        "Keine Drucker gefunden. Füge in den Systemeinstellungen einen Drucker hinzu und aktualisiere dann.",
+    ),
+    ("Choose a printer first.", "Wähle zuerst einen Drucker."),
+    ("Paper or label size", "Papier- oder Etikettenformat"),
+    ("Custom dimensions", "Eigene Maße"),
+    (
+        "This printer does not list its paper sizes. Configure them in its driver.",
+        "Dieser Drucker nennt keine Papierformate. Richte sie in seinem Treiber ein.",
+    ),
+    ("Saves:", "Speichert:"),
+    (
+        "For example: 4 × 6 shipping labels",
+        "Zum Beispiel: 4 × 6 Versandetiketten",
+    ),
+    ("Replace stock profile", "Materialprofil ersetzen"),
+    ("Stock profile saved", "Materialprofil gespeichert"),
+    (
+        "A profile with this name already exists for this printer. Saving replaces it.",
+        "Für diesen Drucker gibt es schon ein Profil mit diesem Namen. Speichern ersetzt es.",
+    ),
+    (
+        "You have reached the limit of saved stock profiles. Delete one to add another.",
+        "Du hast die Höchstzahl gespeicherter Materialprofile erreicht. Lösche eines, um ein weiteres hinzuzufügen.",
+    ),
+    (
+        "A stock profile remembers a printer with its paper size, resolution, and alignment. Load one to switch to all of it at once.",
+        "Ein Materialprofil merkt sich einen Drucker mit Papierformat, Auflösung und Ausrichtung. Lade eines, um alles auf einmal umzustellen.",
+    ),
+    (
+        "No saved stock yet. Set up the printer and paper, then save them below.",
+        "Noch kein Material gespeichert. Richte Drucker und Papier ein und speichere sie unten.",
+    ),
+    ("Load", "Laden"),
+    (
+        "This printer is not connected",
+        "Dieser Drucker ist nicht verbunden",
+    ),
+    ("Delete stock profile?", "Materialprofil löschen?"),
+    ("Stock profile deleted", "Materialprofil gelöscht"),
+    (
+        "Choose the printer you will print on.",
+        "Wähle den Drucker, auf dem du drucken wirst.",
+    ),
+    (
+        "Choose the size loaded in the printer. Label printers list their label sizes; office printers list every paper size they support, such as Letter, Legal, or A4.",
+        "Wähle das eingelegte Format. Etikettendrucker zeigen ihre Etikettenformate; Bürodrucker jedes unterstützte Papierformat, etwa Letter, Legal oder A4.",
+    ),
+    (
+        "Optional. Print one test page and compare its 1 mm border to the edges. If it is off, move it with the offsets.",
+        "Optional. Drucke eine Testseite und vergleiche ihren 1-mm-Rand mit den Kanten. Liegt er daneben, verschiebe ihn mit den Versätzen.",
+    ),
+    (
+        "Name this setup so you can switch back to it in one click from Label stock.",
+        "Gib dieser Einrichtung einen Namen, um unter Etikettenmaterial mit einem Klick zu ihr zurückzukehren.",
+    ),
+    (
+        "It is now the active profile. Switch profiles any time from Active profile at the top of Print Center.",
+        "Es ist jetzt das aktive Profil. Wechsle Profile jederzeit über Aktives Profil oben im Druckcenter.",
+    ),
+    ("Finish", "Fertig"),
+    ("Set up another", "Weiteres einrichten"),
+    ("Active profile:", "Aktives Profil:"),
+    ("Stock profile updated", "Materialprofil aktualisiert"),
+    ("None", "Keines"),
+    ("Changed since it was loaded", "Seit dem Laden geändert"),
+    ("Update profile", "Profil aktualisieren"),
+    ("Active", "Aktiv"),
+    (
+        "Save the current printer, paper, resolution, and alignment into this profile",
+        "Aktuellen Drucker, Papier, Auflösung und Ausrichtung in diesem Profil speichern",
+    ),
+    (
+        "Changed since it was loaded. Update profile saves the changes.",
+        "Seit dem Laden geändert. Profil aktualisieren speichert die Änderungen.",
+    ),
+    ("Saved and active:", "Gespeichert und aktiv:"),
+    (
+        "Save the current setup as a new profile",
+        "Aktuelle Einrichtung als neues Profil speichern",
+    ),
 ];
 const FR: &[(&str, &str)] = &[
     ("No matches", "Aucun résultat"),
@@ -2898,16 +3015,7 @@ const FR: &[(&str, &str)] = &[
     ("Next", "Suivant"),
     ("Print one test label", "Imprimer une étiquette de test"),
     ("Close assistant", "Fermer l’assistant"),
-    (
-        "Match media to label size",
-        "Adapter le support à la taille de l’étiquette",
-    ),
-    (
-        "This printer does not advertise a matching media size. Configure the stock in its driver.",
-        "L’imprimante n’indique aucun format adapté. Configurez le support dans son pilote.",
-    ),
     ("Saved label stock", "Supports d’étiquettes enregistrés"),
-    ("Load profile", "Charger le profil"),
     ("Stock profile name", "Nom du profil de support"),
     ("Save stock profile", "Enregistrer le profil de support"),
     ("Reprint…", "Réimprimer…"),
@@ -2940,22 +3048,6 @@ const FR: &[(&str, &str)] = &[
     (
         "Compact product details and QR code",
         "Informations produit compactes et QR code",
-    ),
-    (
-        "Choose your printer below. Refresh printers if it is missing.",
-        "Choisissez l’imprimante ci-dessous. Actualisez la liste si elle manque.",
-    ),
-    (
-        "Measure the loaded label. Set its width, height, orientation, media size, and DPI below.",
-        "Mesurez l’étiquette chargée. Réglez sa largeur, hauteur, orientation, son format et sa résolution ci-dessous.",
-    ),
-    (
-        "Print one alignment test. Compare its 1 mm border to the label edges, then adjust the offsets below.",
-        "Imprimez un test d’alignement. Comparez sa bordure de 1 mm aux bords de l’étiquette, puis ajustez les décalages ci-dessous.",
-    ),
-    (
-        "Give this stock profile a name and save it below. Load it whenever you use this printer and label stock.",
-        "Nommez et enregistrez ce profil ci-dessous. Chargez-le lorsque vous utilisez cette imprimante et ce support.",
     ),
     ("Printing", "Impression de"),
     (
@@ -3229,10 +3321,6 @@ const FR: &[(&str, &str)] = &[
         "Choisissez une imprimante dans le Centre d'impression pour imprimer ce modèle. L'export reste possible sans imprimante.",
     ),
     ("Choose folder…", "Choisir un dossier…"),
-    (
-        "Choose the driver media that matches your loaded labels. Custom uses the output dimensions.",
-        "Choisissez le support du pilote correspondant à vos étiquettes chargées. « Personnalisé » utilise les dimensions de sortie.",
-    ),
     ("Clear", "Retirer"),
     ("Clear history", "Effacer l'historique"),
     ("Close", "Fermer"),
@@ -3242,10 +3330,6 @@ const FR: &[(&str, &str)] = &[
     ),
     ("Credits and license", "Crédits et licence"),
     ("Custom scale", "Échelle personnalisée"),
-    (
-        "Custom — match output dimensions",
-        "Personnalisé — reprendre les dimensions de sortie",
-    ),
     (
         "Default processing preserves tones. Thresholding can damage fine barcode detail.",
         "Le traitement par défaut préserve les tons. Le seuillage peut abîmer les détails fins du code-barres.",
@@ -3284,10 +3368,6 @@ const FR: &[(&str, &str)] = &[
     (
         "Driver default resolution",
         "Résolution par défaut du pilote",
-    ),
-    (
-        "Driver media must match the paper dimensions above. Check your printer's unprintable margins.",
-        "Le support du pilote doit correspondre aux dimensions ci-dessus. Vérifiez les marges non imprimables de votre imprimante.",
     ),
     (
         "Drop PDFs or images to build a print queue",
@@ -3476,7 +3556,6 @@ const FR: &[(&str, &str)] = &[
     ),
     ("Print using raw ZPL", "Imprimer en ZPL brut"),
     ("Printer & media", "Imprimante et support"),
-    ("Printer media size", "Taille du support de l'imprimante"),
     ("Printer queue", "File de l'imprimante"),
     ("Printer resolution", "Résolution de l'imprimante"),
     ("Printer status", "État de l'imprimante"),
@@ -3923,10 +4002,6 @@ const FR: &[(&str, &str)] = &[
         "Rien d'enregistré pour l'instant. Utilise Fichier → Enregistrer comme modèle… pour en ajouter un.",
     ),
     ("Print on a sheet", "Imprimer sur une feuille"),
-    (
-        "Place copies of this label on an A4 or Letter page, for an office printer or a sheet of sticky labels. ${serial} counts up from one label to the next.",
-        "Place des copies de cette étiquette sur une page A4 ou Letter, pour une imprimante de bureau ou une planche d'étiquettes adhésives. ${serial} augmente d'une étiquette à la suivante.",
-    ),
     ("Paper", "Papier"),
     ("Resolution", "Résolution"),
     ("Columns", "Colonnes"),
@@ -3986,10 +4061,6 @@ const FR: &[(&str, &str)] = &[
         "Parcours les modèles intégrés et les tiens avec aperçus",
     ),
     ("Print on a sheet…", "Imprimer sur une feuille…"),
-    (
-        "Place several labels on one A4 or Letter page",
-        "Place plusieurs étiquettes sur une page A4 ou Letter",
-    ),
     ("Print a number range…", "Imprimer une plage de numéros…"),
     (
         "Print labels numbered by ${serial} with a start, step, and count",
@@ -4250,6 +4321,115 @@ const FR: &[(&str, &str)] = &[
     ("Zoom to 100%", "Zoom à 100 %"),
     ("Printer", "Imprimante"),
     ("Automation", "Automatisation"),
+    (
+        "Place copies of this label on one page of any paper size your printer supports, for an office printer or a sheet of sticky labels. ${serial} counts up from one label to the next.",
+        "Place des copies de cette étiquette sur une page de n’importe quel format pris en charge par votre imprimante, pour une imprimante de bureau ou une planche d’étiquettes adhésives. ${serial} augmente d’une étiquette à la suivante.",
+    ),
+    ("Printer paper size", "Format de papier de l’imprimante"),
+    ("Custom size", "Format personnalisé"),
+    (
+        "Place several labels on one page of any paper size",
+        "Placer plusieurs étiquettes sur une page de n’importe quel format",
+    ),
+    (
+        "Choose the paper or labels loaded in the printer. Custom uses the output dimensions.",
+        "Choisissez le papier ou les étiquettes chargés dans l’imprimante. Personnalisé utilise les dimensions de sortie.",
+    ),
+    (
+        "Choose a printer and paper size, check alignment, and save it all as a stock profile you can load later.",
+        "Choisissez une imprimante et un format de papier, vérifiez l’alignement et enregistrez le tout comme profil à recharger plus tard.",
+    ),
+    ("Use the paper size", "Utiliser le format du papier"),
+    ("Choose printer", "Choisir l’imprimante"),
+    ("Looking for printers…", "Recherche des imprimantes…"),
+    (
+        "No printers found. Add a printer in your system settings, then refresh.",
+        "Aucune imprimante trouvée. Ajoutez-en une dans les réglages du système, puis actualisez.",
+    ),
+    (
+        "Choose a printer first.",
+        "Choisissez d’abord une imprimante.",
+    ),
+    ("Paper or label size", "Format du papier ou de l’étiquette"),
+    ("Custom dimensions", "Dimensions personnalisées"),
+    (
+        "This printer does not list its paper sizes. Configure them in its driver.",
+        "Cette imprimante n’indique pas ses formats de papier. Configurez-les dans son pilote.",
+    ),
+    ("Saves:", "Enregistre :"),
+    (
+        "For example: 4 × 6 shipping labels",
+        "Par exemple : étiquettes d’expédition 4 × 6",
+    ),
+    ("Replace stock profile", "Remplacer le profil de support"),
+    ("Stock profile saved", "Profil de support enregistré"),
+    (
+        "A profile with this name already exists for this printer. Saving replaces it.",
+        "Un profil portant ce nom existe déjà pour cette imprimante. L’enregistrer le remplace.",
+    ),
+    (
+        "You have reached the limit of saved stock profiles. Delete one to add another.",
+        "Vous avez atteint la limite de profils enregistrés. Supprimez-en un pour en ajouter un autre.",
+    ),
+    (
+        "A stock profile remembers a printer with its paper size, resolution, and alignment. Load one to switch to all of it at once.",
+        "Un profil de support mémorise une imprimante avec son format de papier, sa résolution et son alignement. Chargez-en un pour tout changer d’un coup.",
+    ),
+    (
+        "No saved stock yet. Set up the printer and paper, then save them below.",
+        "Aucun support enregistré. Configurez l’imprimante et le papier, puis enregistrez-les ci-dessous.",
+    ),
+    ("Load", "Charger"),
+    (
+        "This printer is not connected",
+        "Cette imprimante n’est pas connectée",
+    ),
+    ("Delete stock profile?", "Supprimer le profil de support ?"),
+    ("Stock profile deleted", "Profil de support supprimé"),
+    (
+        "Choose the printer you will print on.",
+        "Choisissez l’imprimante sur laquelle vous allez imprimer.",
+    ),
+    (
+        "Choose the size loaded in the printer. Label printers list their label sizes; office printers list every paper size they support, such as Letter, Legal, or A4.",
+        "Choisissez le format chargé dans l’imprimante. Les imprimantes d’étiquettes listent leurs formats d’étiquettes ; les imprimantes de bureau, tous les formats de papier pris en charge, comme Letter, Legal ou A4.",
+    ),
+    (
+        "Optional. Print one test page and compare its 1 mm border to the edges. If it is off, move it with the offsets.",
+        "Facultatif. Imprimez une page de test et comparez sa bordure de 1 mm aux bords. Si elle est décalée, corrigez-la avec les décalages.",
+    ),
+    (
+        "Name this setup so you can switch back to it in one click from Label stock.",
+        "Nommez cette configuration pour y revenir en un clic depuis Support d’étiquettes.",
+    ),
+    (
+        "It is now the active profile. Switch profiles any time from Active profile at the top of Print Center.",
+        "C’est maintenant le profil actif. Changez de profil à tout moment depuis Profil actif, en haut du Centre d’impression.",
+    ),
+    ("Finish", "Terminer"),
+    ("Set up another", "En configurer un autre"),
+    ("Active profile:", "Profil actif :"),
+    ("Stock profile updated", "Profil de support mis à jour"),
+    ("None", "Aucun"),
+    (
+        "Changed since it was loaded",
+        "Modifié depuis son chargement",
+    ),
+    ("Update profile", "Mettre à jour le profil"),
+    ("Active", "Actif"),
+    (
+        "Save the current printer, paper, resolution, and alignment into this profile",
+        "Enregistrer l’imprimante, le papier, la résolution et l’alignement actuels dans ce profil",
+    ),
+    (
+        "Changed since it was loaded. Update profile saves the changes.",
+        "Modifié depuis son chargement. Mettre à jour le profil enregistre les modifications.",
+    ),
+    ("Saved and active:", "Enregistré et actif :"),
+    (
+        "Save the current setup as a new profile",
+        "Enregistrer la configuration actuelle comme nouveau profil",
+    ),
 ];
 
 #[cfg(test)]

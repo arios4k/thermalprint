@@ -55,7 +55,8 @@ enum Message {
         detail: String,
     },
     Rendered(Arc<Output>),
-    Printers(Vec<Printer>),
+    /// The printer list, or why it could not be read. Finding printers never blocks other work.
+    Printers(Result<Vec<Printer>, String>),
     Done(String),
     /// One queued label was submitted; the index is its place in the queue.
     /// A label from the watch folder was printed by itself.
@@ -113,6 +114,12 @@ pub struct ThermalPrint {
     last_tray_check: Instant,
     explicit_quit: bool,
     setup_step: Option<usize>,
+    /// Printer discovery is running in the background.
+    finding_printers: bool,
+    /// The stock profile waiting for the user to confirm its deletion.
+    stock_delete: Option<String>,
+    /// The profile just saved, confirmed on screen until the next one is started.
+    stock_saved: Option<String>,
     /// The Print Center tab in view.
     print_tab: PrintTab,
     /// The Import & Convert sidebar tab in view.
@@ -261,6 +268,9 @@ impl ThermalPrint {
             last_tray_check: Instant::now() - Duration::from_secs(1),
             explicit_quit: false,
             setup_step: None,
+            finding_printers: false,
+            stock_delete: None,
+            stock_saved: None,
             print_tab: PrintTab::Printer,
             import_tab: ImportTab::Label,
             stock_name: String::new(),
@@ -351,13 +361,18 @@ impl ThermalPrint {
         });
     }
     fn refresh_printers(&mut self) {
-        self.task(
-            printing::platform_message(
-                "Looking for CUPS printers…",
-                "Looking for Windows printers…",
-            ),
-            || Ok(Message::Printers(printing::discover()?)),
-        );
+        if self.finding_printers {
+            return;
+        }
+        // Runs beside other work: a slow or stuck printer queue never makes the app wait.
+        self.finding_printers = true;
+        let tx = self.tx.clone();
+        std::thread::spawn(move || {
+            let result = std::panic::catch_unwind(printing::discover)
+                .map_err(|_| "Could not read the printer list".to_owned())
+                .and_then(|r| r.map_err(|e| format!("{e:#}")));
+            let _ = tx.send(Message::Printers(result));
+        });
     }
     fn load(&mut self, path: PathBuf, index: usize) {
         self.task("Rendering document at 300 DPI…", move || {
@@ -987,7 +1002,9 @@ impl ThermalPrint {
     }
     fn poll(&mut self, ctx: &egui::Context) {
         while let Ok(msg) = self.rx.try_recv() {
-            self.busy = false;
+            if !matches!(msg, Message::Printers(_)) {
+                self.busy = false;
+            }
             match msg {
                 Message::Files(files) => self.append_files(files),
                 Message::Loaded(page, d) => {
@@ -1070,7 +1087,13 @@ impl ThermalPrint {
                     };
                     self.output = Some(output);
                 }
-                Message::Printers(p) => {
+                Message::Printers(Err(e)) => {
+                    self.finding_printers = false;
+                    self.status = format!("Could not list printers: {e}");
+                    self.error = true;
+                }
+                Message::Printers(Ok(p)) => {
+                    self.finding_printers = false;
                     self.printers = p;
                     if !self
                         .printers
@@ -2239,6 +2262,8 @@ impl ThermalPrint {
         );
         ui.add_space(8.);
         let old = self.settings.clone();
+        self.stock_quick_switch(ui, "center-stock");
+        ui.add_space(4.);
         theme::tabs(
             ui,
             &mut self.print_tab,
@@ -2252,11 +2277,6 @@ impl ThermalPrint {
         match self.print_tab {
             PrintTab::Printer => {
                 self.stock_setup(ui);
-                // The assistant's last step saves a profile, so show that card with it.
-                if self.setup_step == Some(3) {
-                    ui.add_space(12.);
-                    self.stock_profiles(ui);
-                }
                 ui.add_space(12.);
                 if ui.available_width() >= 900. {
                     ui.columns(2, |columns| {
@@ -2442,61 +2462,14 @@ impl ThermalPrint {
         ui.add_space(4.);
     }
     fn print_settings(&mut self, ui: &mut egui::Ui) {
-        let previous_printer = self.settings.printer.clone();
-        let mut chosen_printer = previous_printer.clone();
         Self::section_frame(ui).show(ui, |ui| {
             ui.set_width(ui.available_width());
             Self::center_heading(ui, crate::i18n::tr("Printer & media"), "Print device");
             ui.label(crate::i18n::tr("Printer queue"));
-            egui::ComboBox::from_id_salt("center-printer")
-                .selected_text(if chosen_printer.is_empty() {
-                    "Choose printer"
-                } else {
-                    &chosen_printer
-                })
-                .show_ui(ui, |ui| {
-                    for p in &self.printers {
-                        ui.selectable_value(&mut chosen_printer, p.name.clone(), &p.name);
-                    }
-                });
-            if previous_printer != chosen_printer {
-                // Each printer keeps its own media, resolution, size, copies, and alignment.
-                if !self.settings.switch_printer(&chosen_printer) {
-                    self.settings.media.clear();
-                    self.settings.resolution.clear();
-                    self.select_default_media();
-                }
-            }
-            if self.printers.is_empty() {
-                ui.label(
-                    RichText::new(
-                        "No printers found. Add a printer in your system settings, then refresh.",
-                    )
-                    .weak(),
-                );
-            }
-            if let Some(p) = self
-                .printers
-                .iter()
-                .find(|p| p.name == self.settings.printer)
-            {
-                ui.label(printing::thermal_hint(p));
-                ui.label(crate::i18n::tr("Printer media size"));
-                egui::ComboBox::from_id_salt("center-media")
-                    .selected_text(p.media_label(&self.settings.media))
-                    .show_ui(ui, |ui| {
-                        if p.custom_media {
-                            ui.selectable_value(
-                                &mut self.settings.media,
-                                "Custom".into(),
-                                "Custom dimensions",
-                            );
-                        }
-                        for m in &p.media {
-                            ui.selectable_value(&mut self.settings.media, m.clone(), p.media_label(m)).on_hover_text(format!("Driver code: {m}"));
-                        }
-                    });
-                ui.label(RichText::new(crate::i18n::tr("Choose the driver media that matches your loaded labels. Custom uses the output dimensions.")).small().weak());
+            self.printer_picker(ui, "center-printer");
+            if let Some(p) = self.selected_printer().cloned() {
+                self.media_picker(ui, "center-media");
+                ui.label(RichText::new(crate::i18n::tr("Choose the paper or labels loaded in the printer. Custom uses the output dimensions.")).small().weak());
                 if !p.resolutions.is_empty() {
                     ui.collapsing(crate::i18n::tr("Advanced driver resolution"), |ui| {
                     ui.label(crate::i18n::tr("Printer resolution"));
@@ -2519,9 +2492,6 @@ impl ThermalPrint {
                     });
                 }
             }
-            if crate::designer_ui::icon_action(ui, "Refresh", "Refresh printers", printing::platform_message("Refresh available CUPS printers", "Refresh available Windows printers"), true, false).clicked() {
-                self.refresh_printers();
-            }
             ui.separator();
             ui.label(RichText::new(crate::i18n::tr("Output settings")).strong());
             ui.horizontal(|ui| {
@@ -2537,19 +2507,7 @@ impl ThermalPrint {
                     });
             });
             ui.label(crate::i18n::tr("Output label size"));
-            egui::ComboBox::from_id_salt("center-label-size")
-                .selected_text(format!("{:.1} × {:.1} mm", self.settings.width_mm, self.settings.height_mm))
-                .show_ui(ui, |ui| {
-                    for (name, width, height) in [
-                        ("4 × 6 in", 101.6, 152.4), ("4 × 4 in", 101.6, 101.6),
-                        ("2 × 1 in", 50.8, 25.4), ("100 × 150 mm", 100., 150.),
-                    ] {
-                        if ui.selectable_label(self.settings.width_mm == width && self.settings.height_mm == height, name).clicked() {
-                            self.settings.width_mm = width;
-                            self.settings.height_mm = height;
-                        }
-                    }
-                });
+            self.paper_size_picker(ui, "center-label-size");
             ui.horizontal(|ui| {
                 ui.label(crate::i18n::tr("Width"));
                 ui.add(
@@ -3130,9 +3088,7 @@ impl ThermalPrint {
             Self::section_frame(ui).show(ui, |ui| { ui.set_width(ui.available_width());
             Self::import_step_heading(ui, "02  PAPER & LAYOUT", "Choose a label template");
             let before=serde_json::to_string(&self.settings).unwrap_or_default();
-            egui::ComboBox::from_id_salt("paper").selected_text(format!("{:.1} × {:.1} mm",self.settings.width_mm,self.settings.height_mm)).width(ui.available_width()-12.).show_ui(ui,|ui| {
-                for (name,w,h) in [("4 × 6 in",101.6,152.4),("4 × 4 in",101.6,101.6),("2 × 1 in",50.8,25.4),("100 × 150 mm",100.,150.)] {if ui.selectable_label(self.settings.width_mm==w&&self.settings.height_mm==h,name).clicked(){self.settings.width_mm=w;self.settings.height_mm=h;}}
-            });
+            self.paper_size_picker(ui, "paper");
             ui.horizontal(|ui|{ui.label(crate::i18n::tr("W"));ui.add(egui::DragValue::new(&mut self.settings.width_mm).range(10.0..=500.0).speed(0.1).suffix(" mm"));ui.label(crate::i18n::tr("H"));ui.add(egui::DragValue::new(&mut self.settings.height_mm).range(10.0..=500.0).speed(0.1).suffix(" mm"));});
             if crate::designer_ui::icon_action(ui, "Rotate stock", "Swap portrait / landscape", "Swap label width and height", true, false).clicked(){std::mem::swap(&mut self.settings.width_mm,&mut self.settings.height_mm);}
             egui::CollapsingHeader::new("Advanced layout & resolution").show(ui, |ui| {
@@ -3150,14 +3106,10 @@ impl ThermalPrint {
             Self::section_frame(ui).show(ui, |ui| { ui.set_width(ui.available_width());
             Self::import_step_heading(ui, "03  PRINT & EXPORT", "Print device");
             ui.horizontal(|ui| { ui.label(crate::i18n::tr(printing::platform_message("Printing service: CUPS", "Printing service: Windows"))); crate::help::hint(ui, crate::help::PRINT_SERVICE); });
-            let previous=self.settings.printer.clone();
-            egui::ComboBox::from_id_salt("printer").selected_text(if previous.is_empty(){"Choose a printer"}else{&previous}).width(ui.available_width()-12.).show_ui(ui,|ui|{for p in &self.printers{ui.selectable_value(&mut self.settings.printer,p.name.clone(),format!("{}{}",p.name,if p.is_default{" (default)"}else{""}));}});
-            if previous!=self.settings.printer {self.settings.media.clear();self.settings.resolution.clear();self.select_default_media();}
-            if let Some(p)=self.printers.iter().find(|p|p.name==self.settings.printer).cloned(){
-                ui.label(RichText::new(&p.description).small().weak());
-                ui.label(RichText::new(printing::thermal_hint(&p)).small().weak());
-                egui::ComboBox::from_id_salt("media").selected_text(p.media_label(&self.settings.media)).width(ui.available_width()-12.).show_ui(ui,|ui|{if p.custom_media {ui.selectable_value(&mut self.settings.media,"Custom".into(),crate::i18n::tr("Custom — match output dimensions"));}for m in &p.media {ui.selectable_value(&mut self.settings.media,m.clone(),p.media_label(m)).on_hover_text(format!("Driver code: {m}"));}});
-                ui.label(RichText::new(crate::i18n::tr("Driver media must match the paper dimensions above. Check your printer's unprintable margins.")).small());
+            self.stock_quick_switch(ui, "import-stock");
+            self.printer_picker(ui, "printer");
+            if let Some(p)=self.selected_printer().cloned(){
+                self.media_picker(ui, "media");
                 if !p.resolutions.is_empty(){ui.collapsing(crate::i18n::tr("Advanced driver resolution"), |ui| {egui::ComboBox::from_id_salt("resolution").selected_text(if self.settings.resolution.is_empty(){"Driver default resolution"}else{&self.settings.resolution}).show_ui(ui,|ui|{ui.selectable_value(&mut self.settings.resolution,String::new(),crate::i18n::tr("Driver default resolution"));for r in &p.resolutions{ui.selectable_value(&mut self.settings.resolution,r.clone(),r);}});});}
             }
             ui.horizontal(|ui|{ui.label(crate::i18n::tr("Copies"));ui.add(egui::DragValue::new(&mut self.settings.copies).range(1..=999));if crate::designer_ui::icon_action(ui, "Refresh", "", printing::platform_message("Refresh available CUPS printers", "Refresh available Windows printers"), !self.busy, false).clicked(){self.refresh_printers();}});
@@ -4006,6 +3958,10 @@ impl eframe::App for ThermalPrint {
                     self.settings.footer = footer;
                     self.persist();
                 }
+                if let Some(media) = self.designer.media_request.take() {
+                    self.settings.media = media;
+                    self.persist();
+                }
                 if let Some(margin) = self.designer.safe_margin_request.take() {
                     self.settings.safe_margin_mm =
                         margin.clamp(0., crate::settings::MAX_SAFE_MARGIN_MM);
@@ -4101,6 +4057,8 @@ impl eframe::App for ThermalPrint {
         }
         if self.busy {
             ctx.request_repaint_after(Duration::from_millis(50));
+        } else if self.finding_printers {
+            ctx.request_repaint_after(Duration::from_millis(200));
         }
     }
     fn save(&mut self, _: &mut dyn eframe::Storage) {

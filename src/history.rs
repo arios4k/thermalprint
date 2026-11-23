@@ -53,6 +53,7 @@ impl Entry {
         saved.saved_queue.clear();
         saved.profiles.clear();
         saved.stock_profiles.clear();
+        saved.active_stock = None;
         saved.print_history.clear();
         self.settings = Some(saved);
         self.crop = crop;

@@ -47,7 +47,7 @@ summary: Plain-language explanations of the printing and barcode terms, and comm
 
 <h2>Frequently asked questions</h2>
 <h3>Does ThermalPrint work with my printer?</h3>
-<p>If your printer is configured in CUPS on Linux or in Windows printer settings, and the driver offers your paper or label size, choose it in Print Center. For laser or inkjet printers, you can choose A4 or Letter and use <strong>File → Print on a sheet…</strong> to put several labels on one page. Raw ZPL needs a printer that understands ZPL and a queue that accepts raw jobs.</p>
+<p>If your printer is configured in CUPS on Linux or in Windows printer settings, and the driver offers your paper or label size, choose it in Print Center. For laser or inkjet printers, every paper size the printer supports is offered, such as Letter, Legal, or A4; you can print one label per page, or use <strong>File → Print on a sheet…</strong> to put several labels on one page. Raw ZPL needs a printer that understands ZPL and a queue that accepts raw jobs.</p>
 <h3>Can it print postage?</h3>
 <p>No. ThermalPrint prepares and prints labels. It does not buy postage or create tracking numbers, and it does not connect to carrier or marketplace accounts.</p>
 <h3>Why does the preview differ from my printed label?</h3>
@@ -59,7 +59,7 @@ summary: Plain-language explanations of the printing and barcode terms, and comm
 <h3>How do I print 100 numbered labels?</h3>
 <p>Put <code>${serial:4}</code> in a text or barcode object, then use <strong>File → Print a number range…</strong>. See <a href="designer.html#numbered-runs-and-sheets">Numbered runs and sheets</a>.</p>
 <h3>How do I put several labels on one A4 sheet?</h3>
-<p>Use <strong>File → Print on a sheet…</strong>, choose A4 or Letter, and press <strong>Fit as many as possible</strong>. You can print it or save it as a PDF.</p>
+<p>Use <strong>File → Print on a sheet…</strong>, choose the paper, such as Letter, Legal, or A4, and press <strong>Fit as many as possible</strong>. You can print it or save it as a PDF.</p>
 <h3>Can it make GS1 or pallet (SSCC) labels?</h3>
 <p>Yes, with the GS1-128 and GS1 Data Matrix barcode types and the SSCC helper. See <a href="barcodes.html#gs1-barcodes">GS1 barcodes</a>.</p>
 <h3>Where are my templates, logos, fonts, and addresses kept?</h3>

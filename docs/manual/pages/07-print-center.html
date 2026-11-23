@@ -8,9 +8,10 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
 <table>
   <tr><th>Tab</th><th>What it holds</th></tr>
   <tr><td><strong>Printer</strong></td><td>The printer setup assistant, the printer and media, output settings, alignment, the label stock preview, and the queue and diagnostics. This is where you start.</td></tr>
-  <tr><td><strong>Label stock</strong></td><td>Your saved label stock profiles for the selected printer: load one, or save the current settings under a name. See <a href="#guided-setup">Printer setup assistant and label stock</a>.</td></tr>
+  <tr><td><strong>Label stock</strong></td><td>All your saved stock profiles, for every printer: load, update, or delete one, or save the current setup as a new one. See <a href="#stock-profiles">Stock profiles</a>.</td></tr>
   <tr><td><strong>Recent prints</strong></td><td>Your last 50 prints, to open again or reprint. See <a href="#recent-prints">Recent prints</a>.</td></tr>
 </table>
+<p>Once you have saved a stock profile, an <strong>Active profile</strong> menu sits above the tabs, and in the Import &amp; Convert print settings. It always shows which profile is in use, switches to another one in one step, even one for a different printer, and says <em>Changed since it was loaded</em> with an <strong>Update profile</strong> button when you have adjusted the settings since. See <a href="#stock-profiles">Stock profiles</a>.</p>
 
 {{figure:print-center-annotated|Print Center on its Printer tab, with the Printer, Label stock, and Recent prints tabs, the setup assistant, printer and media, output settings, label stock preview, and diagnostics|The Printer tab of Print Center. Screenshots show Linux; Windows uses its native print spooler.}}
 
@@ -18,19 +19,19 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
 <p>ThermalPrint prints through <strong>CUPS</strong> on Linux and the <strong>Windows print spooler</strong> on Windows 11. Add the printer in your system's printer settings first. On Windows, configure the label stock in the printer driver so ThermalPrint can list its dimensions. See <a href="install.html#windows-11">Windows setup</a>.</p>
 <table>
   <tr><th>Setting</th><th>What it means</th></tr>
-  <tr><td><strong>Printer queue</strong></td><td>The printers your system knows. The line below shows a best-effort hint such as <em>Likely thermal label printer</em>. It is based on the name and media, and is a hint only.</td></tr>
-  <tr><td><strong>Printer media size</strong></td><td>The paper size the printer driver offers. Choose the one that matches your loaded labels, such as <em>4 × 6 in</em>. A <em>Custom dimensions</em> choice appears if the driver supports it.</td></tr>
+  <tr><td><strong>Printer queue</strong></td><td>The printers your system knows. The line below shows a best-effort hint such as <em>Likely thermal label printer</em>. It is based on the name and media, and is a hint only. A printer that is paused, offline, or not answering shows a note saying so.</td></tr>
+  <tr><td><strong>Paper or label size</strong></td><td>Every size the printer supports. A thermal printer lists its label sizes, such as <em>4 × 6 in</em>; an office laser or inkjet printer lists all its paper, such as <em>Letter</em>, <em>Legal</em>, <em>A4</em>, and photo sizes. Choosing one also sets the output width and height to match. A <em>Custom dimensions</em> choice appears if the driver supports it.</td></tr>
   <tr><td><strong>Advanced driver resolution</strong></td><td>An optional resolution choice if the printer offers one. Leave it on <em>Driver default</em> unless you have a reason.</td></tr>
-  <tr><td><strong>Refresh printers</strong></td><td>Looks for printers again after you add or turn on a printer.</td></tr>
+  <tr><td><strong>Refresh printers</strong></td><td>Looks for printers again after you add or turn on a printer. This runs in the background, so you can keep working. A printer that does not answer within a few seconds is still listed with a note, so a stuck printer queue never makes the app wait.</td></tr>
 </table>
-<div class="callout note"><p><strong>Why media matters.</strong> The media tells the printer driver how big the label is, so it does not shrink, rotate, or add margins. If the output size and the printer media disagree, ThermalPrint warns you and offers <strong>Match output to printer media</strong>.</p></div>
+<div class="callout note"><p><strong>Why media matters.</strong> The media tells the printer driver how big the label is, so it does not shrink, rotate, or add margins. If the output size and the printer media disagree, ThermalPrint warns you and offers <strong>Use the paper size</strong>.</p></div>
 
 <h2>Output settings</h2>
 <table>
   <tr><th>Setting</th><th>What it does</th></tr>
   <tr><td><strong>Copies</strong></td><td>How many of each label to print (1 to 999).</td></tr>
-  <tr><td><strong>Rendering DPI</strong></td><td>The sharpness the label is drawn at: 203 (typical for 4 × 6 printers), 300, or 600. Use your printer's real resolution.</td></tr>
-  <tr><td><strong>Output label size</strong></td><td>Presets (4 × 6 in, 4 × 4 in, 2 × 1 in, 100 × 150 mm) or your own <strong>Width</strong> and <strong>Height</strong> in millimeters.</td></tr>
+  <tr><td><strong>Rendering DPI</strong></td><td>The sharpness the label is drawn at: 203 (typical for 4 × 6 printers), 300, or 600. Use your printer's real resolution. Pages up to US Legal fit at 600 DPI; for larger paper such as A3, choose 300.</td></tr>
+  <tr><td><strong>Output label size</strong></td><td>The selected printer's own sizes first, then common label sizes (4 × 6 in, 4 × 4 in, 2 × 1 in, 100 × 150 mm, Letter, Legal, A4), or your own <strong>Width</strong> and <strong>Height</strong> in millimeters. Choosing one of the printer's sizes also selects that paper.</td></tr>
   <tr><td><strong>Swap portrait / landscape</strong></td><td>Exchanges width and height.</td></tr>
 </table>
 
@@ -76,16 +77,28 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
 <p>A batch print is listed once, as <em>Design name · batch of N</em>. See <a href="automation.html">Folder watching and history</a> for more.</p>
 
 
-<h2 id="guided-setup">Printer setup assistant and label stock</h2>
-<p>The <strong>Printer setup assistant</strong> card is at the top of the <strong>Printer</strong> tab. Choose <strong>Set up printer and label stock</strong>:</p>
+<h2 id="guided-setup">Printer setup assistant</h2>
+<p>The <strong>Printer setup assistant</strong> card is at the top of the <strong>Printer</strong> tab. Choose <strong>Set up printer and label stock</strong> to start. It has four numbered steps, shown across the top so you always know where you are, and each step has its own controls:</p>
 <ol>
-  <li>Choose the installed printer below the assistant. Use <strong>Refresh printers</strong> if it is missing.</li>
-  <li>Measure the loaded label and set its width, height, orientation, driver media, and DPI. <strong>Match media to label size</strong> selects a matching media size when the driver offers one.</li>
-  <li>Print one alignment test, compare the 1 mm border to the stock edges, and adjust the offsets below.</li>
-  <li>The last step shows the <strong>Saved label stock</strong> card right under the assistant. Enter a <strong>Stock profile name</strong> and choose <strong>Save stock profile</strong>.</li>
+  <li><strong>Printer.</strong> Choose the printer you will print on. Use <strong>Refresh printers</strong> if it is missing.</li>
+  <li><strong>Paper or label size.</strong> Choose the size loaded in the printer, from every size it supports: label sizes on a thermal printer, or any paper such as Letter, Legal, or A4 on an office printer. The width and height follow; check the orientation and DPI.</li>
+  <li><strong>Alignment</strong> (optional). Press <strong>Print one test label</strong>, compare its 1 mm border to the edges, and adjust <strong>Horizontal</strong> and <strong>Vertical</strong>. Office printers rarely need this.</li>
+  <li><strong>Save.</strong> Give the setup a name, such as <em>4 × 6 shipping labels</em> or <em>Letter paper</em>, and choose <strong>Save stock profile</strong>.</li>
 </ol>
-{{figure:printer-setup|Printer setup assistant, above the printer, media, size and alignment controls|The assistant guides the existing controls below it. This example shows a fictional 4 × 6 printer.}}
-<p>Named profiles let the same printer use several kinds of stock. Find the profile on the <strong>Label stock</strong> tab, under <strong>Saved label stock</strong>, and choose its <strong>Load profile</strong> button to restore its size, media, driver resolution, DPI, offsets, copies, and safe margin. A profile belongs to its printer; switch to that printer before loading it. Up to 50 named profiles are retained. <strong>Close assistant</strong> closes the guide; your current printer settings remain in use.</p>
+<p>The assistant finishes with a <strong>✔ Stock profile saved</strong> page that names the profile and what it holds, and confirms it is now the active profile. Choose <strong>Finish</strong> to close it, or <strong>Set up another</strong> to start again for another printer or paper. <strong>Back</strong> returns to an earlier step, and <strong>Close assistant</strong> stops at any time without saving; your current settings stay in use.</p>
+{{figure:printer-setup|Printer setup assistant on its Paper or label size step, with the numbered steps across the top|The assistant has four numbered steps, each with its own controls. This example shows a fictional 4 × 6 printer.}}
+
+<h2 id="stock-profiles">Stock profiles</h2>
+<p>A stock profile remembers a printer together with its paper or label size, driver resolution, DPI, copies, offsets, and safe margin. Profiles make it quick to move between printers, or between kinds of paper on the same printer: one printer can have as many profiles as you like, such as <em>4 × 6 labels</em> and <em>Letter paper</em> on the same office printer.</p>
+<ul>
+  <li><strong>See which one is active.</strong> The <strong>Active profile</strong> menu above the Print Center tabs, and in Import &amp; Convert, names the profile in use. On the <strong>Label stock</strong> tab, the active profile is marked <strong>● Active</strong>.</li>
+  <li><strong>Switch.</strong> Pick another profile from the <strong>Active profile</strong> menu, or choose <strong>Load</strong> beside it on the <strong>Label stock</strong> tab. If it belongs to another printer, ThermalPrint switches to that printer too. The label size follows everywhere: an imported label is redrawn at the new size, and the design open in the Label Designer is resized to match (Ctrl+Z in the Designer puts the old size back). <strong>Load</strong> is unavailable while the profile's printer is not connected.</li>
+  <li><strong>Update.</strong> After changing the settings of the active profile, it shows <em>Changed since it was loaded</em>. Choose <strong>Update profile</strong> to save the changes into it.</li>
+  <li><strong>Save a new one.</strong> Under <strong>Save the current setup as a new profile</strong>, enter a name and choose <strong>Save stock profile</strong>. The line above shows exactly what will be saved. A green <strong>✔ Saved and active</strong> line confirms it. If the printer already has a profile with that name, the button reads <strong>Replace stock profile</strong> and a warning says so.</li>
+  <li><strong>Delete.</strong> Choose <strong>Delete</strong> beside a profile and confirm.</li>
+</ul>
+{{figure:print-center-stock|The Label stock tab with three saved profiles, one marked Active with Update profile and Delete, the others with Load and Delete, and a form to save the current setup as a new profile|The Active profile menu above the tabs, and the Label stock tab. Profiles for every printer are listed; the fictional office printer here is not connected, so its profile cannot be loaded.}}
+<p>Up to 50 profiles are kept. If the settings file ever cannot be read, ThermalPrint keeps a copy of it beside the original, named <code>settings.json.unreadable-…</code>, instead of overwriting your profiles.</p>
 
 <h2 id="reprint">Reprinting from history</h2>
 <p>On the <strong>Recent prints</strong> tab, search by label name or printer. New entries record their crop, page, print settings, and editable design when small enough to retain. <strong>Reprint…</strong> shows the recorded settings and asks before sending another job. A changed or missing source file requires you to open it for review. Labels moved to <strong>Processed</strong> keep their history link. Older entries can still be opened for review.</p>
