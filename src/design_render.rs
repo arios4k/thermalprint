@@ -753,7 +753,7 @@ fn draw_image(im: &mut RgbaImage, data: &str, options: &ObjectOptions) -> Result
 fn render_object(o: &DesignObject, dpi: u32, serial: u64) -> Result<RgbaImage> {
     let w = dots(o.width_mm, dpi).max(1);
     let h = dots(o.height_mm, dpi).max(1);
-    if w as u64 * h as u64 > 36_000_000 {
+    if w as u64 * h as u64 > crate::layout::MAX_OUTPUT_PIXELS {
         bail!("Object exceeds render limit");
     }
     let mut im = RgbaImage::new(w, h);
@@ -799,7 +799,7 @@ fn rotate_layer(im: RgbaImage, degrees: f32) -> Result<RgbaImage> {
     let (width, height) =
         crate::design::rotated_size(im.width() as f32, im.height() as f32, degrees);
     let (width, height) = (width.ceil() as u32, height.ceil() as u32);
-    if width as u64 * height as u64 > 36_000_000 {
+    if width as u64 * height as u64 > crate::layout::MAX_OUTPUT_PIXELS {
         bail!("Rotated object exceeds render limit");
     }
     let mut output = RgbaImage::new(width, height);
@@ -926,8 +926,8 @@ pub fn render_preview(doc: &LabelDocument, dpi: u32) -> Result<(Output, Vec<u64>
     }
     let w = dots(doc.width_mm, dpi).max(1);
     let h = dots(doc.effective_height_mm(), dpi).max(1);
-    if w as u64 * h as u64 > 36_000_000 {
-        bail!("Label exceeds 36 megapixels at {dpi} DPI");
+    if w as u64 * h as u64 > crate::layout::MAX_OUTPUT_PIXELS {
+        bail!("The label is too large at {dpi} DPI. Choose a lower resolution");
     }
     let mut image = RgbImage::from_pixel(w, h, Rgb([255; 3]));
     let mut warnings = vec![];

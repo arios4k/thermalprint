@@ -7,6 +7,7 @@
 | PDF cannot open | Install PDFium or Poppler's `pdfinfo` and `pdftoppm`. Try re-exporting encrypted or damaged PDFs. |
 | No printers listed | Confirm CUPS is running, a queue exists, and `lpstat -p` works for your user. Export can still be used. |
 | No suitable media choice | Configure the printer queue for label stock. Custom dimensions require a driver that advertises Custom media. |
+| A printer "did not answer" or is paused or offline | The queue is stuck, off, or gone from the network. ThermalPrint stops waiting after a few seconds. Resume or remove the queue in the system printer settings, then refresh printers. |
 | Print button is disabled | Finish rendering, review the crop, choose a printer and matching media, and resolve clipping. |
 | Print all is blocked | Select and review each queue entry. Each PDF page and detected region has its own review state. |
 | Label is too small | Crop excess whitespace first, then inspect Fit versus Actual size and the paper dimensions. |

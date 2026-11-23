@@ -1,27 +1,27 @@
-//! Several labels on one A4 or Letter sheet, for office printers and sheets of sticky labels.
+//! Several labels on one sheet of any paper size, for office printers and sheets of sticky labels.
 use crate::layout::Output;
 use anyhow::{Result, bail};
 use image::{Rgb, RgbImage};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Page {
-    A4,
-    Letter,
+/// A sheet of paper: any size the printer supports.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Page {
+    pub width_mm: f32,
+    pub height_mm: f32,
 }
 
 impl Page {
-    pub fn size_mm(self) -> (f32, f32) {
-        match self {
-            Page::A4 => (210., 297.),
-            Page::Letter => (215.9, 279.4),
+    pub const A4: Page = Page::new(210., 297.);
+    pub const LETTER: Page = Page::new(215.9, 279.4);
+    pub const LEGAL: Page = Page::new(215.9, 355.6);
+    pub const fn new(width_mm: f32, height_mm: f32) -> Self {
+        Self {
+            width_mm,
+            height_mm,
         }
     }
-    /// The media name printers use for this paper.
-    pub fn media(self) -> &'static str {
-        match self {
-            Page::A4 => "A4",
-            Page::Letter => "Letter",
-        }
+    pub fn size_mm(self) -> (f32, f32) {
+        (self.width_mm, self.height_mm)
     }
 }
 
@@ -66,6 +66,13 @@ impl SheetSpec {
         if !ok(self.margin_mm) || !ok(self.gap_mm) || !label_w.is_finite() || !label_h.is_finite() {
             bail!("The sheet settings are not valid numbers");
         }
+        if !self.page.width_mm.is_finite()
+            || !self.page.height_mm.is_finite()
+            || self.page.width_mm <= 0.
+            || self.page.height_mm <= 0.
+        {
+            bail!("The paper size is not valid");
+        }
         if !(1..=50).contains(&self.columns) || !(1..=50).contains(&self.rows) {
             bail!("Use 1 to 50 columns and rows");
         }
@@ -74,12 +81,13 @@ impl SheetSpec {
         let used_h = self.rows as f32 * label_h + (self.rows - 1) as f32 * self.gap_mm;
         if used_w > pw - 2. * self.margin_mm + 0.01 || used_h > ph - 2. * self.margin_mm + 0.01 {
             bail!(
-                "{}×{} labels of {:.1} × {:.1} mm do not fit on {} with these margins",
+                "{}×{} labels of {:.1} × {:.1} mm do not fit on a {:.1} × {:.1} mm page with these margins",
                 self.columns,
                 self.rows,
                 label_w,
                 label_h,
-                self.page.media()
+                pw,
+                ph
             );
         }
         let (x0, y0) = ((pw - used_w) / 2., (ph - used_h) / 2.);
@@ -119,8 +127,8 @@ pub fn compose(labels: &[Output], spec: &SheetSpec) -> Result<Vec<Output>> {
     let (pw, ph) = spec.page.size_mm();
     let dots = |mm: f32| (mm / 25.4 * dpi as f32).round() as u32;
     let (w, h) = (dots(pw), dots(ph));
-    if w as u64 * h as u64 > 36_000_000 {
-        bail!("The sheet is too large at {dpi} DPI");
+    if w as u64 * h as u64 > crate::layout::MAX_OUTPUT_PIXELS {
+        bail!("The sheet is too large at {dpi} DPI. Choose a lower resolution");
     }
     let mut pages = Vec::new();
     for chunk in labels.chunks(cells.len()) {
@@ -163,7 +171,7 @@ mod tests {
     fn the_most_labels_that_fit_are_found() {
         let spec = SheetSpec::fitting(Page::A4, 100., 50., 5., 0.);
         assert_eq!((spec.columns, spec.rows), (2, 5));
-        let tiny = SheetSpec::fitting(Page::Letter, 38.1, 21.2, 10., 2.);
+        let tiny = SheetSpec::fitting(Page::LETTER, 38.1, 21.2, 10., 2.);
         assert_eq!((tiny.columns, tiny.rows), (4, 11));
         // Five across would need 198.5 mm of the 195.9 mm available.
         assert!(
@@ -232,6 +240,26 @@ mod tests {
         assert!(
             page.image.pixels().next().unwrap().0 == [255; 3],
             "margins stay white"
+        );
+    }
+
+    #[test]
+    fn any_paper_size_works_including_legal() {
+        let spec = SheetSpec::fitting(Page::LEGAL, 101.6, 152.4, 5., 0.);
+        assert_eq!((spec.columns, spec.rows), (2, 2));
+        let custom = SheetSpec::fitting(Page::new(100., 100.), 40., 40., 0., 0.);
+        assert_eq!((custom.columns, custom.rows), (2, 2));
+        let labels: Vec<Output> = (0..4).map(|i| label(101.6, 152.4, i)).collect();
+        let pages = compose(&labels, &spec).unwrap();
+        assert_eq!(pages.len(), 1);
+        assert_eq!((pages[0].width_mm, pages[0].height_mm), (215.9, 355.6));
+        assert!(
+            SheetSpec {
+                page: Page::new(f32::NAN, 10.),
+                ..spec
+            }
+            .positions(10., 10.)
+            .is_err()
         );
     }
 

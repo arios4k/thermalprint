@@ -49,8 +49,9 @@ ThermalPrint keeps three jobs in one clean window: **design** your own labels, *
 ### Print with confidence
 
 - **Get the size right.** Start at **4 × 6 inches** or any size; ThermalPrint explains printer media and matches the output to it. Wide labels can be designed on their side and rotated 90° when they print.
-- **Print Center in three tabs:** **Printer**, **Label stock** profiles, and **Recent prints** with confirmed reprints.
-- **Print many at once.** Numbered runs, several labels on an A4 or Letter sheet, and one label per row of a spreadsheet.
+- **Print Center in three tabs:** **Printer** with a step-by-step setup assistant, **Label stock** profiles you switch, update, and delete from an always-visible **Active profile** menu, and **Recent prints** with confirmed reprints.
+- **Any paper your printer supports.** Label sizes on thermal printers, and Letter, Legal, A4, and more on office printers.
+- **Print many at once.** Numbered runs, several labels on one sheet of any paper size, and one label per row of a spreadsheet.
 - **Print or export.** Print to a configured system printer, or save a PDF, PNG, SVG or raster ZPL.
 
 ### Made for everyone

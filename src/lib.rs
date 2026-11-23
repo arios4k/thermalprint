@@ -14,6 +14,7 @@ pub mod history;
 pub mod i18n;
 pub mod layout;
 pub mod printing;
+pub mod process;
 pub mod qr_builder;
 pub mod recovery;
 pub mod settings;

@@ -171,10 +171,12 @@ fn qr_builder_ui(ui: &mut egui::Ui, form: &mut QrForm, data: &mut String) -> boo
     applied
 }
 
-/// The sheet window: several labels on one A4 or Letter page.
+/// The sheet window: several labels on one page of any size the printer supports.
 #[derive(Clone, Debug)]
 struct SheetState {
     spec: crate::sheet::SheetSpec,
+    /// The printer's name for the paper, or A4, Letter, or Legal when no printer lists sizes.
+    media: String,
     count: u32,
     dpi: u32,
 }
@@ -208,6 +210,10 @@ pub struct Designer {
     printable_note: Option<&'static str>,
     /// A new safe margin chosen in the View menu; the app stores it with the printer.
     pub safe_margin_request: Option<f32>,
+    /// A printer paper size chosen in the Label tab, for the Print Center to select too.
+    pub media_request: Option<String>,
+    /// The selected printer's paper sizes: driver code, name, width and height in mm.
+    printer_sizes: Vec<(String, String, f32, f32)>,
     /// The font new text starts with: the one last chosen, or empty for the default font.
     /// The app keeps it in the settings.
     pub default_font: String,
@@ -303,6 +309,8 @@ impl Designer {
             printable: None,
             printable_note: None,
             safe_margin_request: None,
+            media_request: None,
+            printer_sizes: Vec::new(),
             default_font: String::new(),
             last_font_request: None,
             raw_zpl: false,
@@ -368,6 +376,31 @@ impl Designer {
         self.font_scroll_pending = true;
     }
     /// Show a demo design with nothing selected (documentation screenshots only).
+    /// Make the label the size of the paper a stock profile uses: `width` × `length` as the
+    /// printer feeds it. A rotated design keeps its canvas on its side, and a continuous-roll
+    /// design keeps growing with its content. Ctrl+Z undoes it. Returns whether it changed.
+    pub fn match_paper(&mut self, width: f32, length: f32) -> bool {
+        let (paper_w, paper_h) = self.doc.paper_size_mm();
+        let close = |a: f32, b: f32| (a - b).abs() < 0.05;
+        if close(paper_w, width) && (self.doc.auto_length || close(paper_h, length)) {
+            return false;
+        }
+        self.checkpoint();
+        if self.doc.rotated_printing {
+            self.doc.width_mm = length;
+            self.doc.height_mm = width;
+        } else {
+            self.doc.width_mm = width;
+            if !self.doc.auto_length {
+                self.doc.height_mm = length;
+            }
+        }
+        self.zoom = 1.;
+        self.pan = Vec2::ZERO;
+        self.changed();
+        self.status = format!("Label matched to the stock profile: {width:.1} × {length:.1} mm");
+        true
+    }
     pub(crate) fn demo_document(&mut self, doc: LabelDocument) {
         self.doc = doc;
         self.selected.clear();
@@ -383,19 +416,7 @@ impl Designer {
         match name {
             "gallery" => self.gallery = Some(String::new()),
             "sheet" => {
-                let (paper_w, paper_h) = self.doc.paper_size_mm();
-                let spec = crate::sheet::SheetSpec::fitting(
-                    crate::sheet::Page::A4,
-                    paper_w,
-                    paper_h,
-                    5.,
-                    0.,
-                );
-                self.sheet = Some(SheetState {
-                    count: spec.cells().max(1) as u32,
-                    spec,
-                    dpi: 300,
-                });
+                self.sheet = Some(self.new_sheet());
             }
             "range" => {
                 self.range = Some(RangeState {
@@ -1291,8 +1312,53 @@ impl Designer {
             self.gallery = Some(query);
         }
     }
+    /// The paper sizes a sheet can use: the printer's own, or common office sizes.
+    fn sheet_papers(&self) -> Vec<(String, String, crate::sheet::Page)> {
+        if self.printer_sizes.is_empty() {
+            return [
+                ("A4", crate::sheet::Page::A4),
+                ("Letter", crate::sheet::Page::LETTER),
+                ("Legal", crate::sheet::Page::LEGAL),
+            ]
+            .into_iter()
+            .map(|(name, page)| (name.to_owned(), name.to_owned(), page))
+            .collect();
+        }
+        self.printer_sizes
+            .iter()
+            .map(|(code, name, w, h)| (code.clone(), name.clone(), crate::sheet::Page::new(*w, *h)))
+            .collect()
+    }
+    /// A new sheet on Letter or A4 when the printer has it, otherwise its first size that fits
+    /// the label, filled with as many labels as fit.
+    fn new_sheet(&self) -> SheetState {
+        let (label_w, label_h) = self.doc.paper_size_mm();
+        let papers = self.sheet_papers();
+        let fits = |page: crate::sheet::Page| {
+            crate::sheet::SheetSpec::fitting(page, label_w, label_h, 5., 0.).cells() > 0
+        };
+        let chosen = papers
+            .iter()
+            .find(|(code, _, page)| {
+                let c = code.to_ascii_lowercase();
+                (c == "letter" || c == "a4" || c.contains("letter_") || c.contains("_a4_"))
+                    && fits(*page)
+            })
+            .or_else(|| papers.iter().find(|(_, _, page)| fits(*page)))
+            .or(papers.first())
+            .cloned()
+            .unwrap_or(("A4".into(), "A4".into(), crate::sheet::Page::A4));
+        let spec = crate::sheet::SheetSpec::fitting(chosen.2, label_w, label_h, 5., 0.);
+        SheetState {
+            count: spec.cells().max(1) as u32,
+            spec,
+            media: chosen.0,
+            dpi: 300,
+        }
+    }
     fn sheet_window(&mut self, ctx: &egui::Context, settings: &Settings, printers: &[Printer]) {
-        use crate::sheet::{Page, SheetSpec};
+        use crate::sheet::SheetSpec;
+        let papers = self.sheet_papers();
         let Some(mut state) = self.sheet.take() else {
             return;
         };
@@ -1306,12 +1372,26 @@ impl Designer {
             .collapsible(false)
             .resizable(false)
             .show(ctx, |ui| {
-                ui.label(crate::i18n::tr("Place copies of this label on an A4 or Letter page, for an office printer or a sheet of sticky labels. ${serial} counts up from one label to the next."));
-                ui.horizontal(|ui| {
+                ui.label(crate::i18n::tr("Place copies of this label on one page of any paper size your printer supports, for an office printer or a sheet of sticky labels. ${serial} counts up from one label to the next."));
+                ui.horizontal_wrapped(|ui| {
                     ui.label(crate::i18n::tr("Paper"));
-                    for page in [Page::A4, Page::Letter] {
-                        ui.selectable_value(&mut state.spec.page, page, page.media());
-                    }
+                    let current = papers
+                        .iter()
+                        .find(|(code, _, _)| *code == state.media)
+                        .map_or_else(|| state.media.clone(), |(_, name, _)| name.clone());
+                    egui::ComboBox::from_id_salt("sheet-paper")
+                        .selected_text(current)
+                        .height(400.)
+                        .show_ui(ui, |ui| {
+                            for (code, name, page) in &papers {
+                                if ui.selectable_label(*code == state.media, name).clicked() {
+                                    state.media = code.clone();
+                                    state.spec.page = *page;
+                                }
+                            }
+                        })
+                        .response
+                        .accessible_name(crate::i18n::tr("Paper"));
                     ui.label(crate::i18n::tr("Resolution"));
                     egui::ComboBox::from_id_salt("sheet-dpi")
                         .selected_text(format!("{} DPI", state.dpi))
@@ -1422,7 +1502,7 @@ impl Designer {
                         ui.colored_label(Color32::from_rgb(200, 60, 60), format!("{error:#}"));
                     }
                 }
-                let can_print = printer.is_some_and(|p| p.media.iter().any(|m| m == state.spec.page.media()));
+                let can_print = printer.is_some_and(|p| p.media.contains(&state.media));
                 if printer.is_some() && !can_print {
                     ui.label(
                         RichText::new(crate::i18n::tr(
@@ -1469,7 +1549,7 @@ impl Designer {
             let spec = state.spec;
             let (count, dpi) = (state.count as usize, state.dpi);
             let mut settings = settings.clone();
-            settings.media = spec.page.media().to_string();
+            settings.media = state.media.clone();
             let target = if print {
                 printer.cloned().map(|p| (p, None))
             } else {
@@ -1905,6 +1985,43 @@ impl Designer {
                 let label = ui.label(crate::i18n::tr("Label name"));
                 ui.text_edit_singleline(&mut self.doc.title)
                     .labelled_by(label.id);
+                if !self.printer_sizes.is_empty() {
+                    let (paper_w, paper_h) = self.doc.paper_size_mm();
+                    let current = self.printer_sizes.iter().find(|(_, _, w, h)| {
+                        (w - paper_w).abs() < 0.5 && (h - paper_h).abs() < 0.5
+                    });
+                    let mut picked = None;
+                    ui.label(crate::i18n::tr("Printer paper size"));
+                    egui::ComboBox::from_id_salt("designer-printer-paper")
+                        .selected_text(current.map_or_else(
+                            || crate::i18n::tr("Custom size").to_owned(),
+                            |(_, name, _, _)| name.clone(),
+                        ))
+                        .width(ui.available_width().min(240.))
+                        .height(400.)
+                        .show_ui(ui, |ui| {
+                            for (code, name, w, h) in &self.printer_sizes {
+                                if ui
+                                    .selectable_label(current.is_some_and(|c| &c.0 == code), name)
+                                    .clicked()
+                                {
+                                    picked = Some((code.clone(), *w, *h));
+                                }
+                            }
+                        });
+                    if let Some((code, w, h)) = picked {
+                        self.checkpoint();
+                        // With rotated printing the canvas stays turned on its side.
+                        let (w, h) = if self.doc.rotated_printing { (h, w) } else { (w, h) };
+                        self.doc.width_mm = w;
+                        self.doc.height_mm = h;
+                        self.doc.auto_length = false;
+                        self.zoom = 1.;
+                        self.pan = Vec2::ZERO;
+                        self.media_request = Some(code);
+                        self.changed();
+                    }
+                }
                 ui.horizontal(|ui| {
                     ui.label(crate::i18n::tr("Width"));
                     ui.add(
@@ -2227,6 +2344,19 @@ impl Designer {
         if self.footer_request.is_none() {
             self.footer = settings.footer.clone();
         }
+        self.printer_sizes = printers
+            .iter()
+            .find(|p| p.name == settings.printer)
+            .map(|p| {
+                p.media
+                    .iter()
+                    .filter_map(|code| {
+                        let &(w, h) = p.media_sizes.get(code)?;
+                        Some((code.clone(), p.media_label(code), w, h))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
         self.poll(&ctx);
         self.poll_job(&ctx);
         self.autosave(&ctx);
@@ -2274,22 +2404,10 @@ impl Designer {
                         ui.close();
                     }
                     if icon_button(ui, "Print device", crate::i18n::tr("Print on a sheet…"))
-                        .on_hover_text(crate::i18n::tr("Place several labels on one A4 or Letter page"))
+                        .on_hover_text(crate::i18n::tr("Place several labels on one page of any paper size"))
                         .clicked()
                     {
-                        let (paper_w, paper_h) = self.doc.paper_size_mm();
-                        let spec = crate::sheet::SheetSpec::fitting(
-                            crate::sheet::Page::A4,
-                            paper_w,
-                            paper_h,
-                            5.,
-                            0.,
-                        );
-                        self.sheet = Some(SheetState {
-                            count: spec.cells().max(1) as u32,
-                            spec,
-                            dpi: 300,
-                        });
+                        self.sheet = Some(self.new_sheet());
                         ui.close();
                     }
                     if icon_button(ui, "Print device", crate::i18n::tr("Print a number range…"))
@@ -6780,6 +6898,52 @@ mod sheet_window_tests {
     use super::*;
 
     #[test]
+    fn loading_a_stock_profile_resizes_the_design_and_can_be_undone() {
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(101.6, 152.4);
+        assert!(
+            !designer.match_paper(101.6, 152.4),
+            "already the right size"
+        );
+        assert!(designer.match_paper(215.9, 355.6));
+        assert_eq!(
+            (designer.doc.width_mm, designer.doc.height_mm),
+            (215.9, 355.6)
+        );
+        designer.undo();
+        assert_eq!(
+            (designer.doc.width_mm, designer.doc.height_mm),
+            (101.6, 152.4)
+        );
+        // A rotated design keeps its canvas on its side.
+        designer.doc.set_rotated_printing(true);
+        assert!(designer.match_paper(101.6, 101.6 * 2.));
+        assert_eq!(designer.doc.paper_size_mm(), (101.6, 203.2));
+        assert_eq!(designer.doc.width_mm, 203.2);
+    }
+
+    #[test]
+    fn new_sheets_offer_every_printer_paper_size() {
+        let mut designer = Designer::new();
+        designer.doc = LabelDocument::blank(101.6, 152.4);
+        // Without a printer: common office sizes, starting on Letter or A4.
+        let papers: Vec<_> = designer.sheet_papers().into_iter().map(|p| p.0).collect();
+        assert_eq!(papers, ["A4", "Letter", "Legal"]);
+        assert_eq!(designer.new_sheet().media, "A4");
+        // With a printer: exactly its sizes, so Legal and photo paper can be chosen.
+        designer.printer_sizes = vec![
+            ("4x6".into(), "4 × 6 in".into(), 101.6, 152.4),
+            ("Legal".into(), "Legal".into(), 215.9, 355.6),
+            ("Letter".into(), "Letter".into(), 215.9, 279.4),
+        ];
+        let papers: Vec<_> = designer.sheet_papers().into_iter().map(|p| p.0).collect();
+        assert_eq!(papers, ["4x6", "Legal", "Letter"]);
+        let sheet = designer.new_sheet();
+        assert_eq!(sheet.media, "Letter");
+        assert_eq!(sheet.spec.page, crate::sheet::Page::LETTER);
+    }
+
+    #[test]
     fn the_sheet_window_opens_and_stays_open_without_printing() {
         let ctx = egui::Context::default();
         let mut designer = Designer::new();
@@ -6789,6 +6953,7 @@ mod sheet_window_tests {
         designer.sheet = Some(SheetState {
             count: 36,
             spec,
+            media: "A4".into(),
             dpi: 300,
         });
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(900., 800.));

@@ -253,18 +253,19 @@ pub fn system_fonts() -> &'static [SystemFont] {
         #[cfg(windows)]
         return scan_font_folders();
         #[cfg(unix)]
-        std::process::Command::new("fc-list")
-            .args([
+        crate::process::output_within(
+            std::process::Command::new("fc-list").args([
                 ":lang=en",
                 "--format",
                 "%{file}\t%{family[0]}\t%{style[0]}\n",
-            ])
-            .output()
-            .ok()
-            .filter(|output| output.status.success())
-            .map(|output| parse_fc_list(&String::from_utf8_lossy(&output.stdout)))
-            .filter(|fonts| !fonts.is_empty())
-            .unwrap_or_else(scan_font_folders)
+            ]),
+            std::time::Duration::from_secs(20),
+        )
+        .ok()
+        .filter(|output| output.status.success())
+        .map(|output| parse_fc_list(&String::from_utf8_lossy(&output.stdout)))
+        .filter(|fonts| !fonts.is_empty())
+        .unwrap_or_else(scan_font_folders)
     })
 }
 
@@ -279,14 +280,15 @@ pub fn interface_font() -> Option<Vec<u8>> {
         ["Inter", "Noto Sans"]
             .iter()
             .filter_map(|family| {
-                let output = std::process::Command::new("fc-match")
-                    .args([
+                let output = crate::process::output_within(
+                    std::process::Command::new("fc-match").args([
                         "--format",
                         "%{family[0]}\t%{file}",
                         &format!("{family}:style=Regular"),
-                    ])
-                    .output()
-                    .ok()?;
+                    ]),
+                    std::time::Duration::from_secs(5),
+                )
+                .ok()?;
                 let text = String::from_utf8_lossy(&output.stdout).into_owned();
                 let (found, file) = text.split_once('\t')?;
                 // fc-match always answers; use it only when it found the family asked for.
