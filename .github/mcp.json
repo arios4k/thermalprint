@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "chrome-devtools": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "source \"$HOME/.nvm/nvm.sh\" && nvm use --lts >/dev/null && exec npx -y chrome-devtools-mcp@1.13.0 --no-usage-statistics"
+      ]
+    }
+  }
+}
