@@ -41,3 +41,17 @@ Download the **ThermalPrint-Windows-x64-store** artifact, extract the MSIX, and 
 The Store edition's US base price is **$4.99** with a **7-day time-limited trial**, set under **Pricing and availability**; updates keep these settings. The trial offers the full app so customers can test their printer and label stock. Linux remains free. [Microsoft Store pricing and trials](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/price-and-availability)
 
 Before submitting, install a signed test package on Windows 11. Open a `.thermalprint` design through File Explorer, import a mixed-size PDF, and verify image and label exports. Print a 4 × 6 label and a Letter or A4 sheet. Check physical dimensions, offsets, copies, queue status, and barcode scans. Repeat with a RAW ZPL queue and test watched-folder printing with fictional labels.
+
+## Store listing checklist
+
+Keep these external Partner Center fields current for each release:
+
+- **Privacy policy:** add https://github.com/arios4k/thermalprint/blob/main/docs/PRIVACY.md
+- **Support contact:** https://github.com/arios4k/thermalprint/issues
+- **Website:** https://github.com/arios4k/thermalprint
+- **Category:** Productivity or Graphics and Design
+- **Age rating:** complete the Store questionnaire (the app has no user-generated content or mature content)
+- **Release notes:** update every listing language included in the package
+- **Screenshots:** use current Windows screenshots and include fictional label data
+
+The package declares English, Spanish, German, and French resources. Upload matching descriptions or retain an existing fallback in Partner Center.
