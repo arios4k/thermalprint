@@ -214,140 +214,6 @@ pub fn outside_printable_area_mm(
     ))
 }
 
-#[cfg(test)]
-mod geometry_tests {
-    use super::*;
-
-    #[test]
-    fn standard_and_custom_sizes_convert_at_203_and_300_dpi() {
-        assert_eq!(
-            (mm_to_pixels(101.6, 203), mm_to_pixels(152.4, 203)),
-            (812, 1218)
-        );
-        assert_eq!(
-            (mm_to_pixels(101.6, 300), mm_to_pixels(152.4, 300)),
-            (1200, 1800)
-        );
-        assert_eq!(
-            (mm_to_pixels(50.8, 203), mm_to_pixels(25.4, 203)),
-            (406, 203)
-        );
-    }
-
-    #[test]
-    fn inches_points_and_windows_tenths_of_millimeters_share_millimeter_units() {
-        assert!((8.5f32 * 25.4 - 215.9).abs() < 0.001);
-        assert!((points_to_mm(288.) - 101.6).abs() < 0.001);
-        assert!((points_to_mm(432.) - 152.4).abs() < 0.001);
-        assert_eq!(tenths_mm_to_mm(1016), 101.6);
-    }
-
-    #[test]
-    fn device_caps_margins_convert_per_axis_and_reject_invalid_geometry() {
-        let margin =
-            margins_from_device_caps((812, 1218), (20, 20), (772, 1178), (203, 203)).unwrap();
-        assert!(
-            [margin.0, margin.1, margin.2, margin.3]
-                .iter()
-                .all(|mm| (*mm - 2.5).abs() < 0.02)
-        );
-        assert_eq!(
-            margins_from_device_caps((812, 1218), (20, 20), (800, 1178), (203, 203)),
-            None
-        );
-        assert_eq!(
-            margins_from_device_caps((i32::MAX, 1218), (i32::MAX, 20), (1, 1178), (203, 203)),
-            None
-        );
-    }
-
-    #[test]
-    fn selected_standard_media_tracks_portrait_and_landscape_orientation() {
-        let printer = Printer {
-            media: vec!["4x6".into()],
-            media_sizes: HashMap::from([("4x6".into(), (101.6, 152.4))]),
-            ..Default::default()
-        };
-        let mut settings = Settings {
-            media: "4x6".into(),
-            width_mm: 101.6,
-            height_mm: 152.4,
-            ..Default::default()
-        };
-        assert_eq!(
-            printer.selected_media_size(&settings).unwrap(),
-            (101.6, 152.4)
-        );
-        std::mem::swap(&mut settings.width_mm, &mut settings.height_mm);
-        assert_eq!(
-            printer.selected_media_size(&settings).unwrap(),
-            (152.4, 101.6)
-        );
-        assert!(printer.media_mismatch("4x6", 152.4, 101.6).is_none());
-    }
-
-    #[test]
-    fn printable_area_guard_reports_each_overflow_edge_in_millimeters() {
-        let mut output = Output {
-            image: image::RgbImage::from_pixel(800, 1200, image::Rgb([255; 3])),
-            warnings: vec![],
-            clipped: false,
-            width_mm: 100.,
-            height_mm: 150.,
-            dpi: 203,
-        };
-        output.image.put_pixel(5, 600, image::Rgb([0; 3]));
-        output.image.put_pixel(795, 600, image::Rgb([0; 3]));
-        let overflow = outside_printable_area_mm(&output, (2.5, 0., 2.5, 0.)).unwrap();
-        assert!(overflow.0 > 1.8 && overflow.0 < 2.0);
-        assert_eq!(overflow.1, 0.);
-        assert!(overflow.2 > 1.9 && overflow.2 <= 2.0);
-        assert_eq!(overflow.3, 0.);
-    }
-
-    #[test]
-    fn windows_alignment_geometry_fits_standard_and_custom_media() {
-        for &(width, height) in &[
-            (101.6, 152.4),
-            (101.6, 101.6),
-            (50.8, 25.4),
-            (100., 150.),
-            (50., 30.),
-        ] {
-            for dpi in [203, 300] {
-                let (physical_width, physical_height) = (
-                    mm_to_pixels(width, dpi) as i32,
-                    mm_to_pixels(height, dpi) as i32,
-                );
-                let (left, top, right, bottom) = (
-                    mm_to_pixels(2.5, dpi) as i32,
-                    mm_to_pixels(2.0, dpi) as i32,
-                    mm_to_pixels(3.0, dpi) as i32,
-                    mm_to_pixels(2.5, dpi) as i32,
-                );
-                let margins = margins_from_device_caps(
-                    (physical_width, physical_height),
-                    (left, top),
-                    (
-                        physical_width - left - right,
-                        physical_height - top - bottom,
-                    ),
-                    (dpi as i32, dpi as i32),
-                )
-                .unwrap();
-                let output =
-                    crate::calibration::alignment_test_in_area(width, height, dpi, margins)
-                        .unwrap();
-                assert_eq!(
-                    outside_printable_area_mm(&output, margins),
-                    None,
-                    "{width} × {height} mm at {dpi} DPI"
-                );
-            }
-        }
-    }
-}
-
 /// The paper size a media name describes, in millimeters, for names that say it themselves:
 /// well-known paper names (Letter, Legal, A4…), PWG names (`na_legal_8.5x14in`,
 /// `iso_a4_210x297mm`), sizes such as `4x6` or `100x150mm`, and PostScript `w288h432`.
@@ -1055,5 +921,139 @@ mod margin_tests {
             ..Default::default()
         };
         assert_eq!(flush.printable_margins_mm("m"), None);
+    }
+}
+
+#[cfg(test)]
+mod geometry_tests {
+    use super::*;
+
+    #[test]
+    fn standard_and_custom_sizes_convert_at_203_and_300_dpi() {
+        assert_eq!(
+            (mm_to_pixels(101.6, 203), mm_to_pixels(152.4, 203)),
+            (812, 1218)
+        );
+        assert_eq!(
+            (mm_to_pixels(101.6, 300), mm_to_pixels(152.4, 300)),
+            (1200, 1800)
+        );
+        assert_eq!(
+            (mm_to_pixels(50.8, 203), mm_to_pixels(25.4, 203)),
+            (406, 203)
+        );
+    }
+
+    #[test]
+    fn inches_points_and_windows_tenths_of_millimeters_share_millimeter_units() {
+        assert!((8.5f32 * 25.4 - 215.9).abs() < 0.001);
+        assert!((points_to_mm(288.) - 101.6).abs() < 0.001);
+        assert!((points_to_mm(432.) - 152.4).abs() < 0.001);
+        assert_eq!(tenths_mm_to_mm(1016), 101.6);
+    }
+
+    #[test]
+    fn device_caps_margins_convert_per_axis_and_reject_invalid_geometry() {
+        let margin =
+            margins_from_device_caps((812, 1218), (20, 20), (772, 1178), (203, 203)).unwrap();
+        assert!(
+            [margin.0, margin.1, margin.2, margin.3]
+                .iter()
+                .all(|mm| (*mm - 2.5).abs() < 0.02)
+        );
+        assert_eq!(
+            margins_from_device_caps((812, 1218), (20, 20), (800, 1178), (203, 203)),
+            None
+        );
+        assert_eq!(
+            margins_from_device_caps((i32::MAX, 1218), (i32::MAX, 20), (1, 1178), (203, 203)),
+            None
+        );
+    }
+
+    #[test]
+    fn selected_standard_media_tracks_portrait_and_landscape_orientation() {
+        let printer = Printer {
+            media: vec!["4x6".into()],
+            media_sizes: HashMap::from([("4x6".into(), (101.6, 152.4))]),
+            ..Default::default()
+        };
+        let mut settings = Settings {
+            media: "4x6".into(),
+            width_mm: 101.6,
+            height_mm: 152.4,
+            ..Default::default()
+        };
+        assert_eq!(
+            printer.selected_media_size(&settings).unwrap(),
+            (101.6, 152.4)
+        );
+        std::mem::swap(&mut settings.width_mm, &mut settings.height_mm);
+        assert_eq!(
+            printer.selected_media_size(&settings).unwrap(),
+            (152.4, 101.6)
+        );
+        assert!(printer.media_mismatch("4x6", 152.4, 101.6).is_none());
+    }
+
+    #[test]
+    fn printable_area_guard_reports_each_overflow_edge_in_millimeters() {
+        let mut output = Output {
+            image: image::RgbImage::from_pixel(800, 1200, image::Rgb([255; 3])),
+            warnings: vec![],
+            clipped: false,
+            width_mm: 100.,
+            height_mm: 150.,
+            dpi: 203,
+        };
+        output.image.put_pixel(5, 600, image::Rgb([0; 3]));
+        output.image.put_pixel(795, 600, image::Rgb([0; 3]));
+        let overflow = outside_printable_area_mm(&output, (2.5, 0., 2.5, 0.)).unwrap();
+        assert!(overflow.0 > 1.8 && overflow.0 < 2.0);
+        assert_eq!(overflow.1, 0.);
+        assert!(overflow.2 > 1.9 && overflow.2 <= 2.0);
+        assert_eq!(overflow.3, 0.);
+    }
+
+    #[test]
+    fn windows_alignment_geometry_fits_standard_and_custom_media() {
+        for &(width, height) in &[
+            (101.6, 152.4),
+            (101.6, 101.6),
+            (50.8, 25.4),
+            (100., 150.),
+            (50., 30.),
+        ] {
+            for dpi in [203, 300] {
+                let (physical_width, physical_height) = (
+                    mm_to_pixels(width, dpi) as i32,
+                    mm_to_pixels(height, dpi) as i32,
+                );
+                let (left, top, right, bottom) = (
+                    mm_to_pixels(2.5, dpi) as i32,
+                    mm_to_pixels(2.0, dpi) as i32,
+                    mm_to_pixels(3.0, dpi) as i32,
+                    mm_to_pixels(2.5, dpi) as i32,
+                );
+                let margins = margins_from_device_caps(
+                    (physical_width, physical_height),
+                    (left, top),
+                    (
+                        physical_width - left - right,
+                        physical_height - top - bottom,
+                    ),
+                    (dpi as i32, dpi as i32),
+                )
+                .unwrap();
+                let output =
+                    crate::calibration::alignment_test_in_area(width, height, dpi, margins)
+                        .unwrap();
+                assert_eq!(
+                    outside_printable_area_mm(&output, margins),
+                    None,
+                    "{width} × {height} mm at {dpi} DPI"
+                );
+            }
+        }
     }
 }
