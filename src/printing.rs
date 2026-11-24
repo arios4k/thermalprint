@@ -2,9 +2,11 @@
 //! Arguments never pass through a shell. A successful lp call means submitted,
 //! not physically printed; job status is queried separately.
 #[cfg(unix)]
-use crate::{export, layout::Output, settings::Settings};
+use crate::export;
+use crate::{layout::Output, settings::Settings};
 #[cfg(unix)]
-use anyhow::{Context, Result, bail};
+use anyhow::Context;
+use anyhow::{Result, bail, ensure};
 use std::collections::HashMap;
 
 #[cfg(unix)]
@@ -16,7 +18,7 @@ use std::{
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
-pub use windows::{discover, job_status, snap_connection_hint, submit, submit_raw_zpl};
+pub use windows::{discover, job_status, snap_connection_hint, submit_raw_zpl};
 
 pub const fn platform_message(cups: &'static str, windows: &'static str) -> &'static str {
     if cfg!(windows) { windows } else { cups }
@@ -51,9 +53,9 @@ impl Printer {
         self.media
             .iter()
             .find(|code| {
-                self.media_sizes.get(*code).is_some_and(|&(w, h)| {
-                    (w - width_mm).abs() < 0.5 && (h - height_mm).abs() < 0.5
-                })
+                self.media_sizes
+                    .get(*code)
+                    .is_some_and(|&(w, h)| media_size_matches((w, h), (width_mm, height_mm)))
             })
             .cloned()
             .or_else(|| self.custom_media.then(|| "Custom".into()))
@@ -63,7 +65,7 @@ impl Printer {
             return None;
         }
         let &(w, h) = self.media_sizes.get(media)?;
-        ((w - width).abs() >= 0.5 || (h - height).abs() >= 0.5).then(||
+        (!media_size_matches((w, h), (width, height))).then(||
             format!("Output is {width:.1} × {height:.1} mm; printer media is {w:.1} × {h:.1} mm. Choose matching media or change the output dimensions."))
     }
     pub fn media_label(&self, code: &str) -> String {
@@ -78,6 +80,138 @@ impl Printer {
             }),
         }
     }
+
+    pub fn selected_media_size(&self, settings: &Settings) -> Result<(f32, f32)> {
+        if settings.media == "Custom" {
+            ensure!(
+                self.custom_media,
+                "The selected printer does not support custom media"
+            );
+            ensure!(
+                [settings.width_mm, settings.height_mm]
+                    .iter()
+                    .all(|dimension| dimension.is_finite() && (10.0..=500.0).contains(dimension)),
+                "Custom media dimensions are invalid"
+            );
+            return Ok((settings.width_mm, settings.height_mm));
+        }
+        let Some(&(media_width, media_height)) = self.media_sizes.get(&settings.media) else {
+            bail!("The printer did not report dimensions for the selected media");
+        };
+        let landscape = settings.width_mm > settings.height_mm;
+        Ok(
+            if (landscape && media_width < media_height)
+                || (!landscape && media_width > media_height)
+            {
+                (media_height, media_width)
+            } else {
+                (media_width, media_height)
+            },
+        )
+    }
+}
+
+fn media_size_matches(media: (f32, f32), output: (f32, f32)) -> bool {
+    let direct = (media.0 - output.0).abs() < 0.5 && (media.1 - output.1).abs() < 0.5;
+    let rotated = (media.0 - output.1).abs() < 0.5 && (media.1 - output.0).abs() < 0.5;
+    direct || rotated
+}
+
+pub fn mm_to_pixels(mm: f32, dpi: u32) -> i64 {
+    (f64::from(mm) * f64::from(dpi) / 25.4).round() as i64
+}
+
+pub fn pixels_to_mm(pixels: i32, dpi: i32) -> f32 {
+    pixels as f32 * 25.4 / dpi as f32
+}
+
+pub fn points_to_mm(points: f32) -> f32 {
+    points * 25.4 / 72.
+}
+
+pub fn tenths_mm_to_mm(tenths_mm: i32) -> f32 {
+    tenths_mm as f32 / 10.
+}
+
+pub fn margins_from_device_caps(
+    physical_size: (i32, i32),
+    imageable_offset: (i32, i32),
+    printable_size: (i32, i32),
+    dpi: (i32, i32),
+) -> Option<(f32, f32, f32, f32)> {
+    let (physical_width, physical_height) = physical_size;
+    let (offset_x, offset_y) = imageable_offset;
+    let (printable_width, printable_height) = printable_size;
+    let (dpi_x, dpi_y) = dpi;
+    let right_edge = offset_x.checked_add(printable_width)?;
+    let bottom_edge = offset_y.checked_add(printable_height)?;
+    if physical_width <= 0
+        || physical_height <= 0
+        || offset_x < 0
+        || offset_y < 0
+        || printable_width <= 0
+        || printable_height <= 0
+        || dpi_x <= 0
+        || dpi_y <= 0
+        || right_edge > physical_width
+        || bottom_edge > physical_height
+    {
+        return None;
+    }
+    Some((
+        pixels_to_mm(offset_x, dpi_x),
+        pixels_to_mm(offset_y, dpi_y),
+        pixels_to_mm(physical_width - right_edge, dpi_x),
+        pixels_to_mm(physical_height - bottom_edge, dpi_y),
+    ))
+}
+
+pub fn outside_printable_area_mm(
+    output: &Output,
+    margins_mm: (f32, f32, f32, f32),
+) -> Option<(f32, f32, f32, f32)> {
+    let (left_mm, top_mm, right_mm, bottom_mm) = margins_mm;
+    if ![left_mm, top_mm, right_mm, bottom_mm]
+        .iter()
+        .all(|margin| margin.is_finite() && *margin >= 0.)
+    {
+        return None;
+    }
+    let (width, height) = output.image.dimensions();
+    let px = |mm, dpi| crate::layout::Output::mm_to_pixels(mm, dpi).max(0) as u32;
+    let (left, top, right, bottom) = (
+        px(left_mm, output.dpi).min(width),
+        px(top_mm, output.dpi).min(height),
+        px(right_mm, output.dpi).min(width),
+        px(bottom_mm, output.dpi).min(height),
+    );
+    let mut excess = [0u32; 4];
+    for (x, y, pixel) in output.image.enumerate_pixels() {
+        if pixel.0 == [255; 3] {
+            continue;
+        }
+        if x < left {
+            excess[0] = excess[0].max(left - x);
+        }
+        if x >= width - right {
+            excess[2] = excess[2].max(x - (width - right) + 1);
+        }
+        if y < top {
+            excess[1] = excess[1].max(top - y);
+        }
+        if y >= height - bottom {
+            excess[3] = excess[3].max(y - (height - bottom) + 1);
+        }
+    }
+    if excess == [0; 4] {
+        return None;
+    }
+    Some((
+        excess[0] as f32 * output.width_mm / width as f32,
+        excess[1] as f32 * output.height_mm / height as f32,
+        excess[2] as f32 * output.width_mm / width as f32,
+        excess[3] as f32 * output.height_mm / height as f32,
+    ))
 }
 
 /// The paper size a media name describes, in millimeters, for names that say it themselves:
@@ -112,8 +246,11 @@ pub fn size_from_name(code: &str) -> Option<(f32, f32)> {
         && let (Ok(w), Ok(h)) = (w.parse::<f32>(), h.parse::<f32>())
     {
         // PostScript sizes in points; small numbers are inches (w4h6).
-        let unit = if w.max(h) <= 30. { 25.4 } else { 25.4 / 72. };
-        return valid(w * unit, h * unit);
+        return if w.max(h) <= 30. {
+            valid(w * 25.4, h * 25.4)
+        } else {
+            valid(points_to_mm(w), points_to_mm(h))
+        };
     }
     let (numbers, unit) = if let Some(n) = size.strip_suffix("mm") {
         (n, 1.)
@@ -197,7 +334,7 @@ fn media_sizes(ppd: &str) -> HashMap<String, (f32, f32)> {
             let width: f32 = values.next()?.parse().ok()?;
             let height: f32 = values.next()?.parse().ok()?;
             (width.is_finite() && height.is_finite() && width > 0. && height > 0.)
-                .then(|| (code.into(), (width * 25.4 / 72., height * 25.4 / 72.)))
+                .then(|| (code.into(), (points_to_mm(width), points_to_mm(height))))
         })
         .collect()
 }
@@ -207,7 +344,6 @@ fn media_sizes(ppd: &str) -> HashMap<String, (f32, f32)> {
 #[cfg(unix)]
 fn media_margins(ppd: &str) -> HashMap<String, (f32, f32, f32, f32)> {
     let sizes = media_sizes(ppd);
-    let to_mm = 25.4 / 72.;
     ppd.lines()
         .filter_map(|line| {
             let (choice, area) = line.strip_prefix("*ImageableArea ")?.split_once(':')?;
@@ -226,10 +362,10 @@ fn media_margins(ppd: &str) -> HashMap<String, (f32, f32, f32, f32)> {
                 return None;
             }
             let margins = (
-                (llx * to_mm).max(0.),
-                (lly * to_mm).max(0.),
-                (width - urx * to_mm).max(0.),
-                (height - ury * to_mm).max(0.),
+                points_to_mm(llx).max(0.),
+                points_to_mm(lly).max(0.),
+                (width - points_to_mm(urx)).max(0.),
+                (height - points_to_mm(ury)).max(0.),
             );
             Some((code.to_owned(), margins))
         })
@@ -403,9 +539,14 @@ fn ppd_page_sizes(ppd: &str) -> Vec<String> {
     codes
 }
 #[cfg(unix)]
-pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
+fn submit_unix(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
     if output.clipped {
-        bail!("Printing blocked: content would be clipped");
+        bail!(
+            "{}",
+            output
+                .clipping_message()
+                .unwrap_or("Printing blocked: content would be clipped")
+        );
     }
     if s.printer != p.name {
         bail!("Printer selection has changed. Refresh printers and try again.");
@@ -487,6 +628,32 @@ pub fn job_status(printer: &str) -> Result<String> {
             pending.trim()
         }
     ))
+}
+
+fn output_for_media(output: &Output, settings: &Settings, printer: &Printer) -> Result<Output> {
+    let (width, height) = printer.selected_media_size(settings)?;
+    output.fit_to_media(width, height)
+}
+
+pub fn submit(output: &Output, settings: &Settings, printer: &Printer) -> Result<String> {
+    let output = output_for_media(output, settings, printer)?;
+    #[cfg(unix)]
+    {
+        submit_unix(&output, settings, printer)
+    }
+    #[cfg(windows)]
+    {
+        windows::submit(&output, settings, printer)
+    }
+}
+
+pub fn alignment_test_output(settings: &Settings, printer: &Printer) -> Result<Output> {
+    let (width, height) = printer.selected_media_size(settings)?;
+    #[cfg(unix)]
+    let (dpi, margins) = (settings.dpi, (0., 0., 0., 0.));
+    #[cfg(windows)]
+    let (dpi, margins) = windows::alignment_geometry(settings, printer, width, height)?;
+    crate::calibration::alignment_test_in_area(width, height, dpi, margins)
 }
 
 /// CUPS has no authoritative thermal-device flag. This is a UI hint only.
@@ -600,7 +767,7 @@ mod media_tests {
         };
         assert!(p.media_mismatch("stock", 101.5, 152.3).is_none());
         assert!(p.media_mismatch("stock", 100., 150.).is_some());
-        assert!(p.media_mismatch("stock", 152.4, 101.6).is_some());
+        assert!(p.media_mismatch("stock", 152.4, 101.6).is_none());
         assert!(p.media_mismatch("Custom", 50., 50.).is_none());
         assert!(p.media_mismatch("unknown", 50., 50.).is_none());
     }
@@ -754,5 +921,139 @@ mod margin_tests {
             ..Default::default()
         };
         assert_eq!(flush.printable_margins_mm("m"), None);
+    }
+}
+
+#[cfg(test)]
+mod geometry_tests {
+    use super::*;
+
+    #[test]
+    fn standard_and_custom_sizes_convert_at_203_and_300_dpi() {
+        assert_eq!(
+            (mm_to_pixels(101.6, 203), mm_to_pixels(152.4, 203)),
+            (812, 1218)
+        );
+        assert_eq!(
+            (mm_to_pixels(101.6, 300), mm_to_pixels(152.4, 300)),
+            (1200, 1800)
+        );
+        assert_eq!(
+            (mm_to_pixels(50.8, 203), mm_to_pixels(25.4, 203)),
+            (406, 203)
+        );
+    }
+
+    #[test]
+    fn inches_points_and_windows_tenths_of_millimeters_share_millimeter_units() {
+        assert!((8.5f32 * 25.4 - 215.9).abs() < 0.001);
+        assert!((points_to_mm(288.) - 101.6).abs() < 0.001);
+        assert!((points_to_mm(432.) - 152.4).abs() < 0.001);
+        assert_eq!(tenths_mm_to_mm(1016), 101.6);
+    }
+
+    #[test]
+    fn device_caps_margins_convert_per_axis_and_reject_invalid_geometry() {
+        let margin =
+            margins_from_device_caps((812, 1218), (20, 20), (772, 1178), (203, 203)).unwrap();
+        assert!(
+            [margin.0, margin.1, margin.2, margin.3]
+                .iter()
+                .all(|mm| (*mm - 2.5).abs() < 0.02)
+        );
+        assert_eq!(
+            margins_from_device_caps((812, 1218), (20, 20), (800, 1178), (203, 203)),
+            None
+        );
+        assert_eq!(
+            margins_from_device_caps((i32::MAX, 1218), (i32::MAX, 20), (1, 1178), (203, 203)),
+            None
+        );
+    }
+
+    #[test]
+    fn selected_standard_media_tracks_portrait_and_landscape_orientation() {
+        let printer = Printer {
+            media: vec!["4x6".into()],
+            media_sizes: HashMap::from([("4x6".into(), (101.6, 152.4))]),
+            ..Default::default()
+        };
+        let mut settings = Settings {
+            media: "4x6".into(),
+            width_mm: 101.6,
+            height_mm: 152.4,
+            ..Default::default()
+        };
+        assert_eq!(
+            printer.selected_media_size(&settings).unwrap(),
+            (101.6, 152.4)
+        );
+        std::mem::swap(&mut settings.width_mm, &mut settings.height_mm);
+        assert_eq!(
+            printer.selected_media_size(&settings).unwrap(),
+            (152.4, 101.6)
+        );
+        assert!(printer.media_mismatch("4x6", 152.4, 101.6).is_none());
+    }
+
+    #[test]
+    fn printable_area_guard_reports_each_overflow_edge_in_millimeters() {
+        let mut output = Output {
+            image: image::RgbImage::from_pixel(800, 1200, image::Rgb([255; 3])),
+            warnings: vec![],
+            clipped: false,
+            width_mm: 100.,
+            height_mm: 150.,
+            dpi: 203,
+        };
+        output.image.put_pixel(5, 600, image::Rgb([0; 3]));
+        output.image.put_pixel(795, 600, image::Rgb([0; 3]));
+        let overflow = outside_printable_area_mm(&output, (2.5, 0., 2.5, 0.)).unwrap();
+        assert!(overflow.0 > 1.8 && overflow.0 < 2.0);
+        assert_eq!(overflow.1, 0.);
+        assert!(overflow.2 > 1.9 && overflow.2 <= 2.0);
+        assert_eq!(overflow.3, 0.);
+    }
+
+    #[test]
+    fn windows_alignment_geometry_fits_standard_and_custom_media() {
+        for &(width, height) in &[
+            (101.6, 152.4),
+            (101.6, 101.6),
+            (50.8, 25.4),
+            (100., 150.),
+            (50., 30.),
+        ] {
+            for dpi in [203, 300] {
+                let (physical_width, physical_height) = (
+                    mm_to_pixels(width, dpi) as i32,
+                    mm_to_pixels(height, dpi) as i32,
+                );
+                let (left, top, right, bottom) = (
+                    mm_to_pixels(2.5, dpi) as i32,
+                    mm_to_pixels(2.0, dpi) as i32,
+                    mm_to_pixels(3.0, dpi) as i32,
+                    mm_to_pixels(2.5, dpi) as i32,
+                );
+                let margins = margins_from_device_caps(
+                    (physical_width, physical_height),
+                    (left, top),
+                    (
+                        physical_width - left - right,
+                        physical_height - top - bottom,
+                    ),
+                    (dpi as i32, dpi as i32),
+                )
+                .unwrap();
+                let output =
+                    crate::calibration::alignment_test_in_area(width, height, dpi, margins)
+                        .unwrap();
+                assert_eq!(
+                    outside_printable_area_mm(&output, margins),
+                    None,
+                    "{width} × {height} mm at {dpi} DPI"
+                );
+            }
+        }
     }
 }

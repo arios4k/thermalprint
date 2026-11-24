@@ -1,9 +1,17 @@
 <!--
 title: What's new
 group: Reference
-summary: Changes in versions 0.6.0 to 0.17.0, how they work, and where to read more.
+summary: Changes in versions 0.6.0 to 0.18.0, how they work, and where to read more.
 -->
 <p>This page lists what changed recently and links to the full explanation of each tool. Your version is shown in <strong>☰ → About ThermalPrint</strong>.</p>
+
+<h2 id="version-0-18-0">Version 0.18.0</h2>
+<p>Windows printing now follows the selected label media and the printer driver's actual printable area.</p>
+<ul>
+  <li><strong>Alignment tests that respect printer margins.</strong> The test pattern uses the selected stock, orientation, real printer DPI, and Windows driver's imageable area. Its marks stay inside printable margins; genuine clipping still has an actionable explanation.</li>
+  <li><strong>Media and output stay in sync.</strong> Changing the printer, label size, or orientation updates the matching media and page dimensions. Windows receives the selected paper size and orientation explicitly, and normal output is fitted to the selected media without stretching or cropping.</li>
+  <li><strong>Background printing stays in the tray.</strong> Closing the main window keeps background printing active, and a later print error no longer brings the window back.</li>
+</ul>
 
 <h2 id="version-0-17-0">Version 0.17.0</h2>
 <p>Easier printer setup, stock profiles that are clear to use, and every paper size your printer supports.</p>

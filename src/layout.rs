@@ -3,7 +3,7 @@ use crate::{
     document::Page,
     settings::{Scale, Settings},
 };
-use anyhow::{Result, bail};
+use anyhow::{Result, bail, ensure};
 use image::{
     RgbImage,
     imageops::{self, FilterType},
@@ -18,10 +18,71 @@ pub struct Output {
     pub dpi: u32,
 }
 impl Output {
+    pub fn clipping_message(&self) -> Option<&str> {
+        self.warnings
+            .iter()
+            .find(|warning| warning.starts_with("Content is "))
+            .map(String::as_str)
+    }
+
+    pub fn mm_to_pixels(mm: f32, dpi: u32) -> i64 {
+        (f64::from(mm) * f64::from(dpi) / 25.4).round() as i64
+    }
+
+    /// Scale a complete page to the selected media without cropping or stretching its content.
+    pub fn fit_to_media(&self, width_mm: f32, height_mm: f32) -> Result<Output> {
+        ensure!(
+            width_mm.is_finite()
+                && height_mm.is_finite()
+                && (10.0..=500.0).contains(&width_mm)
+                && (10.0..=500.0).contains(&height_mm),
+            "Printer media dimensions are invalid"
+        );
+        if self.width_mm == width_mm && self.height_mm == height_mm {
+            return Ok(self.clone());
+        }
+        let width = Self::mm_to_pixels(width_mm, self.dpi).max(1) as u32;
+        let height = Self::mm_to_pixels(height_mm, self.dpi).max(1) as u32;
+        ensure!(
+            width as u64 * height as u64 <= MAX_OUTPUT_PIXELS,
+            "The output is too large at {} DPI. Choose a lower resolution",
+            self.dpi
+        );
+        let factor = (width as f32 / self.image.width() as f32)
+            .min(height as f32 / self.image.height() as f32);
+        let fitted_width = (self.image.width() as f32 * factor)
+            .round()
+            .max(1.0)
+            .min(width as f32) as u32;
+        let fitted_height = (self.image.height() as f32 * factor)
+            .round()
+            .max(1.0)
+            .min(height as f32) as u32;
+        let fitted = imageops::resize(
+            &self.image,
+            fitted_width,
+            fitted_height,
+            FilterType::Lanczos3,
+        );
+        let mut image = RgbImage::from_pixel(width, height, image::Rgb([255; 3]));
+        imageops::overlay(
+            &mut image,
+            &fitted,
+            ((width - fitted_width) / 2) as i64,
+            ((height - fitted_height) / 2) as i64,
+        );
+        Ok(Output {
+            image,
+            width_mm,
+            height_mm,
+            ..self.clone()
+        })
+    }
+
     /// Move the content by a printer-alignment offset (millimeters), keeping the page size.
     /// Content pushed past an edge is cut off; the vacated strip stays white.
     pub fn shifted(&self, dx_mm: f32, dy_mm: f32) -> Output {
-        let to_dots = |mm: f32| (mm / 25.4 * self.dpi as f32).round() as i64;
+        let to_dots = |mm: f32| Self::mm_to_pixels(mm, self.dpi);
         let (dx, dy) = (to_dots(dx_mm), to_dots(dy_mm));
         if dx == 0 && dy == 0 {
             return self.clone();
@@ -93,10 +154,22 @@ pub fn render(page: &Page, crop: Crop, s: &Settings) -> Result<Output> {
     };
     let target_w = (source.width() as f32 * factor).round().max(1.) as u32;
     let target_h = (source.height() as f32 * factor).round().max(1.) as u32;
-    let clipped = target_w > available_w || target_h > available_h;
+    let overflow_w = target_w.saturating_sub(available_w);
+    let overflow_h = target_h.saturating_sub(available_h);
+    let clipped = overflow_w > 0 || overflow_h > 0;
     let mut warnings = vec![];
     if clipped {
-        warnings.push("Content exceeds the printable area. Printing is blocked. Use Fit, rotate, reduce scale, or choose larger paper.".into());
+        let width_mm = overflow_w as f32 * 25.4 / s.dpi as f32;
+        let height_mm = overflow_h as f32 * 25.4 / s.dpi as f32;
+        let exceeds = match (overflow_w > 0, overflow_h > 0) {
+            (true, true) => format!("{width_mm:.1} mm too wide and {height_mm:.1} mm too tall"),
+            (true, false) => format!("{width_mm:.1} mm too wide"),
+            (false, true) => format!("{height_mm:.1} mm too tall"),
+            (false, false) => unreachable!(),
+        };
+        warnings.push(format!(
+            "Content is {exceeds} for the printable area. Printing is blocked. Use Fit, rotate, reduce scale, or choose larger paper."
+        ));
     }
     let physical_scale = (target_w as f32 / s.dpi as f32 * 25.4) / mm_w;
     if physical_scale < 0.8 {
@@ -185,5 +258,16 @@ mod shift_tests {
         );
         let gone = dot_output().shifted(100., 0.);
         assert!(gone.image.pixels().all(|p| p.0 == [255; 3]));
+    }
+
+    #[test]
+    fn fitting_matches_media_size_without_stretching_page_aspect_ratio() {
+        let mut output = dot_output();
+        output.width_mm = 25.4;
+        output.height_mm = 25.4;
+        let fitted = output.fit_to_media(50.8, 25.4).unwrap();
+        assert_eq!(fitted.image.dimensions(), (406, 203));
+        assert_eq!(fitted.image.get_pixel(201, 100).0, [0; 3]);
+        assert_eq!((fitted.width_mm, fitted.height_mm), (50.8, 25.4));
     }
 }

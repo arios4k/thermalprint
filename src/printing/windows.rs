@@ -12,6 +12,16 @@ use windows_sys::Win32::{
     Storage::Xps::*,
 };
 
+struct DeviceGeometry {
+    dpi_x: i32,
+    dpi_y: i32,
+    physical_width: i32,
+    physical_height: i32,
+    offset_x: i32,
+    offset_y: i32,
+    margins_mm: (f32, f32, f32, f32),
+}
+
 fn wide(text: &str) -> Vec<u16> {
     text.encode_utf16().chain([0]).collect()
 }
@@ -154,7 +164,10 @@ fn read_capabilities(printer: &mut Printer) -> Result<()> {
                 }
                 let code = id.to_string();
                 let label = decode(&label);
-                let (w, h) = (size.x as f32 / 10., size.y as f32 / 10.);
+                let (w, h) = (
+                    super::tenths_mm_to_mm(size.x),
+                    super::tenths_mm_to_mm(size.y),
+                );
                 printer.media.push(code.clone());
                 printer
                     .media_labels
@@ -191,7 +204,7 @@ impl Drop for PrinterDc {
     }
 }
 
-fn printer_dc(p: &Printer, s: &Settings, output: &Output) -> Result<PrinterDc> {
+fn printer_dc(p: &Printer, s: &Settings, width_mm: f32, height_mm: f32) -> Result<PrinterDc> {
     let name = wide(&p.name);
     let queue = Queue::open(&name)?;
     let properties = |out, input, flags| unsafe {
@@ -212,7 +225,22 @@ fn printer_dc(p: &Printer, s: &Settings, output: &Output) -> Result<PrinterDc> {
     // Preserve driver-private data appended to DEVMODE and have the driver validate changes.
     unsafe {
         let fields = &mut (*mode).Anonymous1.Anonymous1;
-        fields.dmOrientation = DMORIENT_PORTRAIT as i16;
+        let landscape = if s.media == "Custom" {
+            width_mm > height_mm
+        } else {
+            p.media_sizes
+                .get(&s.media)
+                .is_some_and(|&(media_width, media_height)| {
+                    (width_mm - media_height).abs() < 0.5
+                        && (height_mm - media_width).abs() < 0.5
+                        && (media_width - media_height).abs() >= 0.5
+                })
+        };
+        fields.dmOrientation = if landscape {
+            DMORIENT_LANDSCAPE as i16
+        } else {
+            DMORIENT_PORTRAIT as i16
+        };
         fields.dmCopies = 1;
         if (*mode).dmFields & DM_SCALE != 0 {
             fields.dmScale = 100;
@@ -222,8 +250,13 @@ fn printer_dc(p: &Printer, s: &Settings, output: &Output) -> Result<PrinterDc> {
         (*mode).dmFields &= !(DM_FORMNAME | DM_PAPERWIDTH | DM_PAPERLENGTH | DM_PAPERSIZE);
         if s.media == "Custom" && p.custom_media {
             fields.dmPaperSize = 0;
-            fields.dmPaperWidth = (output.width_mm * 10.).round() as i16;
-            fields.dmPaperLength = (output.height_mm * 10.).round() as i16;
+            let (paper_width, paper_length) = if landscape {
+                (height_mm, width_mm)
+            } else {
+                (width_mm, height_mm)
+            };
+            fields.dmPaperWidth = (paper_width * 10.).round() as i16;
+            fields.dmPaperLength = (paper_length * 10.).round() as i16;
             (*mode).dmFields |= DM_PAPERWIDTH | DM_PAPERLENGTH;
         } else {
             ensure!(
@@ -257,6 +290,58 @@ fn printer_dc(p: &Printer, s: &Settings, output: &Output) -> Result<PrinterDc> {
     Ok(PrinterDc(dc))
 }
 
+fn device_geometry(dc: &PrinterDc, width_mm: f32, height_mm: f32) -> Result<DeviceGeometry> {
+    let cap = |index: u32| unsafe { GetDeviceCaps(dc.0, index as i32) };
+    let (dpi_x, dpi_y) = (cap(LOGPIXELSX), cap(LOGPIXELSY));
+    ensure!(
+        dpi_x > 0 && dpi_y > 0,
+        "Printer driver did not report a usable resolution"
+    );
+    let (physical_width, physical_height) = (cap(PHYSICALWIDTH), cap(PHYSICALHEIGHT));
+    let (actual_w, actual_h) = (
+        physical_width as f32 * 25.4 / dpi_x as f32,
+        physical_height as f32 * 25.4 / dpi_y as f32,
+    );
+    ensure!(
+        (actual_w - width_mm).abs() < 0.5 && (actual_h - height_mm).abs() < 0.5,
+        "Selected media is {width_mm:.1} × {height_mm:.1} mm, but the Windows driver configured {actual_w:.1} × {actual_h:.1} mm. Check the selected label size and driver paper setting."
+    );
+    let (offset_x, offset_y) = (cap(PHYSICALOFFSETX), cap(PHYSICALOFFSETY));
+    let margins_mm = super::margins_from_device_caps(
+        (physical_width, physical_height),
+        (offset_x, offset_y),
+        (cap(HORZRES), cap(VERTRES)),
+        (dpi_x, dpi_y),
+    )
+    .context("Windows printer driver returned invalid printable-area metrics")?;
+    Ok(DeviceGeometry {
+        dpi_x,
+        dpi_y,
+        physical_width,
+        physical_height,
+        offset_x,
+        offset_y,
+        margins_mm,
+    })
+}
+
+pub fn alignment_geometry(
+    s: &Settings,
+    p: &Printer,
+    width_mm: f32,
+    height_mm: f32,
+) -> Result<(u32, (f32, f32, f32, f32))> {
+    let dc = printer_dc(p, s, width_mm, height_mm)?;
+    let geometry = device_geometry(&dc, width_mm, height_mm)?;
+    if !s.resolution.is_empty() {
+        ensure!(
+            s.resolution == format!("{}x{}dpi", geometry.dpi_x, geometry.dpi_y),
+            "Printer driver changed the requested resolution"
+        );
+    }
+    Ok((geometry.dpi_x as u32, geometry.margins_mm))
+}
+
 fn check_selection(s: &Settings, p: &Printer) -> Result<()> {
     ensure!(
         s.printer == p.name,
@@ -273,24 +358,14 @@ pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
     check_selection(s, p)?;
     ensure!(
         !output.clipped,
-        "Printing blocked: content would be clipped"
+        "{}",
+        output
+            .clipping_message()
+            .unwrap_or("Printing blocked: content would be clipped")
     );
-    let dc = printer_dc(p, s, output)?;
-    let cap = |index: u32| unsafe { GetDeviceCaps(dc.0, index as i32) };
-    let (dpi_x, dpi_y) = (cap(LOGPIXELSX), cap(LOGPIXELSY));
-    ensure!(
-        dpi_x > 0 && dpi_y > 0,
-        "Printer driver did not report a usable resolution"
-    );
-    let (physical_w, physical_h) = (cap(PHYSICALWIDTH), cap(PHYSICALHEIGHT));
-    let (actual_w, actual_h) = (
-        physical_w as f32 * 25.4 / dpi_x as f32,
-        physical_h as f32 * 25.4 / dpi_y as f32,
-    );
-    ensure!(
-        (actual_w - output.width_mm).abs() < 0.5 && (actual_h - output.height_mm).abs() < 0.5,
-        "Printer driver selected {actual_w:.1} × {actual_h:.1} mm. Choose matching media in printer settings."
-    );
+    let dc = printer_dc(p, s, output.width_mm, output.height_mm)?;
+    let geometry = device_geometry(&dc, output.width_mm, output.height_mm)?;
+    let (dpi_x, dpi_y) = (geometry.dpi_x, geometry.dpi_y);
     if !s.resolution.is_empty() {
         ensure!(
             s.resolution == format!("{dpi_x}x{dpi_y}dpi"),
@@ -299,24 +374,16 @@ pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
     }
     let output = output.shifted(s.offset_x_mm, s.offset_y_mm);
     let (w, h) = (output.image.width() as i32, output.image.height() as i32);
-    let (left, top) = (cap(PHYSICALOFFSETX), cap(PHYSICALOFFSETY));
-    let (right, bottom) = (left + cap(HORZRES), top + cap(VERTRES));
-    let scale = |position: i32, source: i32, destination: i32| {
-        (f64::from(position) * f64::from(source) / f64::from(destination)).round() as u32
-    };
-    let margins = (
-        scale(left, w, physical_w),
-        scale(top, h, physical_h),
-        scale(right, w, physical_w),
-        scale(bottom, h, physical_h),
-    );
-    if (left > 0 || top > 0 || right < physical_w || bottom < physical_h)
-        && output.image.enumerate_pixels().any(|(x, y, pixel)| {
-            let (left, top, right, bottom) = margins;
-            (x < left || x >= right || y < top || y >= bottom) && pixel.0 != [255; 3]
-        })
-    {
-        bail!("Printing blocked: content would be clipped by the driver’s printable area");
+    if let Some(overflow) = super::outside_printable_area_mm(&output, geometry.margins_mm) {
+        bail!(
+            "Printing blocked: content extends {:.1} mm beyond printable width and {:.1} mm beyond printable height (left {:.1}, right {:.1}, top {:.1}, bottom {:.1}). Reduce scale, move content inward, or choose media with a larger printable area.",
+            overflow.0 + overflow.2,
+            overflow.1 + overflow.3,
+            overflow.0,
+            overflow.2,
+            overflow.1,
+            overflow.3
+        );
     }
     let pixels: Vec<[u8; 4]> = output
         .image
@@ -350,10 +417,10 @@ pub fn submit(output: &Output, s: &Settings, p: &Printer) -> Result<String> {
             let lines = unsafe {
                 StretchDIBits(
                     dc.0,
-                    -left,
-                    -top,
-                    physical_w,
-                    physical_h,
+                    -geometry.offset_x,
+                    -geometry.offset_y,
+                    geometry.physical_width,
+                    geometry.physical_height,
                     0,
                     0,
                     w,

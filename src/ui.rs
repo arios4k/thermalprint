@@ -1688,11 +1688,7 @@ impl ThermalPrint {
         settings.copies = 1;
         self.persist();
         self.task("Submitting alignment test…", move || {
-            let output = crate::calibration::alignment_test(
-                settings.width_mm,
-                settings.height_mm,
-                settings.dpi,
-            );
+            let output = printing::alignment_test_output(&settings, &printer)?;
             Ok(Message::Done(format!(
                 "Alignment test submitted · {}",
                 printing::submit(&output, &settings, &printer)?
@@ -2148,15 +2144,35 @@ impl ThermalPrint {
         response.on_hover_text(path.display().to_string())
     }
     fn select_default_media(&mut self) {
-        if self.settings.media.is_empty()
-            && let Some(printer) = self
-                .printers
-                .iter()
-                .find(|p| p.name == self.settings.printer)
-            && let Some(media) =
-                printer.matching_media(self.settings.width_mm, self.settings.height_mm)
+        let previous = (
+            self.settings.media.clone(),
+            self.settings.width_mm,
+            self.settings.height_mm,
+        );
+        let Some(printer) = self
+            .printers
+            .iter()
+            .find(|p| p.name == self.settings.printer)
+        else {
+            return;
+        };
+        let media = printer.matching_media(self.settings.width_mm, self.settings.height_mm);
+        if self.settings.media != media.as_deref().unwrap_or("") {
+            self.settings.media = media.clone().unwrap_or_default();
+        }
+        if self.settings.media != "Custom"
+            && let Ok((width, height)) = printer.selected_media_size(&self.settings)
         {
-            self.settings.media = media;
+            self.settings.width_mm = width;
+            self.settings.height_mm = height;
+        }
+        if previous
+            != (
+                self.settings.media.clone(),
+                self.settings.width_mm,
+                self.settings.height_mm,
+            )
+        {
             self.persist();
         }
     }
@@ -2210,19 +2226,19 @@ impl ThermalPrint {
             ) {
                 crate::help::notice(ui, "Label size differs from printer media", &message, true);
                 ui.label(RichText::new(crate::i18n::tr("If the loaded paper matches the printer media, match the output below. Otherwise select media that matches the label size you want.")).small().weak());
-                if let Some(&(w, h)) = p.media_sizes.get(&self.settings.media)
-                    && crate::designer_ui::icon_button(
-                        ui,
-                        "Ruler",
-                        crate::i18n::tr("Match output to printer media"),
-                    )
-                    .on_hover_text(crate::i18n::tr(
-                        "Update the output width and height to match the selected printer stock",
-                    ))
-                    .clicked()
+                if crate::designer_ui::icon_button(
+                    ui,
+                    "Ruler",
+                    crate::i18n::tr("Match output to printer media"),
+                )
+                .on_hover_text(crate::i18n::tr(
+                    "Update the output width and height to match the selected printer stock",
+                ))
+                .clicked()
+                    && let Ok((width, height)) = p.selected_media_size(&self.settings)
                 {
-                    self.settings.width_mm = w;
-                    self.settings.height_mm = h;
+                    self.settings.width_mm = width;
+                    self.settings.height_mm = height;
                     self.dirty = self.page.is_some();
                     self.persist();
                 }
@@ -3558,9 +3574,6 @@ impl eframe::App for ThermalPrint {
         self.watch_tick(ctx);
         self.auto_print_tick(ctx);
         self.remember_queue();
-        if self.background_hidden && self.error {
-            self.show_window(ctx);
-        }
     }
 
     fn raw_input_hook(&mut self, _: &egui::Context, input: &mut egui::RawInput) {

@@ -16,6 +16,7 @@ summary: Fixes for printers that are not listed, labels that print wrong, extra 
   <tr><td>An imported label has no footer</td><td>That is by design: the label footer applies only to labels you make in the Label Designer. Imported shipping labels always print exactly as they are.</td></tr>
   <tr><td>Print all is blocked</td><td>Select and review each label in the queue. Every entry needs its own review.</td></tr>
   <tr><td>The label is too small</td><td>Crop away empty space first, then compare <em>Fit within paper</em> and <em>Actual size</em>. Check the paper size.</td></tr>
+  <tr><td>Printing is blocked because content would be clipped by the driver's printable area</td><td>For an alignment test, choose the correct loaded media and retry; ThermalPrint keeps its marks inside the driver-reported printable area. For a regular label, reduce its scale or move content inward. On Windows, also confirm the driver's paper size matches the loaded stock and that scaling is set to 100%.</td></tr>
   <tr><td>Edges are cut off</td><td>Check the printer media matches the labels, try a small margin, and use the <a href="print-center.html#alignment-and-printer-profiles">alignment offset</a>.</td></tr>
   <tr><td>Everything is shifted to one side</td><td>Use the <a href="print-center.html#alignment-and-printer-profiles">alignment test</a> and offset.</td></tr>
   <tr><td>Extra blank labels or a banner page</td><td><a href="#extra-labels-or-banner-pages">See below.</a></td></tr>

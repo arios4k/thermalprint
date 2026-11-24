@@ -20,11 +20,11 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
 <table>
   <tr><th>Setting</th><th>What it means</th></tr>
   <tr><td><strong>Printer queue</strong></td><td>The printers your system knows. The line below shows a best-effort hint such as <em>Likely thermal label printer</em>. It is based on the name and media, and is a hint only. A printer that is paused, offline, or not answering shows a note saying so.</td></tr>
-  <tr><td><strong>Paper or label size</strong></td><td>Every size the printer supports. A thermal printer lists its label sizes, such as <em>4 × 6 in</em>; an office laser or inkjet printer lists all its paper, such as <em>Letter</em>, <em>Legal</em>, <em>A4</em>, and photo sizes. Choosing one also sets the output width and height to match. A <em>Custom dimensions</em> choice appears if the driver supports it.</td></tr>
+  <tr><td><strong>Paper or label size</strong></td><td>Every size the printer supports. A thermal printer lists its label sizes, such as <em>4 × 6 in</em>; an office laser or inkjet printer lists all its paper, such as <em>Letter</em>, <em>Legal</em>, <em>A4</em>, and photo sizes. Choosing one also sets the output width and height to match. Changing the output size or orientation selects matching media automatically, or custom dimensions when the driver supports them.</td></tr>
   <tr><td><strong>Advanced driver resolution</strong></td><td>An optional resolution choice if the printer offers one. Leave it on <em>Driver default</em> unless you have a reason.</td></tr>
   <tr><td><strong>Refresh printers</strong></td><td>Looks for printers again after you add or turn on a printer. This runs in the background, so you can keep working. A printer that does not answer within a few seconds is still listed with a note, so a stuck printer queue never makes the app wait.</td></tr>
 </table>
-<div class="callout note"><p><strong>Why media matters.</strong> The media tells the printer driver how big the label is, so it does not shrink, rotate, or add margins. If the output size and the printer media disagree, ThermalPrint warns you and offers <strong>Use the paper size</strong>.</p></div>
+<div class="callout note"><p><strong>Why media matters.</strong> The media tells the printer driver how big the label is, so it does not shrink, rotate, or add margins. ThermalPrint keeps the output dimensions and orientation matched to the selected media and sends the page settings explicitly to the Windows driver.</p></div>
 
 <h2>Output settings</h2>
 <table>
@@ -53,12 +53,12 @@ summary: Set up a printer, save label stock profiles, fix alignment, and review 
 <h3>Fixing a printer that prints off-center</h3>
 <p>Some printers feed labels a little to one side, so the content is shifted or the edge is cut off. The <strong>alignment offset</strong> moves everything by a small amount to correct this.</p>
 <ol>
-  <li><strong>Print the test label.</strong> Press <strong>Print alignment test</strong>. It prints one ruler label, even if Copies is set higher, with a thin border 1 mm in from every edge, a cross at the center, and tick marks every 5 mm.</li>
+  <li><strong>Print the test label.</strong> Press <strong>Print alignment test</strong>. It prints one ruler label, even if Copies is set higher, with a thin border at least 1 mm from each edge (farther in when the Windows driver reports an unprintable margin), a cross at the center, and tick marks every 5 mm.</li>
   <li><strong>Measure.</strong> On a correctly aligned label the border is the same distance from each edge. Measure how far it is shifted.</li>
   <li><strong>Enter the correction.</strong> Set <strong>Horizontal</strong> and <strong>Vertical</strong> in millimeters (positive moves content right and down, negative moves it left and up). The range is −10 to +10 mm.</li>
   <li><strong>Print the test again</strong> and adjust until the border is even.</li>
 </ol>
-{{image:alignment-test|The alignment test label: a thin border with tick marks every five millimeters and a cross at the center|The alignment test label, as printed. The border sits 1 mm inside every edge.}}
+{{image:alignment-test|The alignment test label: a thin border with tick marks every five millimeters and a cross at the center|The alignment test label, as printed. The border stays inside the printer's printable area.}}
 <p><strong>Reset offset</strong> sets both values back to zero. The offset applies to printed labels only; exported PDF, PNG, SVG, and ZPL files are never shifted. It also does not apply to raw ZPL printing.</p>
 <div class="callout tip"><p>If the whole image is too small or the edges are cut off by the same amount all around, the cause is usually the <em>media size</em>, not alignment. Check that the printer media matches your labels first.</p></div>
 

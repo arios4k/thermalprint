@@ -378,16 +378,12 @@ impl ThermalPrint {
             self.settings.height_mm,
         ) {
             ui.colored_label(ui.visuals().warn_fg_color, reason);
-            if let Some(&(w, h)) = printer.media_sizes.get(&self.settings.media)
-                && crate::designer_ui::icon_button(
-                    ui,
-                    "Ruler",
-                    crate::i18n::tr("Use the paper size"),
-                )
+            if crate::designer_ui::icon_button(ui, "Ruler", crate::i18n::tr("Use the paper size"))
                 .clicked()
+                && let Ok((width, height)) = printer.selected_media_size(&self.settings)
             {
-                self.settings.width_mm = w;
-                self.settings.height_mm = h;
+                self.settings.width_mm = width;
+                self.settings.height_mm = height;
                 self.dirty = true;
             }
         }
@@ -404,8 +400,8 @@ impl ThermalPrint {
         if !self.settings.switch_printer(name) {
             self.settings.media.clear();
             self.settings.resolution.clear();
-            self.select_default_media();
         }
+        self.select_default_media();
         self.dirty = true;
     }
 
@@ -481,11 +477,13 @@ impl ThermalPrint {
                 }
             });
         if media != self.settings.media {
-            if let Some(&(w, h)) = p.media_sizes.get(&media) {
-                self.settings.width_mm = w;
-                self.settings.height_mm = h;
-            }
             self.settings.media = media;
+            if self.settings.media != "Custom"
+                && let Ok((width, height)) = p.selected_media_size(&self.settings)
+            {
+                self.settings.width_mm = width;
+                self.settings.height_mm = height;
+            }
             self.dirty = true;
         }
         if p.media.is_empty() && !p.custom_media {
@@ -549,18 +547,7 @@ impl ThermalPrint {
         if let Some((w, h)) = picked {
             self.settings.width_mm = w;
             self.settings.height_mm = h;
-            if let Some(media) = self.selected_printer().and_then(|p| {
-                p.media
-                    .iter()
-                    .find(|code| {
-                        p.media_sizes
-                            .get(*code)
-                            .is_some_and(|&(mw, mh)| (mw - w).abs() < 0.5 && (mh - h).abs() < 0.5)
-                    })
-                    .cloned()
-            }) {
-                self.settings.media = media;
-            }
+            self.select_default_media();
             self.dirty = true;
         }
     }
@@ -620,19 +607,24 @@ impl ThermalPrint {
     /// Output width, height, orientation, and DPI.
     pub(super) fn size_controls(&mut self, ui: &mut egui::Ui, id: &str) {
         use crate::i18n::tr;
+        let mut size_changed = false;
         ui.horizontal_wrapped(|ui| {
             ui.label(tr("Width"));
-            ui.add(
-                egui::DragValue::new(&mut self.settings.width_mm)
-                    .range(10.0..=500.0)
-                    .suffix(" mm"),
-            );
+            size_changed |= ui
+                .add(
+                    egui::DragValue::new(&mut self.settings.width_mm)
+                        .range(10.0..=500.0)
+                        .suffix(" mm"),
+                )
+                .changed();
             ui.label(tr("Height"));
-            ui.add(
-                egui::DragValue::new(&mut self.settings.height_mm)
-                    .range(10.0..=500.0)
-                    .suffix(" mm"),
-            );
+            size_changed |= ui
+                .add(
+                    egui::DragValue::new(&mut self.settings.height_mm)
+                        .range(10.0..=500.0)
+                        .suffix(" mm"),
+                )
+                .changed();
             if crate::designer_ui::icon_action(
                 ui,
                 "Rotate stock",
@@ -644,8 +636,13 @@ impl ThermalPrint {
             .clicked()
             {
                 std::mem::swap(&mut self.settings.width_mm, &mut self.settings.height_mm);
+                size_changed = true;
             }
         });
+        if size_changed {
+            self.select_default_media();
+            self.dirty = true;
+        }
         ui.horizontal(|ui| {
             ui.label(tr("Rendering DPI"))
                 .on_hover_text(crate::help::explanation("DPI"));

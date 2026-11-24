@@ -60,6 +60,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.18.0" date="2026-11-23">
+      <description>
+        <p>Reliable Windows alignment tests and automatic printer media matching.</p>
+        <ul>
+          <li>Keep the alignment test inside the Windows printer driver's actual printable area, using the selected media and printer DPI, without hiding genuine clipping.</li>
+          <li>Keep output dimensions and orientation synchronized with the selected printer media, and send the matching page settings to the Windows driver.</li>
+          <li>Keep background printing active when the main window is closed; print errors no longer reopen the window.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.17.0" date="2026-11-23">
       <description>
         <p>Easier printer setup, clear stock profiles, and every paper size your printer supports.</p>
