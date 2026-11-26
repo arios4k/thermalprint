@@ -60,6 +60,11 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.19.1" date="2026-11-26">
+      <description>
+        <p>Fix the Fedora and Copr packages for 0.19. The app is unchanged from 0.19.0.</p>
+      </description>
+    </release>
     <release version="0.19.0" date="2026-11-26">
       <description>
         <p>Direct TSPL printing and complete translations.</p>

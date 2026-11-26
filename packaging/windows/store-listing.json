@@ -1,6 +1,6 @@
 {
   "productId": "9NXDXRSQW0ZF",
-  "version": "0.19.0",
+  "version": "0.19.1",
   "listings": {
     "en-us": {
       "shortDescription": "Design and print shipping labels, barcodes, and QR codes on thermal and regular printers.",
@@ -13,7 +13,7 @@
         "inventory asset tag",
         "packing slip ZPL PDF"
       ],
-      "releaseNotes": "Version 0.19.0\n• Prints directly to TSPL label printers, used by many low-cost 4 × 6 shipping printers. In the Label Designer, Export now chooses: through the printer driver, raw ZPL, or raw TSPL. TSPL label files can also be saved.\n• Spanish, German and French now cover the whole app, including the Import & Convert queue, the Print Center summary and the Label Designer status bar."
+      "releaseNotes": "Version 0.19.1\n• A packaging fix for Linux. The Windows app is the same as 0.19.0."
     },
     "es": {
       "shortDescription": "Diseña e imprime etiquetas de envío, códigos de barras y QR en impresoras térmicas y convencionales.",
@@ -26,7 +26,7 @@
         "inventario activos",
         "albarán ZPL PDF recortar"
       ],
-      "releaseNotes": "Versión 0.19.0\n• Imprime directamente en impresoras de etiquetas TSPL, usadas por muchas impresoras de envío económicas de 4 × 6. En el Diseñador de etiquetas, Exportar ahora permite elegir: a través del controlador de la impresora, ZPL sin procesar o TSPL sin procesar. También se pueden guardar archivos de etiqueta TSPL.\n• El español, el alemán y el francés cubren ahora toda la aplicación, incluida la cola de Importar y convertir, el resumen del Centro de impresión y la barra de estado del Diseñador de etiquetas."
+      "releaseNotes": "Versión 0.19.1\n• Una corrección de empaquetado para Linux. La aplicación de Windows es la misma que la 0.19.0."
     },
     "de": {
       "shortDescription": "Versandetiketten, Barcodes und QR-Codes gestalten und auf Thermo- und normalen Druckern drucken.",
@@ -39,7 +39,7 @@
         "Inventaretiketten Lieferschein",
         "PDF zuschneiden ZPL"
       ],
-      "releaseNotes": "Version 0.19.0\n• Druckt direkt auf TSPL-Etikettendrucker, die viele günstige 4 × 6-Versanddrucker verwenden. Im Etikettendesigner bietet Exportieren jetzt die Wahl: über den Druckertreiber, Roh-ZPL oder Roh-TSPL. TSPL-Etikettendateien lassen sich ebenfalls speichern.\n• Spanisch, Deutsch und Französisch decken jetzt die ganze App ab, einschließlich der Importwarteschlange, der Übersicht im Druckcenter und der Statusleiste des Etikettendesigners."
+      "releaseNotes": "Version 0.19.1\n• Eine Paketkorrektur für Linux. Die Windows-App ist dieselbe wie 0.19.0."
     },
     "fr": {
       "shortDescription": "Créez et imprimez des étiquettes d’expédition, codes-barres et QR sur imprimantes thermiques ou classiques.",
@@ -52,7 +52,7 @@
         "inventaire stock",
         "bordereau ZPL PDF recadrer"
       ],
-      "releaseNotes": "Version 0.19.0\n• Imprime directement sur les imprimantes d'étiquettes TSPL, utilisées par de nombreuses imprimantes d'expédition 4 × 6 économiques. Dans le Concepteur d'étiquettes, Exporter permet désormais de choisir : via le pilote de l'imprimante, en ZPL brut ou en TSPL brut. Les fichiers d'étiquette TSPL peuvent aussi être enregistrés.\n• L'espagnol, l'allemand et le français couvrent désormais toute l'application, y compris la file Importer et convertir, le résumé du Centre d'impression et la barre d'état du Concepteur d'étiquettes."
+      "releaseNotes": "Version 0.19.1\n• Une correction d'empaquetage pour Linux. L'application Windows est la même que la 0.19.0."
     }
   }
 }

@@ -89,7 +89,10 @@ jobs:
         run: |
           $missing = 'MSSTORE_TENANT_ID', 'MSSTORE_SELLER_ID', 'MSSTORE_CLIENT_ID', 'MSSTORE_CLIENT_SECRET' |
               Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) }
-          if ($missing) {
+          if ($env:STORE_SUBMIT_MODE -eq 'skip') {
+              "::notice title=Microsoft Store::Not submitted, because THERMALPRINT_STORE_SUBMIT is set to skip."
+              'ready=false' >> $env:GITHUB_OUTPUT
+          } elseif ($missing) {
               "::notice title=Microsoft Store::Not submitted. Set these secrets to publish automatically: $($missing -join ', ')"
               'ready=false' >> $env:GITHUB_OUTPUT
           } else {
