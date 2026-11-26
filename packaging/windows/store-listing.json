@@ -1,0 +1,58 @@
+{
+  "productId": "9NXDXRSQW0ZF",
+  "version": "0.18.0",
+  "listings": {
+    "en-us": {
+      "shortDescription": "Design and print shipping labels, barcodes, and QR codes on thermal and regular printers.",
+      "searchTerms": [
+        "thermal printer",
+        "label maker designer",
+        "shipping postage 4x6",
+        "barcode QR generator",
+        "address sticker envelope",
+        "inventory asset tag",
+        "packing slip ZPL PDF"
+      ],
+      "releaseNotes": "Version 0.18.0\n• Fixes Windows print alignment by matching the test pattern to the selected label size, orientation, printer margins, and DPI.\n• Keeps printed output matched to the selected media size and orientation.\n• Improves background printing behavior when the main window is closed."
+    },
+    "es": {
+      "shortDescription": "Diseña e imprime etiquetas de envío, códigos de barras y QR en impresoras térmicas y convencionales.",
+      "searchTerms": [
+        "impresora térmica",
+        "etiquetadora diseñador",
+        "etiquetas envío paquetería 4x6",
+        "generador código barras QR",
+        "pegatinas dirección sobres",
+        "inventario activos",
+        "albarán ZPL PDF recortar"
+      ],
+      "releaseNotes": "Versión 0.18.0\n• Corrige la alineación de impresión en Windows al ajustar el patrón de prueba al tamaño de etiqueta, la orientación, los márgenes de la impresora y los PPP seleccionados.\n• Hace que la impresión coincida con el tamaño y la orientación del soporte seleccionados.\n• Mejora el comportamiento de la impresión en segundo plano al cerrar la ventana principal."
+    },
+    "de": {
+      "shortDescription": "Versandetiketten, Barcodes und QR-Codes gestalten und auf Thermo- und normalen Druckern drucken.",
+      "searchTerms": [
+        "Thermodrucker Aufkleber 4x6",
+        "Etikettendrucker Beschriftung",
+        "Versandetiketten Paket Porto",
+        "Barcode QR Generator",
+        "Adressaufkleber Briefumschlag",
+        "Inventaretiketten Lieferschein",
+        "PDF zuschneiden ZPL"
+      ],
+      "releaseNotes": "Version 0.18.0\n• Behebt die Druckausrichtung unter Windows, indem das Testmuster an Etikettengröße, Ausrichtung, Druckerränder und DPI angepasst wird.\n• Stimmt den Druck auf das ausgewählte Medienformat und die Ausrichtung ab.\n• Verbessert das Verhalten des Hintergrunddrucks beim Schließen des Hauptfensters."
+    },
+    "fr": {
+      "shortDescription": "Créez et imprimez des étiquettes d’expédition, codes-barres et QR sur imprimantes thermiques ou classiques.",
+      "searchTerms": [
+        "imprimante thermique",
+        "étiqueteuse autocollant",
+        "étiquettes expédition colis",
+        "générateur code-barres QR",
+        "adresse enveloppe",
+        "inventaire stock",
+        "bordereau ZPL PDF recadrer"
+      ],
+      "releaseNotes": "Version 0.18.0\n• Corrige l’alignement d’impression sous Windows en adaptant le motif de test au format d’étiquette, à l’orientation, aux marges de l’imprimante et au DPI sélectionnés.\n• Fait correspondre l’impression au format et à l’orientation du support sélectionnés.\n• Améliore le comportement de l’impression en arrière-plan lorsque la fenêtre principale est fermée."
+    }
+  }
+}

@@ -5,7 +5,6 @@ use crate::{
     layout::Output,
     printing::{self, Printer},
     settings::Settings,
-    zpl,
 };
 use base64::Engine as _;
 use eframe::egui::{self, Color32, Pos2, Rect, RichText, Sense, Stroke, StrokeKind, Vec2};
@@ -219,7 +218,8 @@ pub struct Designer {
     pub default_font: String,
     /// A font was just chosen; the app remembers it as [`Self::default_font`].
     pub last_font_request: Option<String>,
-    pub raw_zpl: bool,
+    /// Send labels as printer commands (ZPL or TSPL) instead of through the printer driver.
+    pub raw_language: Option<crate::raw::RawLanguage>,
     pub zoom: f32,
     pub pan: Vec2,
     revision: u64,
@@ -313,7 +313,7 @@ impl Designer {
             printer_sizes: Vec::new(),
             default_font: String::new(),
             last_font_request: None,
-            raw_zpl: false,
+            raw_language: None,
             zoom: 1.,
             pan: Vec2::ZERO,
             revision: 1,
@@ -1067,8 +1067,8 @@ impl Designer {
         }
         let doc = self.doc.clone();
         self.start_job("Exporting design…", move || {
-            if ext == "zpl" {
-                std::fs::write(&path, zpl::encode_design(&doc, dpi)?)?;
+            if let Some(language) = crate::raw::RawLanguage::from_extension(ext) {
+                std::fs::write(&path, language.encode(&doc, dpi)?)?;
             } else {
                 let output = design_render::render_label(&doc, dpi)?;
                 export::save(&output, &path)?;
@@ -1098,7 +1098,7 @@ impl Designer {
         let edge = self.footer_edge_mm(settings);
         let mut settings = settings.clone();
         settings.footer = self.footer.clone();
-        let raw = self.raw_zpl;
+        let raw = self.raw_language;
         let path = self.path.clone();
         self.start_job(
             printing::platform_message(
@@ -1106,10 +1106,10 @@ impl Designer {
                 "Submitting design to Windows…",
             ),
             move || {
-                let submitted = if raw {
+                let submitted = if let Some(language) = raw {
                     let bytes =
-                        zpl::encode_design_for_print(&doc, settings.dpi, &settings.footer, edge)?;
-                    printing::submit_raw_zpl(&bytes, &settings, &printer)
+                        language.encode_for_print(&doc, settings.dpi, &settings.footer, edge)?;
+                    printing::submit_raw(&bytes, language, &settings, &printer)
                 } else {
                     let output = design_render::render_with_footer(
                         &doc,
@@ -1127,7 +1127,7 @@ impl Designer {
                         settings.copies,
                     )
                     .with_settings(&settings, None)
-                    .with_raw_zpl(raw),
+                    .with_raw(raw),
                 );
                 Ok(submitted)
             },
@@ -1856,7 +1856,7 @@ impl Designer {
         let edge = self.footer_edge_mm(settings);
         let mut settings = settings.clone();
         settings.footer = self.footer.clone();
-        let raw = self.raw_zpl;
+        let raw = self.raw_language;
         let title = self.doc.title.clone();
         let original = self.doc.clone();
         self.start_job(status, move || {
@@ -1866,10 +1866,10 @@ impl Designer {
             )?;
             for index in 0..total {
                 let label = make(index);
-                if raw {
+                if let Some(language) = raw {
                     let bytes =
-                        zpl::encode_design_for_print(&label, settings.dpi, &settings.footer, edge)?;
-                    printing::submit_raw_zpl(&bytes, &settings, &printer)
+                        language.encode_for_print(&label, settings.dpi, &settings.footer, edge)?;
+                    printing::submit_raw(&bytes, language, &settings, &printer)
                 } else {
                     let output = design_render::render_with_footer(
                         &label,
@@ -1923,10 +1923,14 @@ impl Designer {
         match printers.iter().find(|p| p.name == settings.printer) {
             Some(printer) => {
                 let (paper_w, paper_h) = self.doc.paper_size_mm();
-                if self.raw_zpl {
+                if let Some(language) = self.raw_language {
                     issues.push(Issue {
                         level: IssueLevel::Note,
-                        text: crate::i18n::tr("Raw ZPL: verify printer compatibility and loaded label size.").into(),
+                        text: crate::i18n::tr(match language {
+                            crate::raw::RawLanguage::Zpl => "Raw ZPL: verify printer compatibility and loaded label size.",
+                            crate::raw::RawLanguage::Tspl => "Raw TSPL: verify printer compatibility and loaded label size.",
+                        })
+                        .into(),
                     });
                 } else if let Some(warning) = printer.media_mismatch(&settings.media, paper_w, paper_h) {
                     issues.push(Issue {
@@ -2546,6 +2550,7 @@ impl Designer {
                         ("PNG image", "png"),
                         ("SVG vector", "svg"),
                         ("ZPL label", "zpl"),
+                        ("TSPL label", "tspl"),
                     ] {
                         if icon_button(ui, "Export document", name).clicked() {
                             self.export(format, settings.dpi);
@@ -2553,8 +2558,12 @@ impl Designer {
                         }
                     }
                     ui.separator();
-                    ui.checkbox(&mut self.raw_zpl, crate::i18n::tr("Print using raw ZPL"))
+                    ui.radio_value(&mut self.raw_language, None, crate::i18n::tr("Print through the printer driver"))
+                        .on_hover_text(crate::i18n::tr("Recommended. The printer's driver handles the label size and printing."));
+                    ui.radio_value(&mut self.raw_language, Some(crate::raw::RawLanguage::Zpl), crate::i18n::tr("Print using raw ZPL"))
                         .on_hover_text(crate::i18n::tr(printing::platform_message("Requires a ZPL-compatible printer and raw CUPS queue.", "Requires a ZPL-compatible printer that accepts RAW jobs.")));
+                    ui.radio_value(&mut self.raw_language, Some(crate::raw::RawLanguage::Tspl), crate::i18n::tr("Print using raw TSPL"))
+                        .on_hover_text(crate::i18n::tr(printing::platform_message("For TSPL printers such as many 4 × 6 shipping printers. Requires a raw CUPS queue. The printer keeps its own gap calibration.", "For TSPL printers such as many 4 × 6 shipping printers. Requires a printer that accepts RAW jobs. The printer keeps its own gap calibration.")));
                 });
                 icon_menu(ui, "Tag", crate::i18n::tr("Label"), |ui| {
                     let footer_label = if self.footer.is_active() {
@@ -2619,14 +2628,14 @@ impl Designer {
         egui::Panel::bottom("designer-status").show(root, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.label(format!(
-                    "{}{} · {:.1} × {:.1} mm{} · {}% · {} objects",
+                    "{}{} · {:.1} × {:.1} mm{} · {}% · {}",
                     self.doc.title,
-                    if self.is_modified() { " · Unsaved" } else { "" },
+                    if self.is_modified() { format!(" · {}", crate::i18n::tr("Unsaved")) } else { String::new() },
                     self.doc.width_mm,
                     self.doc.effective_height_mm(),
-                    if self.doc.rotated_printing { " · rotated printing" } else { "" },
+                    if self.doc.rotated_printing { format!(" · {}", crate::i18n::tr("rotated printing")) } else { String::new() },
                     (self.zoom * 100.) as u32,
-                    self.doc.objects.len()
+                    crate::i18n::tr("{count} objects").replace("{count}", &self.doc.objects.len().to_string())
                 ));
                 if self.error {
                     ui.colored_label(ui.visuals().error_fg_color, &self.status);
@@ -2661,7 +2670,7 @@ impl Designer {
             }
             if let Some(printer) = printers.iter().find(|p| p.name == settings.printer) {
                 // The fixes for a label that does not match the printer media.
-                if !self.raw_zpl
+                if self.raw_language.is_none()
                     && printer
                         .media_mismatch(&settings.media, self.doc.paper_size_mm().0, self.doc.paper_size_mm().1)
                         .is_some()
@@ -7695,7 +7704,7 @@ mod overlap_footer_symbol_tests {
             resized.objects[0].height_mm *= 2.;
             let output = design_render::render_for_print(&resized, 203).unwrap();
             assert!(output.image.pixels().any(|p| p.0[0] < 128), "{name} prints");
-            assert!(!zpl::encode_design(&resized, 203).unwrap().is_empty());
+            assert!(!crate::zpl::encode_design(&resized, 203).unwrap().is_empty());
         }
     }
 }

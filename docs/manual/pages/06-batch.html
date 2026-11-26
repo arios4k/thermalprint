@@ -70,7 +70,7 @@ Alan Turing,Manchester,SKU-1003</code></pre>
   <li><strong>Every row is checked first.</strong> ThermalPrint draws all the labels before it sends anything. If any row has a problem, <em>nothing is printed</em> and the message names the rows, for example <em>Row 2: EAN-13: … </em>. Fix the data and try again.</li>
   <li>The labels are then sent in order to the printer chosen in Print Center, using its media, resolution, and copies. Alignment offsets apply too.</li>
   <li>If something goes wrong partway through, the batch stops and tells you which row it stopped at.</li>
-  <li>With <em>Print using raw ZPL</em> turned on (Export menu), labels are sent as ZPL instead of PDF.</li>
+  <li>With <em>Print using raw ZPL</em> or <em>Print using raw TSPL</em> chosen (Export menu), labels are sent in that printer language instead of PDF.</li>
   <li>If the <a href="designer.html#label-footer">label footer</a> is on, it is added to each label where the design leaves room for it, exactly as for a single print.</li>
   <li>While a barcode or QR code overlaps another object in the design, the batch does not print. Move the objects apart first; see <a href="designer.html#overlap-warning">When a code overlaps another object</a>.</li>
   <li>The finished batch appears in <a href="print-center.html#recent-prints">Recent prints</a> as one entry, such as <em>Customer label · batch of 3</em>.</li>

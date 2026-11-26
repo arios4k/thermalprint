@@ -36,7 +36,32 @@ git push origin windows-v0.16.1
 
 The **Windows 11** workflow requires the tag to match the Cargo version and all three Store identity variables to be set. The MSIX version for this example is `0.16.1.0`. A `windows-v*` tag starts the Windows build without releasing Linux packages. Use the regular `v*` tag when releasing both platforms.
 
-Download the **ThermalPrint-Windows-x64-store** artifact, extract the MSIX, and upload it through **Partner Center → ThermalPrint → Start update → Packages**. Partner Center marks the previous package for removal; save the page. Under **Store listings**, replace **What's new in this version** in every listing language (English, French, German, and Spanish) with the new release notes. Then submit the update for certification. Local installation requires a signature trusted by the test machine. Microsoft signs the published Store package during certification.
+### Automatic Store submission
+
+After the build, the workflow's **store** job uploads the MSIX to Partner Center, applies [`store-listing.json`](store-listing.json) to every listing language, and submits the update for certification. The job runs [`submit-store.ps1`](submit-store.ps1) with the [Microsoft Store Developer CLI](https://learn.microsoft.com/windows/apps/publish/msstore-dev-cli/overview) (`msstore`). It keeps the price, trial, descriptions, and screenshots that are live.
+
+Before each release, update `store-listing.json`: set `version` and write `releaseNotes` ("What's new in this version") in all four languages. Keep `searchTerms` to at most 7 terms per language, each no longer than 30 characters, with no more than 21 words in total and no word repeated. `tests/store_listing.rs` checks these limits and fails when the version does not match `Cargo.toml`.
+
+To keep the submission as a draft for a final review in Partner Center, set the repository variable `THERMALPRINT_STORE_SUBMIT` to `draft`.
+
+#### One-time setup
+
+1. In [Microsoft Entra admin center](https://entra.microsoft.com), register an application (**Identity → Applications → App registrations → New registration**) and create a client secret under **Certificates & secrets**. Copy the secret value when it is created.
+2. In Partner Center, open **Account settings → User management → Microsoft Entra applications**, add the application, and give it the **Manager** role.
+3. In GitHub, open **Settings → Environments**, create an environment named `microsoft-store`, and add these secrets. Add yourself as a required reviewer if each submission should wait for your approval.
+
+| Secret | Where to find it |
+| --- | --- |
+| `MSSTORE_TENANT_ID` | Entra admin center → Overview → **Tenant ID** |
+| `MSSTORE_CLIENT_ID` | The app registration → **Application (client) ID** |
+| `MSSTORE_CLIENT_SECRET` | The client secret value from step 1 |
+| `MSSTORE_SELLER_ID` | Partner Center → Account settings → **Seller ID** |
+
+Without these secrets, the store job is skipped with a notice and you can submit by hand: download the **ThermalPrint-Windows-x64-store** artifact, upload the MSIX under **Partner Center → ThermalPrint → Start update → Packages**, paste the text from `store-listing.json` into each listing language, and submit for certification. Partner Center listing pages can stay on a loading spinner; pressing Esc (stop loading) usually shows them. If the listing editor will not open, use **Export listings**, edit the CSV, and **Import listings**. Wait until the import finishes before you submit.
+
+Microsoft's documentation says its GitHub Actions publishing supports free products only. ThermalPrint is paid, so the job calls `msstore` directly. If Microsoft rejects the upload for a paid product, the job fails and leaves no submitted update. Submit that release by hand.
+
+Local installation requires a signature trusted by the test machine. Microsoft signs the published Store package during certification.
 
 The Store edition's US base price is **$4.99** with a **7-day time-limited trial**, set under **Pricing and availability**; updates keep these settings. The trial offers the full app so customers can test their printer and label stock. Linux remains free. [Microsoft Store pricing and trials](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/price-and-availability)
 
@@ -51,7 +76,7 @@ Keep these external Partner Center fields current for each release:
 - **Website:** https://github.com/arios4k/thermalprint
 - **Category:** Productivity or Graphics and Design
 - **Age rating:** complete the Store questionnaire (the app has no user-generated content or mature content)
-- **Release notes:** update every listing language included in the package
+- **Release notes and search terms:** kept in [`store-listing.json`](store-listing.json) and applied by the store job
 - **Screenshots:** use current Windows screenshots and include fictional label data
 
 The package declares English, Spanish, German, and French resources. Upload matching descriptions or retain an existing fallback in Partner Center.

@@ -437,7 +437,7 @@ impl ThermalPrint {
             );
         }
         if let Some(p) = self.selected_printer() {
-            ui.label(printing::thermal_hint(p));
+            ui.label(crate::i18n::tr(printing::thermal_hint(p)));
             if let Some(problem) = &p.problem {
                 ui.colored_label(ui.visuals().warn_fg_color, problem);
             }
@@ -907,19 +907,21 @@ impl ThermalPrint {
             return;
         };
         self.task("Reprinting label…", move || {
-            if entry.raw_zpl {
+            if let Some(language) = entry.raw_language() {
                 let doc = entry.design.as_ref().ok_or_else(|| {
                     anyhow::anyhow!(
-                        "Open this saved design for review before sending RAW ZPL again."
+                        "Open this saved design for review before sending raw {} again.",
+                        language.name()
                     )
                 })?;
-                let detail = printing::submit_raw_zpl(
-                    &crate::zpl::encode_design_for_print(
+                let detail = printing::submit_raw(
+                    &language.encode_for_print(
                         doc,
                         settings.dpi,
                         &settings.footer,
                         settings.safe_margin_mm,
                     )?,
+                    language,
                     &settings,
                     &printer,
                 )?;

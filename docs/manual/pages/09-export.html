@@ -1,7 +1,7 @@
 <!--
 title: Exporting
 group: The app
-summary: Save a finished label as PDF, PNG, SVG, or ZPL, and print raw ZPL to a compatible printer.
+summary: Save a finished label as PDF, PNG, SVG, ZPL, or TSPL, and print raw ZPL or TSPL to a compatible printer.
 -->
 <p>Instead of printing, you can save a finished label as a file to inspect, archive, email, or print later. Exports come from the same full-resolution pipeline as printing, not from a screenshot of the preview, and the original file is never modified.</p>
 
@@ -9,7 +9,7 @@ summary: Save a finished label as PDF, PNG, SVG, or ZPL, and print raw ZPL to a 
 <table>
   <tr><th>Area</th><th>How</th><th>Formats</th></tr>
   <tr><td>Import &amp; Convert</td><td><strong>PDF</strong> and <strong>PNG</strong> buttons in step 03.</td><td>PDF, PNG</td></tr>
-  <tr><td>Label Designer</td><td><strong>Export</strong> menu in the toolbar.</td><td>PDF, PNG, SVG, ZPL</td></tr>
+  <tr><td>Label Designer</td><td><strong>Export</strong> menu in the toolbar.</td><td>PDF, PNG, SVG, ZPL, TSPL</td></tr>
   <tr><td>Label Designer, a sheet of labels</td><td><strong>File → Print on a sheet… → Save as PDF</strong>.</td><td>PDF (any paper size the printer supports; A4, Letter, or Legal without one)</td></tr>
 </table>
 <p>Exporting works <em>without a printer</em>. A file chooser asks where to save, and the file is written safely: it is created under a temporary name and moved into place only when complete, so a failed export never leaves a half-written file.</p>
@@ -21,24 +21,26 @@ summary: Save a finished label as PDF, PNG, SVG, or ZPL, and print raw ZPL to a 
   <tr><td><strong>PNG</strong></td><td>The label as an image at the chosen resolution (203, 300, or 600 DPI), with the DPI recorded in the file.</td><td>Previews, documents, and other software.</td></tr>
   <tr><td><strong>SVG</strong> (designs)</td><td>An SVG document with the label embedded as a raster picture. It keeps the physical size, but it is not editable vector artwork.</td><td>Placing a label in a page-layout program at the right size.</td></tr>
   <tr><td><strong>ZPL</strong> (designs)</td><td>A text file of ZPL II commands that draws the label as a bitmap.</td><td>Zebra-compatible printers that you feed ZPL directly.</td></tr>
+  <tr><td><strong>TSPL</strong> (designs)</td><td>A file of TSPL commands that sets the label size and draws the label as a bitmap.</td><td>TSPL printers, such as many low-cost 4 × 6 shipping label printers, that you feed TSPL directly.</td></tr>
 </table>
-<div class="callout note"><p>With <a href="designer.html#rotated-printing">rotated printing</a> on, ZPL is rotated 90° like a print, so it fits the label stock. PDF, PNG, and SVG keep the design the way it looks on the canvas.</p></div>
+<div class="callout note"><p>With <a href="designer.html#rotated-printing">rotated printing</a> on, ZPL and TSPL are rotated 90° like a print, so it fits the label stock. PDF, PNG, and SVG keep the design the way it looks on the canvas.</p></div>
 <div class="callout note"><p>Because exports are bitmaps, text in a PDF or SVG cannot be selected or searched. Keep the <code>.thermalprint</code> file if you want to edit the label later. Exports never include the <a href="designer.html#label-footer">label footer</a>; it is added only when a design prints.</p></div>
 
-<h2 id="printing-raw-zpl">Printing raw ZPL</h2>
-<p>Most printers are used through their normal driver, and ThermalPrint sends them a PDF. Some Zebra-compatible printers accept ZPL directly through a <strong>raw queue</strong>, which skips the driver.</p>
+<h2 id="printing-raw-zpl">Printing raw ZPL or TSPL</h2>
+<p>Most printers are used through their normal driver, and ThermalPrint sends them a PDF. Some label printers also accept their own command language directly through a <strong>raw queue</strong>, which skips the driver. Zebra-compatible printers use <strong>ZPL</strong>. Many low-cost 4 × 6 shipping label printers use <strong>TSPL</strong>; check the printer's specifications or manual to find out which one it speaks.</p>
 <ol>
-  <li><strong>Create a raw queue</strong> for the printer in your system's printer setup (a queue that passes data straight through). A normal PDF queue will not work for raw ZPL.</li>
-  <li>In the Label Designer, open <strong>Export</strong> and tick <strong>Print using raw ZPL</strong>.</li>
+  <li><strong>Create a raw queue</strong> for the printer in your system's printer setup (a queue that passes data straight through). A normal PDF queue will not work for raw printing.</li>
+  <li>In the Label Designer, open <strong>Export</strong> and choose <strong>Print using raw ZPL</strong> or <strong>Print using raw TSPL</strong>. <strong>Print through the printer driver</strong> turns raw printing off again.</li>
   <li>Choose that raw queue in Print Center and press <strong>Print</strong>.</li>
 </ol>
 <ul>
-  <li>The status bar reminds you: <em>Raw ZPL: verify printer compatibility and loaded label size.</em></li>
-  <li>ZPL from ThermalPrint is a bitmap of the whole label, so fonts and barcodes look exactly as in the preview.</li>
-  <li>The alignment offset does not apply to raw ZPL; adjust position in the design instead.</li>
-  <li>Batch printing can use raw ZPL too.</li>
+  <li>The status bar reminds you to verify printer compatibility and the loaded label size.</li>
+  <li>ZPL and TSPL from ThermalPrint are a bitmap of the whole label, so fonts and barcodes look exactly as in the preview.</li>
+  <li>TSPL sets the label size but leaves the gap or black-mark setting to the printer, so calibrate the printer for your labels first, using its feed button or its own utility.</li>
+  <li>The alignment offset does not apply to raw printing; adjust position in the design instead.</li>
+  <li>Batch printing and reprints from print history use the same language the label was sent in.</li>
 </ul>
-<div class="callout warning"><p>Sending ZPL to a printer that does not understand it can print pages of garbled characters. Only use raw ZPL with a printer you know supports it.</p></div>
+<div class="callout warning"><p>Sending ZPL or TSPL to a printer that does not understand it can print pages of garbled characters. Only use a raw language your printer supports.</p></div>
 
 <h2>Limits</h2>
 <ul>
