@@ -1647,6 +1647,10 @@ const ES: &[(&str, &str)] = &[
         "For TSPL printers such as many 4 × 6 shipping printers. Requires a printer that accepts RAW jobs. The printer keeps its own gap calibration.",
         "Para impresoras TSPL, como muchas impresoras de envío de 4 × 6. Requiere una impresora que acepte trabajos RAW. La impresora conserva su propia calibración de separación.",
     ),
+    (
+        "Sample design · editable text, barcode, and QR code",
+        "Diseño de ejemplo · texto, código de barras y código QR editables",
+    ),
 ];
 const DE: &[(&str, &str)] = &[
     ("No matches", "Keine Treffer"),
@@ -3168,6 +3172,10 @@ const DE: &[(&str, &str)] = &[
     (
         "For TSPL printers such as many 4 × 6 shipping printers. Requires a printer that accepts RAW jobs. The printer keeps its own gap calibration.",
         "Für TSPL-Drucker wie viele 4 × 6-Versanddrucker. Erfordert einen Drucker, der RAW-Aufträge annimmt. Der Drucker behält seine eigene Lückenkalibrierung.",
+    ),
+    (
+        "Sample design · editable text, barcode, and QR code",
+        "Beispielentwurf · bearbeitbarer Text, Barcode und QR-Code",
     ),
 ];
 const FR: &[(&str, &str)] = &[
@@ -4735,6 +4743,10 @@ const FR: &[(&str, &str)] = &[
     (
         "For TSPL printers such as many 4 × 6 shipping printers. Requires a printer that accepts RAW jobs. The printer keeps its own gap calibration.",
         "Pour les imprimantes TSPL, comme de nombreuses imprimantes d'expédition 4 × 6. Nécessite une imprimante qui accepte les travaux RAW. L'imprimante conserve son propre étalonnage d'espacement.",
+    ),
+    (
+        "Sample design · editable text, barcode, and QR code",
+        "Modèle d'exemple · texte, code-barres et code QR modifiables",
     ),
 ];
 
