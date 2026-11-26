@@ -95,17 +95,24 @@ fn search_terms_fit_the_store_rules_and_never_repeat_a_word() {
 }
 
 #[test]
-fn pricing_names_a_base_tier_and_a_trial_the_store_accepts() {
+fn pricing_names_a_price_and_a_trial_the_store_accepts() {
     let listing = listing();
     let price = listing["pricing"]["priceId"]
         .as_str()
         .expect("pricing.priceId is set");
     assert!(
-        price
-            .strip_prefix("Tier")
-            .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())),
-        "pricing.priceId must be a Store tier such as Tier1052 ($4.99), not {price}"
+        price == "Free"
+            || price
+                .strip_prefix("Tier")
+                .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())),
+        "pricing.priceId must be Free or a Store tier such as Tier1052 ($4.99), not {price}"
     );
+    if price == "Free" {
+        assert_eq!(
+            listing["pricing"]["trialPeriod"], "NoFreeTrial",
+            "a free app has no trial"
+        );
+    }
     let trial = listing["pricing"]["trialPeriod"]
         .as_str()
         .expect("pricing.trialPeriod is set");

@@ -70,7 +70,7 @@ Document processing happens on your computer. ThermalPrint works with local file
 
 ### Windows 11
 
-ThermalPrint is available for Windows 11 x64 in the Microsoft Store. Install the latest Store version; updates appear after Microsoft certification. ThermalPrint’s source code is MIT-licensed on both platforms. Linux downloads are free, and the US Microsoft Store edition is a **$4.99 one-time purchase** that supports continued development. A **free 7-day trial** is available. [Microsoft Store listing](https://apps.microsoft.com/detail/9NXDXRSQW0ZF) · [Windows setup guide](https://arios4k.github.io/thermalprint/manual/install.html#windows-11)
+ThermalPrint is available for Windows 11 x64 in the Microsoft Store. Install the latest Store version; updates appear after Microsoft certification. ThermalPrint’s source code is MIT-licensed on both platforms. ThermalPrint is **free** on both platforms, including the Microsoft Store edition. [Microsoft Store listing](https://apps.microsoft.com/detail/9NXDXRSQW0ZF) · [Windows setup guide](https://arios4k.github.io/thermalprint/manual/install.html#windows-11)
 
 Add your printer in **Settings → Bluetooth & devices → Printers & scanners**. Then open **Print Center** in ThermalPrint, refresh the printer list, and select the media size that matches your stock. PDF rendering is bundled in the Windows package.
 
@@ -164,7 +164,7 @@ PDFium is optional. To use a custom installation, set `THERMALPRINT_PDFIUM_DIR` 
 
 If ThermalPrint has been useful to you, please consider [making a donation of any amount](https://paypal.me/AlexisRios) to help keep the project running and support its continued development. Every contribution is appreciated.
 
-Linux downloads are free. Purchases of the Windows Microsoft Store edition and optional donations support continued development.
+ThermalPrint is free on Linux and Windows. Optional donations support continued development.
 
 [![Support development with PayPal](https://img.shields.io/badge/Support_development-PayPal-0070BA?logo=paypal&logoColor=white)](https://paypal.me/AlexisRios)
 

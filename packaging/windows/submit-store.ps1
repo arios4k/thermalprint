@@ -43,13 +43,13 @@ if ((Split-Path -Leaf $Msix) -notmatch [regex]::Escape($listing.version)) {
 
 $priceId = $listing.pricing.priceId
 $trialPeriod = $listing.pricing.trialPeriod
-if ($priceId -notmatch '^Tier\d+$' -or [string]::IsNullOrWhiteSpace($trialPeriod)) {
-    throw "Set pricing.priceId (TierNNNN) and pricing.trialPeriod in $ListingFile."
+if ($priceId -notmatch '^(Free|Tier\d+)$' -or [string]::IsNullOrWhiteSpace($trialPeriod)) {
+    throw "Set pricing.priceId (Free or TierNNNN) and pricing.trialPeriod in $ListingFile."
 }
 
-# The price is managed in Partner Center, so the Store reports it as "Base", which the
-# submission API will not take back. State the same base tier explicitly instead; the draft
-# is checked below before anything is submitted.
+# Partner Center can report a managed price as "Base", which the submission API will not
+# take back. State the price explicitly instead; the draft is checked below before anything
+# is submitted.
 Write-Host "Uploading $Msix to $productId as a draft (base price $priceId, trial $trialPeriod)"
 Invoke-MsStore publish $Msix --appId $productId --noCommit --priceId $priceId | Write-Host
 

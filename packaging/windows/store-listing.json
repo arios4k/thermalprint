@@ -2,8 +2,8 @@
   "productId": "9NXDXRSQW0ZF",
   "version": "0.19.1",
   "pricing": {
-    "priceId": "Tier1052",
-    "trialPeriod": "SevenDays"
+    "priceId": "Free",
+    "trialPeriod": "NoFreeTrial"
   },
   "listings": {
     "en-us": {
