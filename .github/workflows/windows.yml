@@ -65,3 +65,55 @@ jobs:
           name: ThermalPrint-Windows-x64-${{ env.MSIX_KIND }}
           path: target/msix/*.msix
           if-no-files-found: error
+
+  store:
+    # Uploads the Store package from a release tag and submits it for certification.
+    # Skipped (with a notice) until the MSSTORE_* secrets are set; see packaging/windows/README.md.
+    needs: windows
+    if: startsWith(github.ref, 'refs/tags/windows-v') || startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    environment: microsoft-store
+    concurrency:
+      group: microsoft-store
+      cancel-in-progress: false
+    env:
+      MSSTORE_TENANT_ID: ${{ secrets.MSSTORE_TENANT_ID }}
+      MSSTORE_SELLER_ID: ${{ secrets.MSSTORE_SELLER_ID }}
+      MSSTORE_CLIENT_ID: ${{ secrets.MSSTORE_CLIENT_ID }}
+      MSSTORE_CLIENT_SECRET: ${{ secrets.MSSTORE_CLIENT_SECRET }}
+      STORE_SUBMIT_MODE: ${{ vars.THERMALPRINT_STORE_SUBMIT }}
+    steps:
+      - name: Check Store credentials
+        id: credentials
+        shell: pwsh
+        run: |
+          $missing = 'MSSTORE_TENANT_ID', 'MSSTORE_SELLER_ID', 'MSSTORE_CLIENT_ID', 'MSSTORE_CLIENT_SECRET' |
+              Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) }
+          if ($missing) {
+              "::notice title=Microsoft Store::Not submitted. Set these secrets to publish automatically: $($missing -join ', ')"
+              'ready=false' >> $env:GITHUB_OUTPUT
+          } else {
+              'ready=true' >> $env:GITHUB_OUTPUT
+          }
+      - uses: actions/checkout@v4
+        if: steps.credentials.outputs.ready == 'true'
+      - uses: actions/download-artifact@v4
+        if: steps.credentials.outputs.ready == 'true'
+        with:
+          name: ThermalPrint-Windows-x64-store
+          path: target/msix
+      - uses: microsoft/microsoft-store-apppublisher@v1.1
+        if: steps.credentials.outputs.ready == 'true'
+      - name: Sign in to Partner Center
+        if: steps.credentials.outputs.ready == 'true'
+        shell: pwsh
+        run: msstore reconfigure --tenantId $env:MSSTORE_TENANT_ID --sellerId $env:MSSTORE_SELLER_ID --clientId $env:MSSTORE_CLIENT_ID --clientSecret $env:MSSTORE_CLIENT_SECRET
+      - name: Upload, update listing, and submit
+        if: steps.credentials.outputs.ready == 'true'
+        shell: pwsh
+        run: |
+          $msix = Get-ChildItem target/msix -Filter *.msix | Select-Object -First 1
+          if (!$msix) { throw 'The Store MSIX artifact is empty.' }
+          $options = @{}
+          if ($env:STORE_SUBMIT_MODE -eq 'draft') { $options.NoSubmit = $true }
+          ./packaging/windows/submit-store.ps1 -Msix $msix.FullName @options
