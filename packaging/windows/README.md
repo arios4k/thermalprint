@@ -42,7 +42,7 @@ After the build, the workflow's **store** job uploads the MSIX to Partner Center
 
 Before each release, update `store-listing.json`: set `version` and write `releaseNotes` ("What's new in this version") in all four languages. Keep `searchTerms` to at most 7 terms per language, each no longer than 30 characters, with no more than 21 words in total and no word repeated. `tests/store_listing.rs` checks these limits and fails when the version does not match `Cargo.toml`.
 
-To keep the submission as a draft for a final review in Partner Center, set the repository variable `THERMALPRINT_STORE_SUBMIT` to `draft`.
+To keep the submission as a draft for a final review in Partner Center, set the repository variable `THERMALPRINT_STORE_SUBMIT` to `draft`. To leave the Store alone for a release, for example a Linux-only fix while an earlier update is still in certification, set it to `skip`, and remove it afterwards.
 
 #### One-time setup
 

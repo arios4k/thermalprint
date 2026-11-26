@@ -28,6 +28,12 @@ def prepare(project: Path, output: Path, offline: bool = False) -> Path:
                 shutil.copytree(source, stage / name)
             else:
                 shutil.copy2(source, stage / name)
+        # Tests read the Microsoft Store listing, so the source package needs it too.
+        for name in ("packaging/windows/store-listing.json",):
+            source = project / name
+            if source.exists():
+                (stage / name).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, stage / name)
         command = ["cargo", "vendor", "--locked", "--versioned-dirs"]
         if offline:
             command.append("--offline")
