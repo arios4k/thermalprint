@@ -93,3 +93,32 @@ fn search_terms_fit_the_store_rules_and_never_repeat_a_word() {
         assert!(!short.is_empty() && short.chars().count() <= 1000);
     }
 }
+
+#[test]
+fn pricing_names_a_base_tier_and_a_trial_the_store_accepts() {
+    let listing = listing();
+    let price = listing["pricing"]["priceId"]
+        .as_str()
+        .expect("pricing.priceId is set");
+    assert!(
+        price
+            .strip_prefix("Tier")
+            .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())),
+        "pricing.priceId must be a Store tier such as Tier1052 ($4.99), not {price}"
+    );
+    let trial = listing["pricing"]["trialPeriod"]
+        .as_str()
+        .expect("pricing.trialPeriod is set");
+    assert!(
+        [
+            "NoFreeTrial",
+            "OneDay",
+            "SevenDays",
+            "FifteenDays",
+            "ThirtyDays",
+            "TrialNeverExpires"
+        ]
+        .contains(&trial),
+        "pricing.trialPeriod {trial} is not a Store trial value"
+    );
+}

@@ -1,6 +1,10 @@
 {
   "productId": "9NXDXRSQW0ZF",
   "version": "0.19.1",
+  "pricing": {
+    "priceId": "Tier1052",
+    "trialPeriod": "SevenDays"
+  },
   "listings": {
     "en-us": {
       "shortDescription": "Design and print shipping labels, barcodes, and QR codes on thermal and regular printers.",
