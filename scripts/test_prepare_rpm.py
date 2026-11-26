@@ -51,6 +51,15 @@ class PrepareRpmTests(unittest.TestCase):
                 self.assertIsNotNone(archive.getmember(f"thermalprint-1.2.3/{name}"))
             self.assertTrue(all(entry.uid == 0 and entry.gid == 0 and entry.mtime == 0 for entry in archive.getmembers()))
 
+    def test_archive_contains_the_store_listing_the_tests_read(self):
+        listing = self.project / "packaging/windows/store-listing.json"
+        listing.parent.mkdir(parents=True)
+        listing.write_text("{}")
+        with patch.object(module.subprocess, "run", side_effect=self.vendor), patch.dict(module.os.environ, {"SOURCE_DATE_EPOCH": ""}):
+            module.prepare(self.project, self.output, offline=True)
+        with tarfile.open(self.output / "SOURCES/thermalprint-1.2.3.tar.xz") as archive:
+            self.assertIsNotNone(archive.getmember("thermalprint-1.2.3/packaging/windows/store-listing.json"))
+
     def test_unreviewed_dependency_license_is_rejected(self):
         def unlicensed(command, *, cwd, **kwargs):
             result = self.vendor(command, cwd=cwd, **kwargs)
