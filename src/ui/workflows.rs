@@ -437,7 +437,7 @@ impl ThermalPrint {
             );
         }
         if let Some(p) = self.selected_printer() {
-            ui.label(printing::thermal_hint(p));
+            ui.label(crate::i18n::tr(printing::thermal_hint(p)));
             if let Some(problem) = &p.problem {
                 ui.colored_label(ui.visuals().warn_fg_color, problem);
             }

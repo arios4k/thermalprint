@@ -678,7 +678,7 @@ pub(super) fn seed(app: &mut ThermalPrint, ctx: &egui::Context) {
             mode: Mode::Manual,
         })
         .collect();
-    app.status = "Demo workspace · All sample labels are fictional".into();
+    app.status = crate::i18n::tr("Demo workspace · All sample labels are fictional").into();
 }
 
 const DEMO_CSV: &str = "Name,City,SKU\nAda Lovelace,London,SKU-1001\nGrace Hopper,New York,SKU-1002\nAlan Turing,Manchester,SKU-1003\n";

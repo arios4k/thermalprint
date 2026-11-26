@@ -2619,14 +2619,14 @@ impl Designer {
         egui::Panel::bottom("designer-status").show(root, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.label(format!(
-                    "{}{} · {:.1} × {:.1} mm{} · {}% · {} objects",
+                    "{}{} · {:.1} × {:.1} mm{} · {}% · {}",
                     self.doc.title,
-                    if self.is_modified() { " · Unsaved" } else { "" },
+                    if self.is_modified() { format!(" · {}", crate::i18n::tr("Unsaved")) } else { String::new() },
                     self.doc.width_mm,
                     self.doc.effective_height_mm(),
-                    if self.doc.rotated_printing { " · rotated printing" } else { "" },
+                    if self.doc.rotated_printing { format!(" · {}", crate::i18n::tr("rotated printing")) } else { String::new() },
                     (self.zoom * 100.) as u32,
-                    self.doc.objects.len()
+                    crate::i18n::tr("{count} objects").replace("{count}", &self.doc.objects.len().to_string())
                 ));
                 if self.error {
                     ui.colored_label(ui.visuals().error_fg_color, &self.status);

@@ -1547,6 +1547,85 @@ const ES: &[(&str, &str)] = &[
         "Save the current setup as a new profile",
         "Guardar la configuración actual como un perfil nuevo",
     ),
+    ("Unsaved", "Sin guardar"),
+    ("rotated printing", "impresión girada"),
+    ("{count} objects", "{count} objetos"),
+    ("1 copy", "1 copia"),
+    ("{count} copies", "{count} copias"),
+    ("Printer media: {media}", "Soporte de la impresora: {media}"),
+    ("Not selected", "Sin seleccionar"),
+    (
+        "Custom — matches output",
+        "Personalizado — coincide con la salida",
+    ),
+    (
+        "{count} imported labels queued",
+        "{count} etiquetas importadas en cola",
+    ),
+    (
+        "Print queue · {count} labels",
+        "Cola de impresión · {count} etiquetas",
+    ),
+    ("Label {n} of {total}", "Etiqueta {n} de {total}"),
+    ("Queued labels", "Etiquetas en cola"),
+    (
+        "Print all {count} labels in order",
+        "Imprimir las {count} etiquetas en orden",
+    ),
+    ("Recently opened", "Abiertos recientemente"),
+    ("of {total}", "de {total}"),
+    (
+        "Advanced layout & resolution",
+        "Diseño y resolución avanzados",
+    ),
+    (
+        "Demo workspace · All sample labels are fictional",
+        "Espacio de demostración · Todas las etiquetas de ejemplo son ficticias",
+    ),
+    ("Automatic", "Automático"),
+    ("Manual", "Manual"),
+    ("Full page", "Página completa"),
+    ("Preview", "Vista previa"),
+    ("01  EXTRACT", "01  EXTRAER"),
+    ("02  PAPER & LAYOUT", "02  PAPEL Y DISEÑO"),
+    ("03  PRINT & EXPORT", "03  IMPRIMIR Y EXPORTAR"),
+    (
+        "Automatically detect the label region",
+        "Detectar automáticamente la zona de la etiqueta",
+    ),
+    (
+        "Manually adjust the crop on the original document",
+        "Ajustar manualmente el recorte en el documento original",
+    ),
+    (
+        "Use the entire page without cropping",
+        "Usar la página completa sin recortar",
+    ),
+    (
+        "Paper boundary · Final output uses the full-resolution render",
+        "Límite del papel · La salida final usa el renderizado a resolución completa",
+    ),
+    (
+        "Original document · Green boundary is the crop · Crop before rotating",
+        "Documento original · El borde verde es el recorte · Recorta antes de girar",
+    ),
+    (
+        "Likely thermal label printer",
+        "Probablemente una impresora térmica de etiquetas",
+    ),
+    (
+        "Likely label printer · check media",
+        "Probablemente una impresora de etiquetas · revisa el soporte",
+    ),
+    (
+        "Supports label-sized media · verify printer type",
+        "Admite soportes del tamaño de etiqueta · verifica el tipo de impresora",
+    ),
+    (
+        "Printer type unknown · check its driver and paper",
+        "Tipo de impresora desconocido · revisa su controlador y el papel",
+    ),
+    ("Margins & image enhancement", "Márgenes y mejora de imagen"),
 ];
 const DE: &[(&str, &str)] = &[
     ("No matches", "Keine Treffer"),
@@ -2969,6 +3048,85 @@ const DE: &[(&str, &str)] = &[
         "Save the current setup as a new profile",
         "Aktuelle Einrichtung als neues Profil speichern",
     ),
+    ("Unsaved", "Nicht gespeichert"),
+    ("rotated printing", "gedrehter Druck"),
+    ("{count} objects", "{count} Objekte"),
+    ("1 copy", "1 Kopie"),
+    ("{count} copies", "{count} Kopien"),
+    ("Printer media: {media}", "Druckermedium: {media}"),
+    ("Not selected", "Nicht ausgewählt"),
+    (
+        "Custom — matches output",
+        "Benutzerdefiniert — entspricht der Ausgabe",
+    ),
+    (
+        "{count} imported labels queued",
+        "{count} importierte Etiketten in der Warteschlange",
+    ),
+    (
+        "Print queue · {count} labels",
+        "Druckwarteschlange · {count} Etiketten",
+    ),
+    ("Label {n} of {total}", "Etikett {n} von {total}"),
+    ("Queued labels", "Etiketten in der Warteschlange"),
+    (
+        "Print all {count} labels in order",
+        "Alle {count} Etiketten der Reihe nach drucken",
+    ),
+    ("Recently opened", "Zuletzt geöffnet"),
+    ("of {total}", "von {total}"),
+    (
+        "Advanced layout & resolution",
+        "Erweitertes Layout und Auflösung",
+    ),
+    (
+        "Demo workspace · All sample labels are fictional",
+        "Demo-Arbeitsbereich · Alle Beispieletiketten sind fiktiv",
+    ),
+    ("Automatic", "Automatisch"),
+    ("Manual", "Manuell"),
+    ("Full page", "Ganze Seite"),
+    ("Preview", "Vorschau"),
+    ("01  EXTRACT", "01  EXTRAHIEREN"),
+    ("02  PAPER & LAYOUT", "02  PAPIER & LAYOUT"),
+    ("03  PRINT & EXPORT", "03  DRUCKEN & EXPORTIEREN"),
+    (
+        "Automatically detect the label region",
+        "Etikettenbereich automatisch erkennen",
+    ),
+    (
+        "Manually adjust the crop on the original document",
+        "Zuschnitt im Originaldokument manuell anpassen",
+    ),
+    (
+        "Use the entire page without cropping",
+        "Ganze Seite ohne Zuschnitt verwenden",
+    ),
+    (
+        "Paper boundary · Final output uses the full-resolution render",
+        "Papiergrenze · Die endgültige Ausgabe nutzt das Rendering in voller Auflösung",
+    ),
+    (
+        "Original document · Green boundary is the crop · Crop before rotating",
+        "Originaldokument · Der grüne Rahmen ist der Zuschnitt · Vor dem Drehen zuschneiden",
+    ),
+    (
+        "Likely thermal label printer",
+        "Wahrscheinlich ein Thermoetikettendrucker",
+    ),
+    (
+        "Likely label printer · check media",
+        "Wahrscheinlich ein Etikettendrucker · Medium prüfen",
+    ),
+    (
+        "Supports label-sized media · verify printer type",
+        "Unterstützt Etikettenformate · Druckertyp prüfen",
+    ),
+    (
+        "Printer type unknown · check its driver and paper",
+        "Druckertyp unbekannt · Treiber und Papier prüfen",
+    ),
+    ("Margins & image enhancement", "Ränder und Bildverbesserung"),
 ];
 const FR: &[(&str, &str)] = &[
     ("No matches", "Aucun résultat"),
@@ -4430,6 +4588,91 @@ const FR: &[(&str, &str)] = &[
         "Save the current setup as a new profile",
         "Enregistrer la configuration actuelle comme nouveau profil",
     ),
+    ("Unsaved", "Non enregistré"),
+    ("rotated printing", "impression pivotée"),
+    ("{count} objects", "{count} objets"),
+    ("1 copy", "1 copie"),
+    ("{count} copies", "{count} copies"),
+    (
+        "Printer media: {media}",
+        "Support de l’imprimante : {media}",
+    ),
+    ("Not selected", "Non sélectionné"),
+    (
+        "Custom — matches output",
+        "Personnalisé — correspond à la sortie",
+    ),
+    (
+        "{count} imported labels queued",
+        "{count} étiquettes importées en file d’attente",
+    ),
+    (
+        "Print queue · {count} labels",
+        "File d’impression · {count} étiquettes",
+    ),
+    ("Label {n} of {total}", "Étiquette {n} sur {total}"),
+    ("Queued labels", "Étiquettes en file d’attente"),
+    (
+        "Print all {count} labels in order",
+        "Imprimer les {count} étiquettes dans l’ordre",
+    ),
+    ("Recently opened", "Ouverts récemment"),
+    ("of {total}", "sur {total}"),
+    (
+        "Advanced layout & resolution",
+        "Mise en page et résolution avancées",
+    ),
+    (
+        "Demo workspace · All sample labels are fictional",
+        "Espace de démonstration · Toutes les étiquettes d’exemple sont fictives",
+    ),
+    ("Automatic", "Automatique"),
+    ("Manual", "Manuel"),
+    ("Full page", "Page entière"),
+    ("Preview", "Aperçu"),
+    ("01  EXTRACT", "01  EXTRAIRE"),
+    ("02  PAPER & LAYOUT", "02  PAPIER ET MISE EN PAGE"),
+    ("03  PRINT & EXPORT", "03  IMPRIMER ET EXPORTER"),
+    (
+        "Automatically detect the label region",
+        "Détecter automatiquement la zone de l’étiquette",
+    ),
+    (
+        "Manually adjust the crop on the original document",
+        "Ajuster manuellement le recadrage sur le document d’origine",
+    ),
+    (
+        "Use the entire page without cropping",
+        "Utiliser la page entière sans recadrage",
+    ),
+    (
+        "Paper boundary · Final output uses the full-resolution render",
+        "Limite du papier · La sortie finale utilise le rendu en pleine résolution",
+    ),
+    (
+        "Original document · Green boundary is the crop · Crop before rotating",
+        "Document d’origine · Le cadre vert est le recadrage · Recadrez avant de pivoter",
+    ),
+    (
+        "Likely thermal label printer",
+        "Probablement une imprimante thermique d’étiquettes",
+    ),
+    (
+        "Likely label printer · check media",
+        "Probablement une imprimante d’étiquettes · vérifiez le support",
+    ),
+    (
+        "Supports label-sized media · verify printer type",
+        "Prend en charge les formats d’étiquette · vérifiez le type d’imprimante",
+    ),
+    (
+        "Printer type unknown · check its driver and paper",
+        "Type d’imprimante inconnu · vérifiez son pilote et le papier",
+    ),
+    (
+        "Margins & image enhancement",
+        "Marges et amélioration de l’image",
+    ),
 ];
 
 #[cfg(test)]
@@ -4530,6 +4773,8 @@ mod tests {
             include_str!("footer.rs"),
             include_str!("design_render.rs"),
             include_str!("symbols.rs"),
+            include_str!("printing.rs"),
+            include_str!("ui/screenshots.rs"),
         ]
         .concat();
         let missing: Vec<_> = ES
