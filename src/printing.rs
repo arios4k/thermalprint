@@ -18,7 +18,7 @@ use std::{
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
-pub use windows::{discover, job_status, snap_connection_hint, submit_raw_zpl};
+pub use windows::{discover, job_status, snap_connection_hint, submit_raw};
 
 pub const fn platform_message(cups: &'static str, windows: &'static str) -> &'static str {
     if cfg!(windows) { windows } else { cups }
@@ -688,14 +688,22 @@ pub fn thermal_hint(p: &Printer) -> &'static str {
     }
 }
 
-/// Submit native ZPL to a deliberately configured raw CUPS queue. The user
-/// must know that this destination understands ZPL; CUPS cannot infer it.
+/// Submit printer commands (ZPL or TSPL) to a deliberately configured raw CUPS queue. The user
+/// must know that this destination understands the language; CUPS cannot infer it.
 #[cfg(unix)]
-pub fn submit_raw_zpl(data: &[u8], s: &Settings, p: &Printer) -> Result<String> {
+pub fn submit_raw(
+    data: &[u8],
+    language: crate::raw::RawLanguage,
+    s: &Settings,
+    p: &Printer,
+) -> Result<String> {
+    let name = language.name();
     if s.printer != p.name {
         bail!("Printer selection changed");
     }
-    let mut file = tempfile::Builder::new().suffix(".zpl").tempfile()?;
+    let mut file = tempfile::Builder::new()
+        .suffix(&format!(".{}", language.extension()))
+        .tempfile()?;
     file.write_all(data)?;
     file.flush()?;
     let mut last = String::new();
@@ -710,7 +718,7 @@ pub fn submit_raw_zpl(data: &[u8], s: &Settings, p: &Printer) -> Result<String> 
                     "-o",
                     "job-sheets=none",
                     "-t",
-                    "ThermalPrint ZPL label",
+                    &format!("ThermalPrint {name} label"),
                 ])
                 .arg(file.path()),
             crate::process::SUBMIT_TIMEOUT,
@@ -718,14 +726,14 @@ pub fn submit_raw_zpl(data: &[u8], s: &Settings, p: &Printer) -> Result<String> 
         .context("CUPS did not accept the job")?;
         if !o.status.success() {
             bail!(
-                "CUPS rejected raw ZPL: {}",
+                "CUPS rejected raw {name}: {}",
                 String::from_utf8_lossy(&o.stderr)
             );
         }
         last = String::from_utf8_lossy(&o.stdout).trim().into();
     }
     Ok(format!(
-        "{} ZPL copies submitted. Last job: {last}",
+        "{} {name} copies submitted. Last job: {last}",
         s.copies
     ))
 }

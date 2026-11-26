@@ -1626,6 +1626,27 @@ const ES: &[(&str, &str)] = &[
         "Tipo de impresora desconocido · revisa su controlador y el papel",
     ),
     ("Margins & image enhancement", "Márgenes y mejora de imagen"),
+    (
+        "Print through the printer driver",
+        "Imprimir a través del controlador de la impresora",
+    ),
+    (
+        "Recommended. The printer's driver handles the label size and printing.",
+        "Recomendado. El controlador de la impresora gestiona el tamaño de la etiqueta y la impresión.",
+    ),
+    ("Print using raw TSPL", "Imprimir con TSPL sin procesar"),
+    (
+        "Raw TSPL: verify printer compatibility and loaded label size.",
+        "TSPL sin procesar: verifica la compatibilidad de la impresora y el tamaño de etiqueta cargado.",
+    ),
+    (
+        "For TSPL printers such as many 4 × 6 shipping printers. Requires a raw CUPS queue. The printer keeps its own gap calibration.",
+        "Para impresoras TSPL, como muchas impresoras de envío de 4 × 6. Requiere una cola CUPS sin procesar. La impresora conserva su propia calibración de separación.",
+    ),
+    (
+        "For TSPL printers such as many 4 × 6 shipping printers. Requires a printer that accepts RAW jobs. The printer keeps its own gap calibration.",
+        "Para impresoras TSPL, como muchas impresoras de envío de 4 × 6. Requiere una impresora que acepte trabajos RAW. La impresora conserva su propia calibración de separación.",
+    ),
 ];
 const DE: &[(&str, &str)] = &[
     ("No matches", "Keine Treffer"),
@@ -3127,6 +3148,27 @@ const DE: &[(&str, &str)] = &[
         "Druckertyp unbekannt · Treiber und Papier prüfen",
     ),
     ("Margins & image enhancement", "Ränder und Bildverbesserung"),
+    (
+        "Print through the printer driver",
+        "Über den Druckertreiber drucken",
+    ),
+    (
+        "Recommended. The printer's driver handles the label size and printing.",
+        "Empfohlen. Der Druckertreiber übernimmt Etikettengröße und Druck.",
+    ),
+    ("Print using raw TSPL", "Mit Roh-TSPL drucken"),
+    (
+        "Raw TSPL: verify printer compatibility and loaded label size.",
+        "Roh-TSPL: Druckerkompatibilität und eingelegte Etikettengröße prüfen.",
+    ),
+    (
+        "For TSPL printers such as many 4 × 6 shipping printers. Requires a raw CUPS queue. The printer keeps its own gap calibration.",
+        "Für TSPL-Drucker wie viele 4 × 6-Versanddrucker. Erfordert eine rohe CUPS-Warteschlange. Der Drucker behält seine eigene Lückenkalibrierung.",
+    ),
+    (
+        "For TSPL printers such as many 4 × 6 shipping printers. Requires a printer that accepts RAW jobs. The printer keeps its own gap calibration.",
+        "Für TSPL-Drucker wie viele 4 × 6-Versanddrucker. Erfordert einen Drucker, der RAW-Aufträge annimmt. Der Drucker behält seine eigene Lückenkalibrierung.",
+    ),
 ];
 const FR: &[(&str, &str)] = &[
     ("No matches", "Aucun résultat"),
@@ -4672,6 +4714,27 @@ const FR: &[(&str, &str)] = &[
     (
         "Margins & image enhancement",
         "Marges et amélioration de l’image",
+    ),
+    (
+        "Print through the printer driver",
+        "Imprimer via le pilote de l'imprimante",
+    ),
+    (
+        "Recommended. The printer's driver handles the label size and printing.",
+        "Recommandé. Le pilote de l'imprimante gère la taille de l'étiquette et l'impression.",
+    ),
+    ("Print using raw TSPL", "Imprimer en TSPL brut"),
+    (
+        "Raw TSPL: verify printer compatibility and loaded label size.",
+        "TSPL brut : vérifiez la compatibilité de l'imprimante et la taille d'étiquette chargée.",
+    ),
+    (
+        "For TSPL printers such as many 4 × 6 shipping printers. Requires a raw CUPS queue. The printer keeps its own gap calibration.",
+        "Pour les imprimantes TSPL, comme de nombreuses imprimantes d'expédition 4 × 6. Nécessite une file CUPS brute. L'imprimante conserve son propre étalonnage d'espacement.",
+    ),
+    (
+        "For TSPL printers such as many 4 × 6 shipping printers. Requires a printer that accepts RAW jobs. The printer keeps its own gap calibration.",
+        "Pour les imprimantes TSPL, comme de nombreuses imprimantes d'expédition 4 × 6. Nécessite une imprimante qui accepte les travaux RAW. L'imprimante conserve son propre étalonnage d'espacement.",
     ),
 ];
 

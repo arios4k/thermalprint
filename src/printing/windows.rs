@@ -461,10 +461,16 @@ pub fn job_status(printer: &str) -> Result<String> {
     Ok(format!("{printer}: {state}\nPending jobs: {}", info.cJobs))
 }
 
-pub fn submit_raw_zpl(data: &[u8], s: &Settings, p: &Printer) -> Result<String> {
+pub fn submit_raw(
+    data: &[u8],
+    language: crate::raw::RawLanguage,
+    s: &Settings,
+    p: &Printer,
+) -> Result<String> {
+    let name = language.name();
     check_selection(s, p)?;
     let queue = Queue::open(&wide(&p.name))?;
-    let mut title = wide("ThermalPrint ZPL label");
+    let mut title = wide(&format!("ThermalPrint {name} label"));
     let mut raw = wide("RAW");
     let doc = DOC_INFO_1W {
         pDocName: title.as_mut_ptr(),
@@ -473,31 +479,34 @@ pub fn submit_raw_zpl(data: &[u8], s: &Settings, p: &Printer) -> Result<String> 
     };
     let len: u32 = size_of_val(data).try_into()?;
     let id = unsafe { StartDocPrinterW(queue.0, 1, &doc) };
-    win32(id != 0, "Start raw ZPL print job")?;
+    win32(id != 0, &format!("Start raw {name} print job"))?;
     let result = (|| -> Result<()> {
         for _ in 0..s.copies {
             win32(
                 unsafe { StartPagePrinter(queue.0) } != 0,
-                "Start raw ZPL label",
+                &format!("Start raw {name} label"),
             )?;
             let mut written = 0;
             win32(
                 unsafe { WritePrinter(queue.0, data.as_ptr().cast(), len, &mut written) } != 0,
-                "Write raw ZPL label",
+                &format!("Write raw {name} label"),
             )?;
             if written != len {
-                bail!("Printer accepted only {written} of {len} ZPL bytes");
+                bail!("Printer accepted only {written} of {len} {name} bytes");
             }
             win32(
                 unsafe { EndPagePrinter(queue.0) } != 0,
-                "Finish raw ZPL label",
+                &format!("Finish raw {name} label"),
             )?;
         }
-        win32(unsafe { EndDocPrinter(queue.0) } != 0, "Submit raw ZPL job")
+        win32(
+            unsafe { EndDocPrinter(queue.0) } != 0,
+            &format!("Submit raw {name} job"),
+        )
     })();
     if result.is_err() {
         unsafe { AbortPrinter(queue.0) };
     }
     result?;
-    Ok(format!("{} ZPL copies submitted in job {id}", s.copies))
+    Ok(format!("{} {name} copies submitted in job {id}", s.copies))
 }

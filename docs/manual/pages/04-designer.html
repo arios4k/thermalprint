@@ -58,14 +58,14 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
       <li><em>Properties panel</em>: show or hide the properties panel at the right.</li>
       <li><em>Focus canvas</em>: hide the navigation and properties panel to give the canvas more room.</li>
     </ul></td></tr>
-  <tr><td><strong>Export</strong></td><td>Save the design as a <em>PDF document</em>, <em>PNG image</em>, <em>SVG vector</em>, or <em>ZPL label</em>. The menu also has the <em>Print using raw ZPL</em> switch, for ZPL-compatible printers. See <a href="export.html">Exporting</a>. Exports never include the label footer.</td></tr>
+  <tr><td><strong>Export</strong></td><td>Save the design as a <em>PDF document</em>, <em>PNG image</em>, <em>SVG vector</em>, <em>ZPL label</em>, or <em>TSPL label</em>. The menu also chooses how labels print: through the printer driver, or as raw ZPL or raw TSPL for printers that understand them. See <a href="export.html">Exporting</a>. Exports never include the label footer.</td></tr>
   <tr><td><strong>Label</strong></td><td>A menu with:
     <ul>
       <li><em>Label footer…</em>: open the <strong>Footer</strong> tab of the properties panel, showing the panel if it is hidden. The item reads <em>Label footer (on)…</em> while the footer is on. See <a href="#label-footer">Label footer</a>.</li>
       <li><em>Check barcodes</em>: check every barcode and QR code for valid content, size at the selected DPI, clear space, overlap, and clipping, and report the result below the canvas. See <a href="#code-preflight">Checking barcodes and QR codes</a>.</li>
       <li><em>Focus canvas</em>: the same switch as in the View menu.</li>
     </ul></td></tr>
-  <tr><td>Main action</td><td><strong>Print</strong></td><td>Print the label on the printer and media chosen in <a href="print-center.html">Print Center</a>, or send raw ZPL when <em>Print using raw ZPL</em> is on. Print is greyed out while a barcode or QR code overlaps another object, and turns back on by itself once they are apart. See <a href="#overlap-warning">When a code overlaps another object</a>.</td></tr>
+  <tr><td>Main action</td><td><strong>Print</strong></td><td>Print the label on the printer and media chosen in <a href="print-center.html">Print Center</a>, or send raw ZPL or TSPL when one of them is chosen in the Export menu. Print is greyed out while a barcode or QR code overlaps another object, and turns back on by itself once they are apart. See <a href="#overlap-warning">When a code overlaps another object</a>.</td></tr>
 </table>
 
 <h2>The element palette</h2>
@@ -162,7 +162,7 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
   <li>Print as usual. A note above the print controls says that Print rotates the label 90° to fit.</li>
 </ol>
 {{figure:designer-rotated|The Label Designer with rotated printing on: a wide label on the canvas, the Rotated printing banner above it, Rotate 90° when printing ticked on the Label tab, and the As printed card showing the label turned upright|Rotated printing: the label is designed on its side, the banner says it is rotated when it prints, and the As printed card in the corner shows how it comes out of the printer.}}
-<p>Rotation applies everywhere the label goes to the printer: <strong>Print</strong>, numbered runs, spreadsheet batches, <strong>Print on a sheet</strong>, and ZPL. The size check against the printer media, the printer's unprintable border, and the alignment offset all use the printed label, so the shaded border on the canvas appears on the edges that are actually affected. <strong>PDF</strong>, <strong>PNG</strong>, and <strong>SVG</strong> exports stay the way you designed them. The setting is saved in the <code>.thermalprint</code> file. <strong>Auto-length</strong> is not available with rotated printing.</p>
+<p>Rotation applies everywhere the label goes to the printer: <strong>Print</strong>, numbered runs, spreadsheet batches, <strong>Print on a sheet</strong>, ZPL, and TSPL. The size check against the printer media, the printer's unprintable border, and the alignment offset all use the printed label, so the shaded border on the canvas appears on the edges that are actually affected. <strong>PDF</strong>, <strong>PNG</strong>, and <strong>SVG</strong> exports stay the way you designed them. The setting is saved in the <code>.thermalprint</code> file. <strong>Auto-length</strong> is not available with rotated printing.</p>
 <div class="callout tip"><p>If you made a label the size of your stock turned on its side, for example 152.4 × 101.6 mm while the printer has 4 × 6 inch media, the size warning under the canvas offers <strong>Use rotated printing</strong>. It keeps your design as it is and rotates it when it prints.</p></div>
 <p>Rotated printing is only in the Label Designer. To turn a downloaded PDF or image, use <strong>Rotation</strong> in <a href="import.html">Import &amp; Convert</a>.</p>
 
@@ -218,7 +218,7 @@ summary: Create, edit, save, and print your own labels on a canvas that matches 
 
 <h2>Printing from the Designer</h2>
 <p>Choose your printer and media in <a href="print-center.html">Print Center</a>, then press <strong>Print</strong> in the toolbar. The design is drawn at the printer's resolution (203, 300, or 600 DPI) and sent as a one-page PDF. If a label contains something that cannot be drawn, such as a barcode value that is not valid, printing stops with a message that names the problem. Designs you print are listed under <em>Recent prints</em> in Print Center so you can reopen them later.</p>
-<div class="callout note"><p>For many different labels from one design, use <strong>File → Batch print from CSV…</strong>. For direct ZPL printing, see <a href="export.html#printing-raw-zpl">Exporting</a>.</p></div>
+<div class="callout note"><p>For many different labels from one design, use <strong>File → Batch print from CSV…</strong>. For direct ZPL or TSPL printing, see <a href="export.html#printing-raw-zpl">Exporting</a>.</p></div>
 
 {{figure:designer-de|The Label Designer shown in German|The Label Designer follows your system language. This is the same screen in German.}}
 

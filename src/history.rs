@@ -36,12 +36,25 @@ pub struct Entry {
     pub crop: Option<crate::detection::Crop>,
     pub fingerprint: Option<String>,
     pub raw_zpl: bool,
+    /// Sent as raw TSPL. Kept separate from `raw_zpl` so older history files still load.
+    pub raw_tspl: bool,
 }
 
 impl Entry {
-    pub fn with_raw_zpl(mut self, raw: bool) -> Self {
-        self.raw_zpl = raw;
+    pub fn with_raw(mut self, raw: Option<crate::raw::RawLanguage>) -> Self {
+        self.raw_zpl = raw == Some(crate::raw::RawLanguage::Zpl);
+        self.raw_tspl = raw == Some(crate::raw::RawLanguage::Tspl);
         self
+    }
+    /// The printer language this label was sent in, or `None` for the printer driver.
+    pub fn raw_language(&self) -> Option<crate::raw::RawLanguage> {
+        if self.raw_tspl {
+            Some(crate::raw::RawLanguage::Tspl)
+        } else if self.raw_zpl {
+            Some(crate::raw::RawLanguage::Zpl)
+        } else {
+            None
+        }
     }
     pub fn with_settings(
         mut self,

@@ -52,7 +52,7 @@ ThermalPrint keeps three jobs in one clean window: **design** your own labels, *
 - **Print Center in three tabs:** **Printer** with a step-by-step setup assistant, **Label stock** profiles you switch, update, and delete from an always-visible **Active profile** menu, and **Recent prints** with confirmed reprints.
 - **Any paper your printer supports.** Label sizes on thermal printers, and Letter, Legal, A4, and more on office printers.
 - **Print many at once.** Numbered runs, several labels on one sheet of any paper size, and one label per row of a spreadsheet.
-- **Print or export.** Print to a configured system printer, or save a PDF, PNG, SVG or raster ZPL.
+- **Print or export.** Print to a configured system printer, or save a PDF, PNG, SVG, or raster ZPL or TSPL. Zebra-compatible and TSPL shipping printers can also be sent ZPL or TSPL directly.
 
 ### Made for everyone
 
@@ -139,12 +139,12 @@ Run these from the download folder, keeping only the RPM matching your Fedora re
 | Import | PDF, PNG, JPEG, TIFF, BMP, WebP; multipage PDFs join the queue; CSV, semicolon, or tab-separated tables for batch printing |
 | Editable designs | Versioned `.thermalprint` files with embedded images |
 | Barcodes | Code 128, Code 39, Code 93, EAN-13, EAN-8, UPC-A, ITF, Codabar, Data Matrix, GS1-128, GS1 Data Matrix, QR |
-| Output | PDF, PNG; design SVG with embedded raster output; raster ZPL |
+| Output | PDF, PNG; design SVG with embedded raster output; raster ZPL and TSPL |
 | Layout | Automatic/manual/full-page extraction, rotation, fit/actual/custom scale, margins |
 | Print resolution | 203, 300, or 600 DPI |
 | Desktop | Linux with X11 or Wayland and a configured CUPS printer, or Windows 11 x64 and an installed Windows printer |
 
-ThermalPrint prepares labels; it does not purchase postage or generate carrier tracking numbers. Raw ZPL requires a compatible printer and deliberately configured raw queue. This is an early release: check a physical test print and scan before relying on a shipping workflow. The app does not currently decode imported barcodes or verify physical scan quality. See the [manual](https://arios4k.github.io/thermalprint/manual/) for processing limits and printer details, and [Troubleshooting](https://arios4k.github.io/thermalprint/manual/troubleshooting.html) when a print comes out wrong.
+ThermalPrint prepares labels; it does not purchase postage or generate carrier tracking numbers. Raw ZPL and TSPL require a compatible printer and a deliberately configured raw queue. This is an early release: check a physical test print and scan before relying on a shipping workflow. The app does not currently decode imported barcodes or verify physical scan quality. See the [manual](https://arios4k.github.io/thermalprint/manual/) for processing limits and printer details, and [Troubleshooting](https://arios4k.github.io/thermalprint/manual/troubleshooting.html) when a print comes out wrong.
 
 ## Build from source
 
