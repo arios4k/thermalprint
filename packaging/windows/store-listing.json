@@ -1,6 +1,6 @@
 {
   "productId": "9NXDXRSQW0ZF",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "listings": {
     "en-us": {
       "shortDescription": "Design and print shipping labels, barcodes, and QR codes on thermal and regular printers.",
@@ -13,7 +13,7 @@
         "inventory asset tag",
         "packing slip ZPL PDF"
       ],
-      "releaseNotes": "Version 0.18.0\n• Fixes Windows print alignment by matching the test pattern to the selected label size, orientation, printer margins, and DPI.\n• Keeps printed output matched to the selected media size and orientation.\n• Improves background printing behavior when the main window is closed."
+      "releaseNotes": "Version 0.19.0\n• Prints directly to TSPL label printers, used by many low-cost 4 × 6 shipping printers. In the Label Designer, Export now chooses: through the printer driver, raw ZPL, or raw TSPL. TSPL label files can also be saved.\n• Spanish, German and French now cover the whole app, including the Import & Convert queue, the Print Center summary and the Label Designer status bar."
     },
     "es": {
       "shortDescription": "Diseña e imprime etiquetas de envío, códigos de barras y QR en impresoras térmicas y convencionales.",
@@ -26,7 +26,7 @@
         "inventario activos",
         "albarán ZPL PDF recortar"
       ],
-      "releaseNotes": "Versión 0.18.0\n• Corrige la alineación de impresión en Windows al ajustar el patrón de prueba al tamaño de etiqueta, la orientación, los márgenes de la impresora y los PPP seleccionados.\n• Hace que la impresión coincida con el tamaño y la orientación del soporte seleccionados.\n• Mejora el comportamiento de la impresión en segundo plano al cerrar la ventana principal."
+      "releaseNotes": "Versión 0.19.0\n• Imprime directamente en impresoras de etiquetas TSPL, usadas por muchas impresoras de envío económicas de 4 × 6. En el Diseñador de etiquetas, Exportar ahora permite elegir: a través del controlador de la impresora, ZPL sin procesar o TSPL sin procesar. También se pueden guardar archivos de etiqueta TSPL.\n• El español, el alemán y el francés cubren ahora toda la aplicación, incluida la cola de Importar y convertir, el resumen del Centro de impresión y la barra de estado del Diseñador de etiquetas."
     },
     "de": {
       "shortDescription": "Versandetiketten, Barcodes und QR-Codes gestalten und auf Thermo- und normalen Druckern drucken.",
@@ -39,7 +39,7 @@
         "Inventaretiketten Lieferschein",
         "PDF zuschneiden ZPL"
       ],
-      "releaseNotes": "Version 0.18.0\n• Behebt die Druckausrichtung unter Windows, indem das Testmuster an Etikettengröße, Ausrichtung, Druckerränder und DPI angepasst wird.\n• Stimmt den Druck auf das ausgewählte Medienformat und die Ausrichtung ab.\n• Verbessert das Verhalten des Hintergrunddrucks beim Schließen des Hauptfensters."
+      "releaseNotes": "Version 0.19.0\n• Druckt direkt auf TSPL-Etikettendrucker, die viele günstige 4 × 6-Versanddrucker verwenden. Im Etikettendesigner bietet Exportieren jetzt die Wahl: über den Druckertreiber, Roh-ZPL oder Roh-TSPL. TSPL-Etikettendateien lassen sich ebenfalls speichern.\n• Spanisch, Deutsch und Französisch decken jetzt die ganze App ab, einschließlich der Importwarteschlange, der Übersicht im Druckcenter und der Statusleiste des Etikettendesigners."
     },
     "fr": {
       "shortDescription": "Créez et imprimez des étiquettes d’expédition, codes-barres et QR sur imprimantes thermiques ou classiques.",
@@ -52,7 +52,7 @@
         "inventaire stock",
         "bordereau ZPL PDF recadrer"
       ],
-      "releaseNotes": "Version 0.18.0\n• Corrige l’alignement d’impression sous Windows en adaptant le motif de test au format d’étiquette, à l’orientation, aux marges de l’imprimante et au DPI sélectionnés.\n• Fait correspondre l’impression au format et à l’orientation du support sélectionnés.\n• Améliore le comportement de l’impression en arrière-plan lorsque la fenêtre principale est fermée."
+      "releaseNotes": "Version 0.19.0\n• Imprime directement sur les imprimantes d'étiquettes TSPL, utilisées par de nombreuses imprimantes d'expédition 4 × 6 économiques. Dans le Concepteur d'étiquettes, Exporter permet désormais de choisir : via le pilote de l'imprimante, en ZPL brut ou en TSPL brut. Les fichiers d'étiquette TSPL peuvent aussi être enregistrés.\n• L'espagnol, l'allemand et le français couvrent désormais toute l'application, y compris la file Importer et convertir, le résumé du Centre d'impression et la barre d'état du Concepteur d'étiquettes."
     }
   }
 }

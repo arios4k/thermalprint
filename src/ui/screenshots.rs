@@ -642,7 +642,8 @@ pub(super) fn seed(app: &mut ThermalPrint, ctx: &egui::Context) {
         app.designer.select_object(id);
     }
     app.designer.grid = true;
-    app.designer.status = "Sample design · editable text, barcode, and QR code".into();
+    app.designer.status =
+        crate::i18n::tr("Sample design · editable text, barcode, and QR code").into();
     let mut page_image = image::RgbImage::from_pixel(1678, 2373, image::Rgb([255; 3]));
     image::imageops::replace(&mut page_image, &output.image, 100, 120);
     app.crop = Crop {

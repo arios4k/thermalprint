@@ -60,6 +60,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.19.0" date="2026-11-26">
+      <description>
+        <p>Direct TSPL printing and complete translations.</p>
+        <ul>
+          <li>Print and export TSPL for the many 4 x 6 shipping label printers that use it instead of ZPL, keeping the printer's own gap calibration.</li>
+          <li>Translate the remaining Import and Convert, Print Center, and Label Designer text into Spanish, German, and French.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.18.0" date="2026-11-23">
       <description>
         <p>Reliable Windows alignment tests and automatic printer media matching.</p>
