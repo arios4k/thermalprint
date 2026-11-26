@@ -70,7 +70,7 @@ Document processing happens on your computer. ThermalPrint works with local file
 
 ### Windows 11
 
-ThermalPrint is available for Windows 11 x64 in the Microsoft Store. Install the latest Store version; updates appear after Microsoft certification. ThermalPrint’s source code is MIT-licensed on both platforms. ThermalPrint is **free** on both platforms, including the Microsoft Store edition. [Microsoft Store listing](https://apps.microsoft.com/detail/9NXDXRSQW0ZF) · [Windows setup guide](https://arios4k.github.io/thermalprint/manual/install.html#windows-11)
+ThermalPrint is available for Windows 11 x64 in the Microsoft Store, and the **Windows version is free**: no price, no trial, and nothing to unlock, the same as on Linux. Install the latest Store version; updates appear after Microsoft certification. ThermalPrint’s source code is MIT-licensed on both platforms. If ThermalPrint has been useful to you, please consider [a donation through PayPal](https://paypal.me/AlexisRios). [Microsoft Store listing](https://apps.microsoft.com/detail/9NXDXRSQW0ZF) · [Windows setup guide](https://arios4k.github.io/thermalprint/manual/install.html#windows-11)
 
 Add your printer in **Settings → Bluetooth & devices → Printers & scanners**. Then open **Print Center** in ThermalPrint, refresh the printer list, and select the media size that matches your stock. PDF rendering is bundled in the Windows package.
 
@@ -162,9 +162,9 @@ PDFium is optional. To use a custom installation, set `THERMALPRINT_PDFIUM_DIR` 
 
 ## Support ThermalPrint
 
-If ThermalPrint has been useful to you, please consider [making a donation of any amount](https://paypal.me/AlexisRios) to help keep the project running and support its continued development. Every contribution is appreciated.
+ThermalPrint is free on Linux and Windows, including the Microsoft Store version, with no ads, accounts, or tracking. It is built and maintained by one developer.
 
-ThermalPrint is free on Linux and Windows. Optional donations support continued development.
+If ThermalPrint has been useful to you, for your shipping labels, your shop, or your work, please consider [making a donation of any amount through PayPal](https://paypal.me/AlexisRios). Donations keep the project running and support continued development, new printer support, and the Microsoft Store and Linux packages. Every contribution is appreciated, and starring the project on GitHub or reporting a bug helps too.
 
 [![Support development with PayPal](https://img.shields.io/badge/Support_development-PayPal-0070BA?logo=paypal&logoColor=white)](https://paypal.me/AlexisRios)
 
