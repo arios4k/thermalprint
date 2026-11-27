@@ -59,11 +59,11 @@ To keep the submission as a draft for a final review in Partner Center, set the 
 
 Without these secrets, the store job is skipped with a notice and you can submit by hand: download the **ThermalPrint-Windows-x64-store** artifact, upload the MSIX under **Partner Center → ThermalPrint → Start update → Packages**, paste the text from `store-listing.json` into each listing language, and submit for certification. Partner Center listing pages can stay on a loading spinner; pressing Esc (stop loading) usually shows them. If the listing editor will not open, use **Export listings**, edit the CSV, and **Import listings**. Wait until the import finishes before you submit.
 
-Microsoft's documentation says its GitHub Actions publishing supports free products only. ThermalPrint is paid, so the job calls `msstore` directly. If Microsoft rejects the upload for a paid product, the job fails and leaves no submitted update. Submit that release by hand.
+The job states the price and trial from `pricing` in `store-listing.json`, because Partner Center can report a managed price as `Base`, which the submission API will not accept back. ThermalPrint is free: `priceId` is `Free` and `trialPeriod` is `NoFreeTrial`. A paid price uses a tier such as `Tier1052` (US$4.99; tiers are listed in Partner Center under **Pricing and availability → view table**) with a trial such as `SevenDays`. After saving the draft, the job reads it back and stops without submitting if the price or trial differs. **When you change the price or trial, change `pricing` to match.**
 
 Local installation requires a signature trusted by the test machine. Microsoft signs the published Store package during certification.
 
-The Store edition's US base price is **$4.99** with a **7-day time-limited trial**, set under **Pricing and availability**; updates keep these settings. The trial offers the full app so customers can test their printer and label stock. Linux remains free. [Microsoft Store pricing and trials](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/price-and-availability)
+The Store edition is **free** with no trial, like the Linux packages. The price comes from `pricing` in `store-listing.json` with each automated submission. [Microsoft Store pricing and trials](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/price-and-availability)
 
 Before submitting, install a signed test package on Windows 11. Open a `.thermalprint` design through File Explorer, import a mixed-size PDF, and verify image and label exports. Print a 4 × 6 label and a Letter or A4 sheet. Check physical dimensions, offsets, copies, queue status, and barcode scans. Repeat with a RAW ZPL queue and test watched-folder printing with fictional labels.
 

@@ -8,7 +8,8 @@ The steps run in this order because `msstore publish` replaces any pending draft
   1. Upload the package into a new draft (no commit).
   2. Read the draft, set release notes, search terms and short description for every language.
   3. Save the draft, then commit it for certification (unless -NoSubmit).
-Prices, trial, screenshots and descriptions are kept from the live listing.
+Descriptions and screenshots are kept from the live listing. The base price tier and trial
+come from store-listing.json and are checked in the draft before it is submitted.
 #>
 param(
     [Parameter(Mandatory)] [string] $Msix,
@@ -40,8 +41,17 @@ if ((Split-Path -Leaf $Msix) -notmatch [regex]::Escape($listing.version)) {
     throw "$Msix does not look like version $($listing.version) from $ListingFile."
 }
 
-Write-Host "Uploading $Msix to $productId as a draft"
-Invoke-MsStore publish $Msix --appId $productId --noCommit | Write-Host
+$priceId = $listing.pricing.priceId
+$trialPeriod = $listing.pricing.trialPeriod
+if ($priceId -notmatch '^(Free|Tier\d+)$' -or [string]::IsNullOrWhiteSpace($trialPeriod)) {
+    throw "Set pricing.priceId (Free or TierNNNN) and pricing.trialPeriod in $ListingFile."
+}
+
+# Partner Center can report a managed price as "Base", which the submission API will not
+# take back. State the price explicitly instead; the draft is checked below before anything
+# is submitted.
+Write-Host "Uploading $Msix to $productId as a draft (base price $priceId, trial $trialPeriod)"
+Invoke-MsStore publish $Msix --appId $productId --noCommit --priceId $priceId | Write-Host
 
 $submission = (Invoke-MsStore submission get $productId) -join "`n" | ConvertFrom-Json
 foreach ($language in $listing.listings.PSObject.Properties.Name) {
@@ -56,6 +66,9 @@ foreach ($language in $listing.listings.PSObject.Properties.Name) {
     Set-Field $base 'ShortDescription' $wanted.shortDescription
     Write-Host "$language listing: release notes, $($wanted.searchTerms.Count) search terms, short description"
 }
+if (!$submission.Pricing) { throw 'The draft has no pricing. Nothing was submitted; check Pricing and availability in Partner Center.' }
+Set-Field $submission.Pricing 'PriceId' $priceId
+Set-Field $submission.Pricing 'TrialPeriod' $trialPeriod
 
 $json = $submission | ConvertTo-Json -Depth 100 -Compress
 # Windows limits a command line to 32,767 characters.
@@ -73,6 +86,15 @@ foreach ($language in $listing.listings.PSObject.Properties.Name) {
     if ($have -ne $want) { throw "$language search terms did not save (have '$have')." }
     if ($base.ReleaseNotes -ne $listing.listings.$language.releaseNotes) { throw "$language release notes did not save." }
 }
+# Never commit a draft whose price or trial differs from what the app is sold at.
+if ($saved.Pricing.PriceId -ne $priceId) {
+    throw "The draft's base price is '$($saved.Pricing.PriceId)', not $priceId. Nothing was submitted; review the draft in Partner Center."
+}
+if ($saved.Pricing.TrialPeriod -ne $trialPeriod) {
+    throw "The draft's trial is '$($saved.Pricing.TrialPeriod)', not $trialPeriod. Nothing was submitted; review the draft in Partner Center."
+}
+$overrides = if ($saved.Pricing.MarketSpecificPricings) { @($saved.Pricing.MarketSpecificPricings.PSObject.Properties).Count } else { 0 }
+Write-Host "Pricing: base $priceId, trial $trialPeriod, $overrides market-specific prices"
 
 if ($NoSubmit) {
     Write-Host "Draft saved. Submit it in Partner Center when ready."

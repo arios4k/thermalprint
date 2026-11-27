@@ -33,6 +33,12 @@ jobs:
                   throw "Set the THERMALPRINT_$name repository variable before building a Store update."
               }
           }
+      - name: Check the Store submission script parses
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path packaging/windows/submit-store.ps1), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) { $errors | ForEach-Object { "::error file=packaging/windows/submit-store.ps1,line=$($_.Extent.StartLineNumber)::$($_.Message)" }; exit 1 }
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
