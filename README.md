@@ -162,11 +162,15 @@ PDFium is optional. To use a custom installation, set `THERMALPRINT_PDFIUM_DIR` 
 
 ## Support ThermalPrint
 
-ThermalPrint is free on Linux and Windows, including the Microsoft Store version, with no ads, accounts, or tracking. It is built and maintained by one developer.
+ThermalPrint is free on Linux and Windows, with no trial, ads, accounts, or tracking. It is an independent, open-source project, designed, built, and maintained by one developer.
 
-If ThermalPrint has been useful to you, for your shipping labels, your shop, or your work, please consider [making a donation of any amount through PayPal](https://paypal.me/AlexisRios). Donations keep the project running and support continued development, new printer support, and the Microsoft Store and Linux packages. Every contribution is appreciated, and starring the project on GitHub or reporting a bug helps too.
+If ThermalPrint has saved you time at the packing table, helped your small business get its orders out the door, or simply made printing labels less of a hassle, please consider supporting it with a donation. Any amount, large or small, makes a real difference. It helps keep the project going, supports the work of adding new printers and label formats, and keeps the Windows and Linux versions up to date.
+
+**[Donate with PayPal: paypal.me/AlexisRios](https://paypal.me/AlexisRios)**
 
 [![Support development with PayPal](https://img.shields.io/badge/Support_development-PayPal-0070BA?logo=paypal&logoColor=white)](https://paypal.me/AlexisRios)
+
+Can't donate right now? You can still help a lot: star the project on GitHub, tell a friend or a fellow seller about it, or [share a bug report or an idea](https://github.com/arios4k/thermalprint/issues). Thank you for using ThermalPrint!
 
 [Privacy policy](docs/PRIVACY.md)
 
